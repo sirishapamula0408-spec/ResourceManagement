@@ -1,7 +1,9 @@
+import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { auth, canManage } from '../lib/api';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { api, auth, canCreateTasks, ROLE_LABEL, type Role } from '../lib/api';
 import { buttonClass } from '../lib/forms';
+import { BrandMark } from './AuthCard';
 import { useToast } from './tasks/taskHelpers';
 import { TaskDialog } from './tasks/TaskDialog';
 import { Toast } from './tasks/taskUi';
@@ -14,26 +16,17 @@ const nav = [
   { to: '/teams', label: 'Team' },
 ];
 
-/** Three rising bars: the Resource Board mark from the prototype. */
-function BrandMark() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
-      <rect x="1" y="12" width="5" height="9" rx="1" fill="var(--color-amber)" />
-      <rect x="8.5" y="6" width="5" height="15" rx="1" fill="var(--color-teal)" />
-      <rect x="16" y="1" width="5" height="20" rx="1" fill="var(--color-ink)" />
-    </svg>
-  );
-}
-
-const ROLE_LABEL = { ADMIN: 'Admin', PM: 'PM', MEMBER: 'Member' } as const;
-
+/** App shell; only rendered for signed-in users (see RequireAuth in the router). */
 export function Layout() {
   const navigate = useNavigate();
-  // An expired token counts as signed out.
-  const user = auth.getUser();
-  const signedIn = user !== null;
   const [creating, setCreating] = useState(false);
   const [toastMessage, showToast] = useToast();
+  // Name and current role come from the API, so a role change shows without signing in again.
+  const { data: me } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => api<{ name: string; email: string; role: Role }>('/auth/me'),
+  });
+  const role = me?.role ?? auth.getUser()?.role;
 
   return (
     <div className="min-h-screen">
@@ -56,16 +49,19 @@ export function Layout() {
           ))}
         </nav>
         <div className="flex-1" />
-        {canManage() && (
+        {canCreateTasks() && (
           <button className={buttonClass('primary')} onClick={() => setCreating(true)}>
             Create task
           </button>
         )}
-        {user && (
-          <span className="text-xs text-muted" title="Signed in">
-            {user.email} · {ROLE_LABEL[user.role]}
-          </span>
-        )}
+        <Link
+          to="/account/password"
+          className="text-right text-xs leading-tight text-muted hover:text-ink"
+          title="Change password"
+        >
+          <span className="block font-semibold text-ink">{me?.name ?? auth.getUser()?.email}</span>
+          {role && ROLE_LABEL[role]}
+        </Link>
         <button
           className="rounded-md border border-line bg-panel px-3 py-1.5 font-medium hover:bg-panel2"
           onClick={() => {
@@ -73,21 +69,10 @@ export function Layout() {
             navigate('/login');
           }}
         >
-          {signedIn ? 'Sign out' : 'Sign in'}
+          Sign out
         </button>
       </header>
       <main className="mx-auto max-w-[1440px] p-5">
-        {!signedIn && (
-          <div className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-amber bg-amber-soft px-3.5 py-2.5">
-            <span className="flex-1">
-              You’re not signed in, so everything is read-only. Sign in to add, edit or delete
-              projects, people and tasks.
-            </span>
-            <button className={buttonClass('primary')} onClick={() => navigate('/login')}>
-              Sign in
-            </button>
-          </div>
-        )}
         <Outlet />
       </main>
       {creating && (

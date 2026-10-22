@@ -6,7 +6,7 @@ import { RowActions } from '../components/RowActions';
 import { Toast } from '../components/tasks/taskUi';
 import { Avatar } from '../components/tasks/taskUi';
 import { useTaskLookups, useToast } from '../components/tasks/taskHelpers';
-import { api, canManage, type Person, type Project, type ProjectStatus } from '../lib/api';
+import { api, canManageStaffing, type Person, type Project, type ProjectStatus } from '../lib/api';
 import { buttonClass, errorMessage, inputClass, STAFFING_QUERIES } from '../lib/forms';
 import { fmt, identityColor } from '../lib/theme';
 
@@ -209,7 +209,7 @@ function MemberStack({ members, allNames }: { members: Project['members']; allNa
 }
 
 export function ProjectsPage() {
-  const editable = canManage();
+  const editable = canManageStaffing();
   const [editing, setEditing] = useState<Project | 'new' | null>(null);
   const { people, personNames } = useTaskLookups();
   const { data: projects = [], isLoading } = useQuery({
@@ -236,7 +236,11 @@ export function ProjectsPage() {
     <>
       <PageHeader
         title="Projects"
-        subtitle={editable ? undefined : 'Only admins and PMs can add, edit or delete projects.'}
+        subtitle={
+          editable
+            ? undefined
+            : 'Only admins, delivery heads and resource managers can add, edit or delete projects.'
+        }
       >
         {editable && (
           <button className={buttonClass('primary')} onClick={() => setEditing('new')}>

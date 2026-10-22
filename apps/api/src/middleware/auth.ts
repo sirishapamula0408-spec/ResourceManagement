@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
 import type { Role } from '../generated/prisma/enums.js';
 import { HttpError } from '../lib/http.js';
+import { prisma } from '../lib/prisma.js';
 
 export interface AuthUser {
   id: string;
@@ -23,22 +24,43 @@ export function signToken(user: AuthUser): string {
   });
 }
 
-/** Requires a valid `Authorization: Bearer <jwt>` header and sets `req.user`. */
-export function requireAuth(req: Request, _res: Response, next: NextFunction) {
+/** Routes still open to someone who must change their password first. */
+const PASSWORD_CHANGE_ROUTES = new Set(['/api/auth/me', '/api/auth/password']);
+
+/**
+ * Requires a valid `Authorization: Bearer <jwt>` header and sets `req.user`.
+ * The token only proves identity: role and active status are read fresh on every request,
+ * so a role change or removal takes effect immediately instead of when the token expires.
+ */
+export async function requireAuth(req: Request, _res: Response, next: NextFunction) {
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) {
     return next(new HttpError(401, 'Authentication required'));
   }
+  let id: string;
   try {
     const payload = jwt.verify(header.slice(7), config.JWT_SECRET) as jwt.JwtPayload;
-    req.user = { id: payload.sub as string, email: payload.email, role: payload.role };
-    next();
+    id = payload.sub as string;
   } catch {
-    next(new HttpError(401, 'Invalid or expired token'));
+    return next(new HttpError(401, 'Invalid or expired token'));
   }
+
+  const person = await prisma.person.findUnique({
+    where: { id },
+    select: { email: true, role: true, active: true, mustChangePassword: true },
+  });
+  if (!person?.active) return next(new HttpError(401, 'Your account is no longer active'));
+
+  req.user = { id, email: person.email, role: person.role };
+  if (person.mustChangePassword && !PASSWORD_CHANGE_ROUTES.has(req.baseUrl + req.path)) {
+    return next(
+      new HttpError(403, 'Change your password to continue', { code: 'PASSWORD_CHANGE_REQUIRED' }),
+    );
+  }
+  next();
 }
 
-/** Role guard: use after requireAuth, e.g. `router.post('/', requireRole('ADMIN', 'PM'), ...)`. */
+/** Role guard: use after requireAuth, e.g. `router.post('/', requireRole(...STAFFING_ROLES), ...)`. */
 export function requireRole(...roles: Role[]) {
   return (req: Request, _res: Response, next: NextFunction) => {
     if (!req.user) return next(new HttpError(401, 'Authentication required'));

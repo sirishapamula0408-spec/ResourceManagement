@@ -1,17 +1,27 @@
 import { useMutation } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { api, auth } from '../lib/api';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { AuthCard } from '../components/AuthCard';
+import { Field } from '../components/Dialog';
+import { api, ApiError, auth, type Role } from '../lib/api';
+import { buttonClass, inputClass } from '../lib/forms';
 
 interface LoginResponse {
   token: string;
-  user: { id: string; name: string; email: string; role: string };
+  user: { id: string; name: string; email: string; role: Role; mustChangePassword: boolean };
 }
 
-/** Email/password sign-in stub. TODO(M3): "Sign in with Microsoft" (Azure AD SSO). */
+/** Only return to pages inside this app after signing in. */
+const safeNext = (next: string | null) =>
+  next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/login')
+    ? next
+    : '/dashboard';
+
+/** Email/password sign-in. TODO(M3): "Sign in with Microsoft" (Azure AD SSO). */
 export function LoginPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('admin@resourceboard.local');
+  const [params] = useSearchParams();
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const login = useMutation({
@@ -22,7 +32,9 @@ export function LoginPage() {
       }),
     onSuccess: (data) => {
       auth.setToken(data.token);
-      navigate('/dashboard');
+      navigate(data.user.mustChangePassword ? '/account/password' : safeNext(params.get('next')), {
+        replace: true,
+      });
     },
   });
 
@@ -31,42 +43,51 @@ export function LoginPage() {
     login.mutate();
   }
 
+  const error =
+    login.error instanceof ApiError && login.error.status === 401
+      ? 'That email and password don’t match an active account.'
+      : login.error?.message;
+
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <form
-        onSubmit={onSubmit}
-        className="w-80 rounded-lg border border-line bg-panel p-6 shadow-sm"
-      >
-        <h1 className="mb-4 text-xl font-semibold">Sign in to Resource Board</h1>
-        <label className="mb-1 block text-sm text-muted" htmlFor="email">
-          Email
-        </label>
-        <input
-          id="email"
-          type="email"
-          className="mb-3 w-full rounded border border-line px-3 py-2 text-sm"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-        <label className="mb-1 block text-sm text-muted" htmlFor="password">
-          Password
-        </label>
-        <input
-          id="password"
-          type="password"
-          className="mb-4 w-full rounded border border-line px-3 py-2 text-sm"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-        {login.error && <p className="mb-3 text-sm text-red">{login.error.message}</p>}
+    <AuthCard
+      title="Sign in"
+      intro={params.get('next') ? 'Sign in to continue to that page.' : undefined}
+    >
+      <form onSubmit={onSubmit} className="flex flex-col gap-3">
+        <Field label="Email">
+          <input
+            type="email"
+            autoComplete="username"
+            className={inputClass}
+            value={email}
+            required
+            autoFocus
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </Field>
+        <Field label="Password">
+          <input
+            type="password"
+            autoComplete="current-password"
+            className={inputClass}
+            value={password}
+            required
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </Field>
+        {error && (
+          <p role="alert" className="rounded-md bg-red-soft px-3 py-2 text-red">
+            {error}
+          </p>
+        )}
         <button
           type="submit"
           disabled={login.isPending}
-          className="w-full rounded bg-teal px-3 py-2 text-sm font-medium text-white hover:brightness-105 disabled:opacity-50"
+          className={`${buttonClass('primary')} mt-1`}
         >
-          {login.isPending ? 'Signing in...' : 'Sign in'}
+          {login.isPending ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
-    </div>
+    </AuthCard>
   );
 }

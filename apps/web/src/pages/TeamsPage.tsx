@@ -8,7 +8,8 @@ import { hours, useTaskLookups, useToast } from '../components/tasks/taskHelpers
 import {
   api,
   auth,
-  canManage,
+  canManageStaffing,
+  ROLE_LABEL,
   type DashboardOverview,
   type Department,
   type Person,
@@ -20,11 +21,12 @@ import {
 import { buttonClass, errorMessage, inputClass, STAFFING_QUERIES } from '../lib/forms';
 import { fmt, identityColor } from '../lib/theme';
 
-const ROLES: [Role, string][] = [
-  ['MEMBER', 'Member'],
-  ['PM', 'Project manager'],
-  ['ADMIN', 'Admin'],
-];
+/** Least to most access, for the role picker. */
+const ROLE_ORDER: Role[] = ['MEMBER', 'PM', 'RESOURCE_MANAGER', 'DELIVERY_HEAD', 'ADMIN'];
+
+// Same rule as the API: 8+ characters with a letter and a number.
+const PASSWORD_PATTERN = '(?=.*[A-Za-z])(?=.*[0-9]).{8,}';
+const PASSWORD_HINT = 'At least 8 characters, including a letter and a number';
 
 function PersonDialog({
   person,
@@ -46,6 +48,7 @@ function PersonDialog({
     department: person?.department?.name ?? '',
     weeklyCapacityHours: person ? hours(person.weeklyCapacityHours) : 40,
     role: person?.role ?? ('MEMBER' as Role),
+    password: '',
   });
   const [projectIds, setProjectIds] = useState(person?.projects.map((p) => p.id) ?? []);
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
@@ -58,12 +61,14 @@ function PersonDialog({
   const save = useMutation({
     mutationFn: async () => {
       // Only admins may set roles; the API rejects a role sent by anyone else.
-      const { role, ...rest } = form;
+      const { role, password, ...rest } = form;
       const body = JSON.stringify({
         ...rest,
         title: rest.title || null,
         department: rest.department || null,
         ...(isAdmin ? { role } : {}),
+        // Required for a new person; on edit, only sent to reset it.
+        ...(password ? { password } : {}),
       });
       const saved = person
         ? await api<Person>(`/people/${person.id}`, { method: 'PATCH', body })
@@ -145,13 +150,31 @@ function PersonDialog({
           disabled={!isAdmin}
           onChange={(e) => set({ role: e.target.value as Role })}
         >
-          {ROLES.map(([v, l]) => (
-            <option key={v} value={v}>
-              {l}
+          {ROLE_ORDER.map((r) => (
+            <option key={r} value={r}>
+              {ROLE_LABEL[r]}
             </option>
           ))}
         </select>
       </Field>
+      <Field label={person ? 'Reset password (optional)' : 'Temporary password'}>
+        <input
+          type="text"
+          autoComplete="off"
+          className={inputClass}
+          value={form.password}
+          required={!person}
+          pattern={PASSWORD_PATTERN}
+          title={PASSWORD_HINT}
+          placeholder={person ? 'Leave blank to keep their password' : PASSWORD_HINT}
+          onChange={(e) => set({ password: e.target.value })}
+        />
+      </Field>
+      <p className="self-end pb-2 text-xs text-muted">
+        {person
+          ? 'A new password must be changed at their next sign-in.'
+          : 'Share it with them; they choose their own at first sign-in.'}
+      </p>
       <Checklist
         label="Projects"
         options={projects.map((p) => ({
@@ -178,7 +201,7 @@ const loadColor = (pct: number) =>
         : 'var(--color-amber)';
 
 export function TeamsPage() {
-  const editable = canManage();
+  const editable = canManageStaffing();
   const [editing, setEditing] = useState<Person | 'new' | null>(null);
   const { people, projects, personNames } = useTaskLookups();
   const codes = projects.map((p) => p.code);
@@ -194,8 +217,8 @@ export function TeamsPage() {
     onError: (e) => showToast(errorMessage(e)),
   });
   // Same rules as the API: never yourself, and only an admin removes an admin.
-  const canRemove = (p: Person) =>
-    editable && p.id !== me?.id && (p.role !== 'ADMIN' || me?.role === 'ADMIN');
+  const canEditPerson = (p: Person) => editable && (p.role !== 'ADMIN' || me?.role === 'ADMIN');
+  const canRemove = (p: Person) => canEditPerson(p) && p.id !== me?.id;
 
   const { data: departments = [] } = useQuery({
     queryKey: ['departments'],
@@ -230,7 +253,11 @@ export function TeamsPage() {
     <>
       <PageHeader
         title="Team"
-        subtitle={editable ? undefined : 'Only admins and PMs can add, edit or remove people.'}
+        subtitle={
+          editable
+            ? undefined
+            : 'Only admins, delivery heads and resource managers can add, edit or remove people.'
+        }
       >
         {editable && (
           <button className={buttonClass('primary')} onClick={() => setEditing('new')}>
@@ -270,8 +297,8 @@ export function TeamsPage() {
                 return (
                   <tr
                     key={p.id}
-                    className={editable ? 'cursor-pointer hover:[&>td]:bg-panel2' : ''}
-                    onClick={editable ? () => setEditing(p) : undefined}
+                    className={canEditPerson(p) ? 'cursor-pointer hover:[&>td]:bg-panel2' : ''}
+                    onClick={canEditPerson(p) ? () => setEditing(p) : undefined}
                   >
                     <td className={td}>
                       <div className="flex items-center gap-2">
@@ -280,7 +307,7 @@ export function TeamsPage() {
                           {p.name}
                           {p.role !== 'MEMBER' && (
                             <small className="ml-1.5 text-[11px] text-muted">
-                              {p.role === 'ADMIN' ? 'Admin' : 'PM'}
+                              {ROLE_LABEL[p.role]}
                             </small>
                           )}
                         </span>
@@ -321,7 +348,7 @@ export function TeamsPage() {
                     {editable && (
                       <td className={td}>
                         <RowActions
-                          onEdit={() => setEditing(p)}
+                          onEdit={canEditPerson(p) ? () => setEditing(p) : undefined}
                           onDelete={canRemove(p) ? () => remove.mutate(p) : undefined}
                           deleteLabel="Remove"
                           deleteConfirm={`Remove ${p.name} from the team? Their open tasks become unassigned.`}

@@ -1,4 +1,5 @@
 import { prisma } from '../../lib/prisma.js';
+import { hashPassword } from '../auth/auth.service.js';
 import type { Role } from '../../generated/prisma/enums.js';
 
 export async function listPeople() {
@@ -42,6 +43,8 @@ export interface PersonInput {
   /** Department by name; created if new (like the prototype's free-text department). */
   department?: string | null;
   weeklyCapacityHours?: number;
+  /** Temporary password chosen by whoever adds or resets the person. */
+  password?: string;
 }
 
 async function departmentId(name: string | null | undefined) {
@@ -51,16 +54,39 @@ async function departmentId(name: string | null | undefined) {
   return dept.id;
 }
 
-export async function createPerson({ department, ...input }: PersonInput) {
+/** A password set by someone else must be changed at the person's next sign-in. */
+async function passwordFields(password: string | undefined) {
+  return password === undefined
+    ? {}
+    : { passwordHash: await hashPassword(password), mustChangePassword: true };
+}
+
+// Never send password hashes back to the client.
+const omitSecrets = { passwordHash: true } as const;
+
+export async function createPerson({ department, password, ...input }: PersonInput) {
   return prisma.person.create({
-    data: { ...input, departmentId: await departmentId(department) },
+    data: {
+      ...input,
+      ...(await passwordFields(password)),
+      departmentId: await departmentId(department),
+    },
+    omit: omitSecrets,
   });
 }
 
-export async function updatePerson(id: string, { department, ...input }: Partial<PersonInput>) {
+export async function updatePerson(
+  id: string,
+  { department, password, ...input }: Partial<PersonInput>,
+) {
   return prisma.person.update({
     where: { id },
-    data: { ...input, departmentId: await departmentId(department) },
+    data: {
+      ...input,
+      ...(await passwordFields(password)),
+      departmentId: await departmentId(department),
+    },
+    omit: omitSecrets,
   });
 }
 

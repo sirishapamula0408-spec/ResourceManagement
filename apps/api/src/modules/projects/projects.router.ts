@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { ProjectStatus } from '../../generated/prisma/enums.js';
 import { parse } from '../../lib/http.js';
-import { requireAuth, requireRole } from '../../middleware/auth.js';
+import { STAFFING_ROLES } from '../../lib/permissions.js';
+import { requireRole } from '../../middleware/auth.js';
 import * as service from './projects.service.js';
 
 const optionalDate = z.coerce.date().nullable().optional();
@@ -43,8 +44,8 @@ projectsRouter.get('/', async (_req, res) => {
   res.json(await service.listProjects());
 });
 
-// Writes: ADMIN and PM (delivery heads / PMO maintain projects and staffing).
-const canEdit = [requireAuth, requireRole('ADMIN', 'PM')];
+// Writes: admins, delivery heads and resource managers maintain projects and staffing.
+const canEdit = [requireRole(...STAFFING_ROLES)];
 
 projectsRouter.post('/', ...canEdit, async (req, res) => {
   res.status(201).json(await service.createProject(parse(projectSchema, req.body)));

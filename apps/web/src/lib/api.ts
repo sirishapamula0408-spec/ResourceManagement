@@ -20,10 +20,25 @@ export const auth = {
   },
 };
 
-export type Role = 'ADMIN' | 'PM' | 'MEMBER';
+/** App roles from the scope plan's "Users and roles" table. */
+export type Role = 'ADMIN' | 'DELIVERY_HEAD' | 'RESOURCE_MANAGER' | 'PM' | 'MEMBER';
 
-/** Admins and PMs maintain projects and the team. */
-export const canManage = () => {
+export const ROLE_LABEL: Record<Role, string> = {
+  ADMIN: 'Admin',
+  DELIVERY_HEAD: 'Delivery head',
+  RESOURCE_MANAGER: 'Resource manager',
+  PM: 'Project manager',
+  MEMBER: 'Team member',
+};
+
+/** Admins, delivery heads and resource managers maintain people, projects and staffing. */
+export const canManageStaffing = () => {
+  const role = auth.getUser()?.role;
+  return role === 'ADMIN' || role === 'DELIVERY_HEAD' || role === 'RESOURCE_MANAGER';
+};
+
+/** Admins and PMs create tasks (PMs on the projects they own or are staffed on). */
+export const canCreateTasks = () => {
   const role = auth.getUser()?.role;
   return role === 'ADMIN' || role === 'PM';
 };
@@ -38,6 +53,11 @@ export class ApiError extends Error {
   }
 }
 
+/** Send the browser to a page outside React (used when the session is no longer usable). */
+function leaveTo(path: string) {
+  if (window.location.pathname !== path.split('?')[0]) window.location.assign(path);
+}
+
 export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
@@ -46,7 +66,19 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 
   const res = await fetch(`/api${path}`, { ...init, headers });
   const body = res.status === 204 ? undefined : await res.json().catch(() => undefined);
-  if (!res.ok) throw new ApiError(res.status, body?.error ?? res.statusText, body?.details);
+  if (!res.ok) {
+    // Expired, invalid or deactivated session: sign in again and come back here.
+    if (res.status === 401 && path !== '/auth/login') {
+      auth.clear();
+      const here = window.location.pathname + window.location.search;
+      leaveTo(`/login?next=${encodeURIComponent(here)}`);
+    }
+    // A password set by someone else must be changed before anything else.
+    if (res.status === 403 && body?.details?.code === 'PASSWORD_CHANGE_REQUIRED') {
+      leaveTo('/account/password');
+    }
+    throw new ApiError(res.status, body?.error ?? res.statusText, body?.details);
+  }
   return body as T;
 }
 

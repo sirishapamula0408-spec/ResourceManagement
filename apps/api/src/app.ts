@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config.js';
 import { errorHandler, notFound } from './lib/http.js';
+import { requireAuth } from './middleware/auth.js';
 import { authRouter } from './modules/auth/auth.router.js';
 import { dashboardRouter } from './modules/dashboard/dashboard.router.js';
 import { peopleRouter } from './modules/people/people.router.js';
@@ -24,9 +25,9 @@ export function createApp() {
     res.json({ status: 'ok', service: 'resource-board-api', time: new Date().toISOString() });
   });
 
-  // NOTE: read endpoints are open in the skeleton to keep the UI easy to wire up.
-  // Add `requireAuth` per router (or globally) once the sign-in flow is in place.
+  // Everything except health and sign-in requires a signed-in, active user.
   app.use('/api/auth', authRouter);
+  app.use('/api', requireAuth);
   app.use('/api/people', peopleRouter);
   app.use('/api/teams', teamsRouter);
   app.use('/api/projects', projectsRouter);

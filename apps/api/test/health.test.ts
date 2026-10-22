@@ -36,10 +36,23 @@ describe('auth guards', () => {
     expect(res.status).toBe(401);
   });
 
-  it('returns 404 JSON for unknown routes', async () => {
+  it.each(['/api/projects', '/api/people', '/api/tasks', '/api/dashboard/overview'])(
+    'requires sign-in to read %s',
+    async (path) => {
+      const res = await request(app).get(path);
+      expect(res.status).toBe(401);
+    },
+  );
+
+  it('rejects a forged token', async () => {
+    const res = await request(app).get('/api/projects').set('Authorization', 'Bearer not-a-jwt');
+    expect(res.status).toBe(401);
+  });
+
+  it('returns JSON errors for unknown routes', async () => {
     const res = await request(app).get('/api/nope');
-    expect(res.status).toBe(404);
-    expect(res.body.error).toBe('Not found');
+    expect(res.status).toBe(401);
+    expect(res.body.error).toBeTruthy();
   });
 });
 

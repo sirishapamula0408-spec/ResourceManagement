@@ -14,10 +14,13 @@ datasource db {
 
 // ---------- Enums ----------
 
+/// App roles from the scope plan (Users and roles).
 enum Role {
-  ADMIN
-  PM
-  MEMBER
+  ADMIN // everything, incl. roles and integrations
+  DELIVERY_HEAD // view all; edit people and projects
+  RESOURCE_MANAGER // PMO: full edit on team and projects; tasks read-only
+  PM // create, edit and move tasks on own projects
+  MEMBER // own tasks: status and hours logged
 }
 
 enum ProjectStatus {
@@ -92,6 +95,8 @@ model Person {
   department          Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
   weeklyCapacityHours Decimal     @default(40) @db.Decimal(5, 2)
   passwordHash        String?
+  /// Set when someone else chose the password (new person, reset); cleared when they change it.
+  mustChangePassword  Boolean     @default(false)
   active              Boolean     @default(true)
   // M3: Azure AD SSO / JIRA sync identifiers
   externalId          String?     @unique

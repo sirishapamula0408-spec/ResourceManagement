@@ -93,6 +93,9 @@ async function main() {
       role: 'MEMBER',
       capacity: 24,
     },
+    // Oversight roles from the scope plan (appended so the destructuring below is unchanged).
+    { name: 'Kavya Rao', title: 'Delivery Head', dept: 'PMO', role: 'DELIVERY_HEAD' },
+    { name: 'Omar Haddad', title: 'Resource Manager', dept: 'PMO', role: 'RESOURCE_MANAGER' },
   ];
 
   const people: Person[] = [];

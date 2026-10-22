@@ -52,15 +52,17 @@ Don't run both at once.
 
 ### Seeded logins
 
-| Role   | Email                                                                               | Password       |
-| ------ | ----------------------------------------------------------------------------------- | -------------- |
-| ADMIN  | `admin@resourceboard.local`                                                         | `Admin@12345`  |
-| PM     | `priya.sharma@resourceboard.local`                                                  | `Password@123` |
-| PM     | `daniel.okafor@resourceboard.local`                                                 | `Password@123` |
-| MEMBER | e.g. `liam.chen@resourceboard.local` (all others: `first.last@resourceboard.local`) | `Password@123` |
+| Role             | Email                                                                               | Password       |
+| ---------------- | ----------------------------------------------------------------------------------- | -------------- |
+| ADMIN            | `admin@resourceboard.local`                                                         | `Admin@12345`  |
+| PM               | `priya.sharma@resourceboard.local`                                                  | `Password@123` |
+| PM               | `daniel.okafor@resourceboard.local`                                                 | `Password@123` |
+| DELIVERY_HEAD    | `kavya.rao@resourceboard.local` (fresh seeds only)                                  | `Password@123` |
+| RESOURCE_MANAGER | `omar.haddad@resourceboard.local` (fresh seeds only)                                | `Password@123` |
+| MEMBER           | e.g. `liam.chen@resourceboard.local` (all others: `first.last@resourceboard.local`) | `Password@123` |
 
-Sample data: 5 departments, 11 people, 4 teams, 3 projects (ATLAS, NOVA active; ORION planned),
-8 weeks of allocations (2 past + current + 5 future, relative to the day you seed), 17 tasks across
+Sample data: 5 departments, 13 people, 4 teams, 3 projects (ATLAS, NOVA active; ORION planned),
+8 weeks of allocations (2 past + current + 5 future, relative to the day you seed), 24 tasks across
 all statuses, epics, sprints, worklogs, leave and alert thresholds. Development credentials only.
 
 ## Scripts (root)
@@ -150,7 +152,21 @@ current week, eight weeks long). Utilization follows the scope plan: each non-ba
 spread evenly over the working days from its start to due date; under-utilized is >0% and <70% this week,
 over-utilized >100%, on bench exactly 0%. Rules live in `apps/api/src/modules/dashboard/utilization.ts`.
 
-Read endpoints are intentionally open in the skeleton; add `requireAuth` once sign-in is enforced in the UI.
+Every endpoint except `/api/health` and `/api/auth/login` requires a signed-in, active user. The
+token only proves identity: role and active status are read on each request, so role changes and
+removals apply immediately. Passwords set by someone else (new person, reset) must be changed at the
+next sign-in (`POST /api/auth/password`); until then other endpoints return 403
+`PASSWORD_CHANGE_REQUIRED`.
+
+### Roles (scope plan: Users and roles)
+
+| Role             | People, projects, staffing | Tasks                                          | Roles / admins |
+| ---------------- | -------------------------- | ---------------------------------------------- | -------------- |
+| ADMIN            | edit                       | edit all                                       | yes            |
+| DELIVERY_HEAD    | edit                       | view                                           | -              |
+| RESOURCE_MANAGER | edit                       | view                                           | -              |
+| PM               | view                       | create/edit/move on projects they own or staff | -              |
+| MEMBER           | view                       | status + hours on tasks assigned to them       | -              |
 
 ## Milestone map
 
