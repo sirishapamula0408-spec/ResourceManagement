@@ -35,34 +35,34 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center">
       <form
         onSubmit={onSubmit}
-        className="w-80 rounded-lg border border-slate-200 bg-white p-6 shadow-sm"
+        className="w-80 rounded-lg border border-line bg-panel p-6 shadow-sm"
       >
         <h1 className="mb-4 text-xl font-semibold">Sign in to Resource Board</h1>
-        <label className="mb-1 block text-sm text-slate-600" htmlFor="email">
+        <label className="mb-1 block text-sm text-muted" htmlFor="email">
           Email
         </label>
         <input
           id="email"
           type="email"
-          className="mb-3 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+          className="mb-3 w-full rounded border border-line px-3 py-2 text-sm"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
-        <label className="mb-1 block text-sm text-slate-600" htmlFor="password">
+        <label className="mb-1 block text-sm text-muted" htmlFor="password">
           Password
         </label>
         <input
           id="password"
           type="password"
-          className="mb-4 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+          className="mb-4 w-full rounded border border-line px-3 py-2 text-sm"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
         />
-        {login.error && <p className="mb-3 text-sm text-red-600">{login.error.message}</p>}
+        {login.error && <p className="mb-3 text-sm text-red">{login.error.message}</p>}
         <button
           type="submit"
           disabled={login.isPending}
-          className="w-full rounded bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="w-full rounded bg-teal px-3 py-2 text-sm font-medium text-white hover:brightness-105 disabled:opacity-50"
         >
           {login.isPending ? 'Signing in...' : 'Sign in'}
         </button>

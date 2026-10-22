@@ -116,18 +116,39 @@ Prisma 7 does not regenerate the client automatically in every case; run `npm ru
 
 ## API (current)
 
-| Method | Path                                     | Auth      | Notes                                      |
-| ------ | ---------------------------------------- | --------- | ------------------------------------------ |
-| GET    | `/api/health`                            | -         | liveness                                   |
-| POST   | `/api/auth/login`                        | -         | `{ email, password }` -> `{ token, user }` |
-| GET    | `/api/auth/me`                           | Bearer    |                                            |
-| GET    | `/api/dashboard/summary`                 | -         | simple KPI counts for the current week     |
-| GET    | `/api/people`, `/api/people/departments` | -         |                                            |
-| GET    | `/api/teams`                             | -         |                                            |
-| GET    | `/api/projects`                          | -         |                                            |
-| POST   | `/api/projects`                          | ADMIN, PM | role-guard example                         |
-| GET    | `/api/tasks?projectId&assigneeId&status` | -         |                                            |
-| PATCH  | `/api/tasks/:id/move`                    | Bearer    | `{ status, order }` - used by the board    |
+| Method | Path                                     | Auth      | Notes                                       |
+| ------ | ---------------------------------------- | --------- | ------------------------------------------- |
+| GET    | `/api/health`                            | -         | liveness                                    |
+| POST   | `/api/auth/login`                        | -         | `{ email, password }` -> `{ token, user }`  |
+| GET    | `/api/auth/me`                           | Bearer    |                                             |
+| GET    | `/api/dashboard/summary`                 | -         | simple KPI counts for the current week      |
+| GET    | `/api/dashboard/overview`                | -         | all four widgets below in one call          |
+| GET    | `/api/dashboard/kpis`                    | -         | six KPI tiles (+ unscheduled task count)    |
+| GET    | `/api/dashboard/demand-vs-availability`  | -         | team demand % vs availability per week      |
+| GET    | `/api/dashboard/departments`             | -         | scheduled hours + avg FTE by department     |
+| GET    | `/api/dashboard/heatmap`                 | -         | person x week utilization with bands        |
+| GET    | `/api/people`, `/api/people/departments` | -         |                                             |
+| GET    | `/api/teams`                             | -         |                                             |
+| GET    | `/api/projects`                          | -         |                                             |
+| POST   | `/api/projects`                          | ADMIN, PM | create (key, name, client, billable, ...)   |
+| PATCH  | `/api/projects/:id`                      | ADMIN, PM | edit                                        |
+| DELETE | `/api/projects/:id`                      | ADMIN, PM | only when it has no tasks (else 409)        |
+| PUT    | `/api/projects/:id/members`              | ADMIN, PM | `{ personIds }` - replace team members      |
+| POST   | `/api/people`                            | ADMIN, PM | add person; department by name              |
+| PATCH  | `/api/people/:id`                        | ADMIN, PM | edit; only ADMIN changes roles              |
+| DELETE | `/api/people/:id`                        | ADMIN, PM | deactivate + unassign their open tasks      |
+| PUT    | `/api/people/:id/projects`               | ADMIN, PM | `{ projectIds }` - replace projects         |
+| GET    | `/api/tasks?projectId&assigneeId&status` | -         |                                             |
+| POST   | `/api/tasks`                             | ADMIN, PM | create; PMs only on projects they own/staff |
+| PATCH  | `/api/tasks/:id`                         | Bearer    | edit; assignees may change status only      |
+| DELETE | `/api/tasks/:id`                         | ADMIN, PM | PMs only on their projects                  |
+| PATCH  | `/api/tasks/:id/move`                    | Bearer    | `{ status, order }` - board; assignee or PM |
+| POST   | `/api/tasks/:id/worklogs`                | Bearer    | `{ hours, date?, note? }` as signed-in user |
+
+Dashboard endpoints take `?from=YYYY-MM-DD&weeks=8&projectId=` (default window: two weeks before the
+current week, eight weeks long). Utilization follows the scope plan: each non-backlog task's estimate is
+spread evenly over the working days from its start to due date; under-utilized is >0% and <70% this week,
+over-utilized >100%, on bench exactly 0%. Rules live in `apps/api/src/modules/dashboard/utilization.ts`.
 
 Read endpoints are intentionally open in the skeleton; add `requireAuth` once sign-in is enforced in the UI.
 

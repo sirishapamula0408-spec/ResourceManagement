@@ -1,54 +1,116 @@
-import { useQuery } from '@tanstack/react-query';
-import { Bar, BarChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { DemandBars } from '../components/dashboard/DemandBars';
+import { DepartmentDonut } from '../components/dashboard/DepartmentDonut';
+import { KpiStrip } from '../components/dashboard/KpiStrip';
+import { UtilizationHeat } from '../components/dashboard/UtilizationHeat';
+import { shortDate } from '../lib/theme';
 import { PageHeader } from '../components/PageHeader';
-import { api, TASK_STATUSES, type DashboardSummary } from '../lib/api';
+import { api, type DashboardOverview, type Department, type Project } from '../lib/api';
 
-function Kpi({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="mt-2 text-2xl font-semibold">{value}</div>
-    </div>
-  );
-}
+/** How far the Earlier / Later buttons move the 8-week window. */
+const SHIFT_WEEKS = 4;
+
+const shiftWeeks = (iso: string, weeks: number) =>
+  new Date(new Date(`${iso}T00:00:00Z`).getTime() + weeks * 7 * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+
+const control = 'rounded-md border border-line bg-panel px-2.5 py-1.5';
+const segment = 'px-3 py-1.5 font-medium hover:bg-panel2 disabled:text-muted disabled:opacity-60';
 
 export function DashboardPage() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['dashboard', 'summary'],
-    queryFn: () => api<DashboardSummary>('/dashboard/summary'),
+  const [projectId, setProjectId] = useState('');
+  // undefined = the API's default window (two weeks back, six forward)
+  const [from, setFrom] = useState<string>();
+
+  const { data, isLoading, error, isPlaceholderData } = useQuery({
+    queryKey: ['dashboard', 'overview', { projectId, from }],
+    queryFn: () => {
+      const params = new URLSearchParams();
+      if (projectId) params.set('projectId', projectId);
+      if (from) params.set('from', from);
+      const qs = params.toString();
+      return api<DashboardOverview>(`/dashboard/overview${qs ? `?${qs}` : ''}`);
+    },
+    // Keep the previous render while a filter change loads, instead of flashing a skeleton.
+    placeholderData: keepPreviousData,
+  });
+  const { data: projects = [] } = useQuery({
+    queryKey: ['projects'],
+    queryFn: () => api<Project[]>('/projects'),
+  });
+  const { data: departments = [] } = useQuery({
+    queryKey: ['departments'],
+    queryFn: () => api<Department[]>('/people/departments'),
   });
 
-  if (isLoading) return <p className="text-slate-500">Loading dashboard...</p>;
-  if (error) return <p className="text-red-600">Failed to load dashboard: {error.message}</p>;
+  if (isLoading) return <p className="p-2.5 text-center text-xs text-muted">Loading…</p>;
+  if (error) return <p className="text-red">Failed to load dashboard: {error.message}</p>;
   if (!data) return null;
 
-  const chartData = TASK_STATUSES.map((s) => ({ status: s, count: data.tasksByStatus[s] ?? 0 }));
+  const { window } = data;
+  const weeks = data.demandVsAvailability.map((w) => w.weekStart);
+  const { unscheduledTasks } = data.kpis;
 
   return (
     <>
-      <PageHeader title="Utilization dashboard" subtitle={`Week of ${data.weekStart}`} />
-      {/* TODO(M1): six KPIs, demand vs availability, department donut, person x week heat map */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
-        <Kpi label="People" value={data.people} />
-        <Kpi label="Active projects" value={data.activeProjects} />
-        <Kpi label="Open tasks" value={data.openTasks} />
-        <Kpi label="Capacity (h)" value={data.capacityHours} />
-        <Kpi label="Allocated (h)" value={data.allocatedHours} />
-        <Kpi label="Utilization" value={`${data.utilizationPct}%`} />
-      </div>
-      <section className="mt-6 rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="mb-4 text-sm font-medium text-slate-600">Tasks by status</h2>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData}>
-              <XAxis dataKey="status" tick={{ fontSize: 12 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Bar dataKey="count" fill="#6366f1" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+      <PageHeader
+        title="Utilization"
+        subtitle={`${shortDate(window.from)} – ${shortDate(window.to)} · ${window.weeks} weeks`}
+      >
+        <select
+          className={control}
+          aria-label="Project"
+          value={projectId}
+          onChange={(e) => setProjectId(e.target.value)}
+        >
+          <option value="">All projects</option>
+          {projects.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+        <div className="flex overflow-hidden rounded-md border border-line bg-panel">
+          <button
+            className={segment}
+            onClick={() => setFrom(shiftWeeks(window.from, -SHIFT_WEEKS))}
+          >
+            ← Earlier
+          </button>
+          <button
+            className={`${segment} border-x border-line`}
+            disabled={from === undefined}
+            onClick={() => setFrom(undefined)}
+          >
+            This week
+          </button>
+          <button className={segment} onClick={() => setFrom(shiftWeeks(window.from, SHIFT_WEEKS))}>
+            Later →
+          </button>
         </div>
-      </section>
+      </PageHeader>
+
+      <div className={`transition-opacity ${isPlaceholderData ? 'opacity-60' : ''}`}>
+        {unscheduledTasks > 0 && (
+          <div className="mb-4 rounded-md border border-amber bg-amber-soft px-3.5 py-2.5">
+            {unscheduledTasks} open {unscheduledTasks === 1 ? 'task is' : 'tasks are'} missing a
+            start date, due date or estimate, so {unscheduledTasks === 1 ? 'it is' : 'they are'} not
+            counted in demand.
+          </div>
+        )}
+        <KpiStrip kpis={data.kpis} />
+        <div className="mb-4 grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]">
+          <DemandBars weeks={data.demandVsAvailability} />
+          <DepartmentDonut
+            departments={data.departments}
+            allDepartments={departments.map((d) => d.name)}
+            weeks={window.weeks}
+          />
+        </div>
+        <UtilizationHeat heatmap={data.heatmap} weeks={weeks} currentWeek={window.currentWeek} />
+      </div>
     </>
   );
 }

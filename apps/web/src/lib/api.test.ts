@@ -3,7 +3,14 @@ import { ApiError, TASK_STATUSES } from './api';
 
 describe('api client', () => {
   it('exposes board columns in workflow order', () => {
-    expect(TASK_STATUSES).toEqual(['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'BLOCKED', 'DONE']);
+    expect(TASK_STATUSES).toEqual([
+      'BACKLOG',
+      'TODO',
+      'IN_PROGRESS',
+      'IN_REVIEW',
+      'BLOCKED',
+      'DONE',
+    ]);
   });
 
   it('ApiError carries the HTTP status', () => {

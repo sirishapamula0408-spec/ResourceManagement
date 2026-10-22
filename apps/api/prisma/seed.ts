@@ -30,6 +30,7 @@ async function main() {
     prisma.sprint.deleteMany(),
     prisma.epic.deleteMany(),
     prisma.allocation.deleteMany(),
+    prisma.projectMember.deleteMany(),
     prisma.leave.deleteMany(),
     prisma.teamMember.deleteMany(),
     prisma.team.deleteMany(),
@@ -37,6 +38,9 @@ async function main() {
     prisma.person.deleteMany(),
     prisma.department.deleteMany(),
   ]);
+
+  // Task keys (RB-n) start again from RB-1.
+  await prisma.$executeRaw`ALTER SEQUENCE "Task_number_seq" RESTART WITH 1`;
 
   const [adminHash, userHash] = await Promise.all([
     bcrypt.hash(ADMIN_PASSWORD, 10),
@@ -152,6 +156,8 @@ async function main() {
         code: 'ATLAS',
         name: 'Atlas Customer Portal',
         description: 'Self-service portal for enterprise customers.',
+        client: 'Acme Bank',
+        billable: true,
         status: 'ACTIVE',
         startDate: addDays(firstWeek, -28),
         endDate: addDays(firstWeek, 84),
@@ -163,6 +169,8 @@ async function main() {
         code: 'NOVA',
         name: 'Nova Data Platform',
         description: 'Unified analytics warehouse and dashboards.',
+        client: 'Internal',
+        billable: false,
         status: 'ACTIVE',
         startDate: addDays(firstWeek, -7),
         endDate: addDays(firstWeek, 112),
@@ -174,6 +182,8 @@ async function main() {
         code: 'ORION',
         name: 'Orion Mobile Refresh',
         description: 'Redesign of the field-sales mobile app.',
+        client: 'Northwind Retail',
+        billable: true,
         status: 'PLANNED',
         startDate: addDays(firstWeek, 28),
         endDate: addDays(firstWeek, 140),
@@ -249,33 +259,57 @@ async function main() {
   });
 
   // ---------- Tasks ----------
+  // Utilization is derived from tasks: each estimate is spread over its working days.
+  // [project, title, status, priority, assignee, estimate h, start week (rel. to this week), working days]
+  // Shaped so this week shows a mix: Sofia over, Noah and the admin on bench, several under.
   const taskData: Array<
-    [typeof atlas, string, TaskStatus, TaskPriority, typeof arjun | null, number]
+    [
+      typeof atlas,
+      string,
+      TaskStatus,
+      TaskPriority,
+      typeof arjun | null,
+      number,
+      number | null,
+      number,
+    ]
   > = [
-    [atlas, 'Design login & password reset flow', 'DONE', 'HIGH', noah, 8],
-    [atlas, 'Implement JWT session refresh', 'DONE', 'HIGH', sofia, 6],
-    [atlas, 'Invoice list API with pagination', 'IN_REVIEW', 'MEDIUM', sofia, 10],
-    [atlas, 'Invoice PDF download', 'IN_PROGRESS', 'HIGH', liam, 12],
-    [atlas, 'Account settings page', 'IN_PROGRESS', 'MEDIUM', fatima, 8],
-    [atlas, 'SSO with customer IdPs (spike)', 'BLOCKED', 'MEDIUM', arjun, 5],
-    [atlas, 'E2E tests for billing area', 'TODO', 'MEDIUM', meera, 10],
-    [atlas, 'Accessibility audit', 'TODO', 'LOW', noah, 6],
-    [nova, 'Set up warehouse schemas', 'DONE', 'CRITICAL', lucas, 16],
-    [nova, 'CRM ingestion job', 'IN_PROGRESS', 'HIGH', lucas, 20],
-    [nova, 'Sales KPI dashboard prototype', 'IN_PROGRESS', 'MEDIUM', emma, 12],
-    [nova, 'Data quality checks', 'TODO', 'HIGH', meera, 8],
-    [nova, 'Row-level security model', 'IN_REVIEW', 'HIGH', fatima, 10],
-    [nova, 'Finance data source access', 'BLOCKED', 'CRITICAL', daniel, 2],
-    [orion, 'Mobile UX research interviews', 'TODO', 'MEDIUM', noah, 16],
-    [orion, 'Tech stack evaluation', 'TODO', 'LOW', arjun, 8],
-    [orion, 'Project kickoff deck', 'TODO', 'LOW', null, 3],
+    [atlas, 'Design login & password reset flow', 'DONE', 'HIGH', noah, 30, -2, 5],
+    [atlas, 'Implement JWT session refresh', 'DONE', 'HIGH', sofia, 30, -2, 5],
+    [atlas, 'Invoice list API with pagination', 'IN_REVIEW', 'MEDIUM', sofia, 40, -1, 10],
+    [atlas, 'Payments webhook handler', 'IN_PROGRESS', 'CRITICAL', sofia, 50, 0, 10],
+    [atlas, 'Invoice PDF download', 'IN_PROGRESS', 'HIGH', liam, 60, -1, 15],
+    [atlas, 'Billing UI polish', 'TODO', 'LOW', liam, 24, 1, 10],
+    [atlas, 'Account settings page', 'IN_PROGRESS', 'MEDIUM', fatima, 32, 0, 10],
+    [atlas, 'SSO with customer IdPs (spike)', 'BLOCKED', 'MEDIUM', arjun, 16, -1, 10],
+    [atlas, 'Architecture review', 'IN_PROGRESS', 'HIGH', arjun, 24, 0, 5],
+    [atlas, 'E2E tests for billing area', 'TODO', 'MEDIUM', meera, 30, 0, 10],
+    [atlas, 'Accessibility audit', 'TODO', 'LOW', noah, 20, 1, 5],
+    [atlas, 'Sprint planning & status reporting', 'IN_PROGRESS', 'MEDIUM', priya, 64, -2, 40],
+    [atlas, 'Customer feedback widget', 'BACKLOG', 'LOW', null, 16, null, 0],
+    [nova, 'Set up warehouse schemas', 'DONE', 'CRITICAL', lucas, 60, -2, 10],
+    [nova, 'CRM ingestion job', 'IN_PROGRESS', 'HIGH', lucas, 80, -1, 15],
+    [nova, 'Pipeline monitoring', 'TODO', 'MEDIUM', lucas, 12, 0, 5],
+    [nova, 'Sales KPI dashboard prototype', 'IN_PROGRESS', 'MEDIUM', emma, 36, -1, 10],
+    [nova, 'Data quality checks', 'TODO', 'HIGH', meera, 20, 0, 10],
+    [nova, 'Row-level security model', 'IN_REVIEW', 'HIGH', fatima, 24, -1, 10],
+    [nova, 'Finance data source access', 'BLOCKED', 'CRITICAL', daniel, 4, 0, 5],
+    [orion, 'Mobile UX research interviews', 'TODO', 'MEDIUM', noah, 60, 3, 15],
+    [orion, 'Tech stack evaluation', 'TODO', 'LOW', arjun, 40, 2, 10],
+    [orion, 'Project kickoff deck', 'TODO', 'LOW', null, 6, 1, 2],
+    [orion, 'Offline mode', 'BACKLOG', 'MEDIUM', noah, 40, null, 0],
   ];
+  // Due date of a task that starts on a Monday and runs for `days` working days.
+  const dueAfterWorkingDays = (start: Date, days: number) =>
+    addDays(start, Math.floor((days - 1) / 5) * 7 + ((days - 1) % 5));
+
   const orderCounter = new Map<string, number>();
   const tasks = [];
-  for (const [project, title, status, priority, assignee, estimate] of taskData) {
+  for (const [project, title, status, priority, assignee, estimate, startWeek, days] of taskData) {
     const key = `${project.id}:${status}`;
     const order = (orderCounter.get(key) ?? 0) + 1000;
     orderCounter.set(key, order);
+    const startDate = startWeek === null ? null : addDays(thisWeek, startWeek * 7);
     tasks.push(
       await prisma.task.create({
         data: {
@@ -286,6 +320,8 @@ async function main() {
           assigneeId: assignee?.id,
           estimateHours: estimate,
           order,
+          startDate,
+          dueDate: startDate && dueAfterWorkingDays(startDate, days),
           epicId: project === atlas ? atlasEpic.id : project === nova ? novaEpic.id : null,
           sprintId: project === atlas ? atlasSprint.id : project === nova ? novaSprint.id : null,
         },
@@ -293,9 +329,20 @@ async function main() {
     );
   }
 
+  // ---------- Project members: owners plus everyone with work on the project ----------
+  const memberships = new Set<string>();
+  for (const p of projects) if (p.ownerId) memberships.add(`${p.id}:${p.ownerId}`);
+  for (const t of tasks) if (t.assigneeId) memberships.add(`${t.projectId}:${t.assigneeId}`);
+  await prisma.projectMember.createMany({
+    data: [...memberships].map((m) => {
+      const [projectId, personId] = m.split(':');
+      return { projectId, personId };
+    }),
+  });
+
   // ---------- Worklogs, leave, thresholds, audit ----------
   const worklogs = tasks
-    .filter((t) => t.assigneeId && t.status !== 'TODO')
+    .filter((t) => t.assigneeId && t.status !== 'TODO' && t.status !== 'BACKLOG')
     .flatMap((t, i) => [
       { taskId: t.id, personId: t.assigneeId!, date: addDays(thisWeek, -7 + (i % 5)), hours: 3 },
       { taskId: t.id, personId: t.assigneeId!, date: addDays(thisWeek, i % 3), hours: 2.5 },

@@ -37,6 +37,18 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     res.status(err.status).json({ error: err.message, details: err.details });
     return;
   }
+  // Prisma known-request errors: unique constraint and missing record.
+  const code = (err as { code?: unknown } | null)?.code;
+  if (code === 'P2002') {
+    res.status(409).json({
+      error: 'That value is already in use (for example the project key or an email address)',
+    });
+    return;
+  }
+  if (code === 'P2025') {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
   console.error(err);
   res.status(500).json({ error: 'Internal server error' });
 }

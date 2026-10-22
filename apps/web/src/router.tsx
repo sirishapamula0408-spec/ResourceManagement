@@ -19,7 +19,7 @@ export const router = createBrowserRouter([
       { path: 'tasks', element: <TasksPage /> },
       { path: 'teams', element: <TeamsPage /> },
       { path: 'projects', element: <ProjectsPage /> },
-      { path: '*', element: <p className="text-slate-500">Page not found.</p> },
+      { path: '*', element: <p className="text-muted">Page not found.</p> },
     ],
   },
 ]);

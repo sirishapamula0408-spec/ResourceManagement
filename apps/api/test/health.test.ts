@@ -19,6 +19,23 @@ describe('auth guards', () => {
     expect(res.status).toBe(401);
   });
 
+  it.each([
+    ['post', '/api/people'],
+    ['patch', '/api/people/p1'],
+    ['delete', '/api/people/p1'],
+    ['put', '/api/people/p1/projects'],
+    ['patch', '/api/projects/x1'],
+    ['delete', '/api/projects/x1'],
+    ['put', '/api/projects/x1/members'],
+    ['post', '/api/tasks'],
+    ['patch', '/api/tasks/t1'],
+    ['delete', '/api/tasks/t1'],
+    ['post', '/api/tasks/t1/worklogs'],
+  ] as const)('rejects unauthenticated %s %s', async (method, path) => {
+    const res = await request(app)[method](path).send({});
+    expect(res.status).toBe(401);
+  });
+
   it('returns 404 JSON for unknown routes', async () => {
     const res = await request(app).get('/api/nope');
     expect(res.status).toBe(404);

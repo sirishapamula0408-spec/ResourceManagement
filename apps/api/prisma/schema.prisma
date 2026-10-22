@@ -29,11 +29,19 @@ enum ProjectStatus {
 }
 
 enum TaskStatus {
+  BACKLOG // not scheduled; excluded from utilization demand
   TODO
   IN_PROGRESS
   IN_REVIEW
   BLOCKED
   DONE
+}
+
+enum TaskType {
+  STORY
+  TASK
+  BUG
+  SUPPORT
 }
 
 enum TaskPriority {
@@ -89,13 +97,14 @@ model Person {
   externalId          String?     @unique
   jiraAccountId       String?     @unique
 
-  teamMemberships TeamMember[]
-  ownedProjects   Project[]    @relation("ProjectOwner")
-  allocations     Allocation[]
-  assignedTasks   Task[]       @relation("TaskAssignee")
-  worklogs        Worklog[]
-  leaves          Leave[]
-  auditLogs       AuditLog[]
+  teamMemberships    TeamMember[]
+  projectMemberships ProjectMember[]
+  ownedProjects      Project[]       @relation("ProjectOwner")
+  allocations        Allocation[]
+  assignedTasks      Task[]          @relation("TaskAssignee")
+  worklogs           Worklog[]
+  leaves             Leave[]
+  auditLogs          AuditLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -131,6 +140,9 @@ model Project {
   code        String        @unique
   name        String
   description String?
+  client      String?
+  /// Splits dashboard demand into billable vs non-billable.
+  billable    Boolean       @default(true)
   status      ProjectStatus @default(PLANNED)
   startDate   DateTime?     @db.Date
   endDate     DateTime?     @db.Date
@@ -138,6 +150,7 @@ model Project {
   owner       Person?       @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: SetNull)
   jiraKey     String?       @unique // M3: JIRA project key
 
+  members     ProjectMember[]
   allocations Allocation[]
   tasks       Task[]
   epics       Epic[]
@@ -147,6 +160,18 @@ model Project {
   updatedAt DateTime @updatedAt
 
   @@index([ownerId])
+}
+
+/// A person staffed on a project (who can be assigned its work).
+model ProjectMember {
+  projectId String
+  personId  String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  person    Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([projectId, personId])
+  @@index([personId])
 }
 
 /// Planned hours for a person on a project for one week (weekStart = Monday).
@@ -202,17 +227,22 @@ model Sprint {
 
 model Task {
   id            String       @id @default(cuid())
+  /// Human-readable sequence shown as the key "RB-<number>".
+  number        Int          @unique @default(autoincrement())
   projectId     String
   project       Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   title         String
   description   String?
   status        TaskStatus   @default(TODO)
   priority      TaskPriority @default(MEDIUM)
+  type          TaskType     @default(TASK)
   assigneeId    String?
   assignee      Person?      @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
   estimateHours Decimal?     @db.Decimal(6, 2)
   /// Sort order within a board column (use gapped integers when reordering).
   order         Int          @default(0)
+  /// Estimate is spread over the working days from startDate to dueDate (utilization rules).
+  startDate     DateTime?    @db.Date
   dueDate       DateTime?    @db.Date
   epicId        String?
   epic          Epic?        @relation(fields: [epicId], references: [id], onDelete: SetNull)
