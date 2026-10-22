@@ -25,9 +25,13 @@ function BrandMark() {
   );
 }
 
+const ROLE_LABEL = { ADMIN: 'Admin', PM: 'PM', MEMBER: 'Member' } as const;
+
 export function Layout() {
   const navigate = useNavigate();
-  const signedIn = Boolean(auth.getToken());
+  // An expired token counts as signed out.
+  const user = auth.getUser();
+  const signedIn = user !== null;
   const [creating, setCreating] = useState(false);
   const [toastMessage, showToast] = useToast();
 
@@ -57,6 +61,11 @@ export function Layout() {
             Create task
           </button>
         )}
+        {user && (
+          <span className="text-xs text-muted" title="Signed in">
+            {user.email} · {ROLE_LABEL[user.role]}
+          </span>
+        )}
         <button
           className="rounded-md border border-line bg-panel px-3 py-1.5 font-medium hover:bg-panel2"
           onClick={() => {
@@ -68,6 +77,17 @@ export function Layout() {
         </button>
       </header>
       <main className="mx-auto max-w-[1440px] p-5">
+        {!signedIn && (
+          <div className="mb-4 flex flex-wrap items-center gap-3 rounded-md border border-amber bg-amber-soft px-3.5 py-2.5">
+            <span className="flex-1">
+              You’re not signed in, so everything is read-only. Sign in to add, edit or delete
+              projects, people and tasks.
+            </span>
+            <button className={buttonClass('primary')} onClick={() => navigate('/login')}>
+              Sign in
+            </button>
+          </div>
+        )}
         <Outlet />
       </main>
       {creating && (

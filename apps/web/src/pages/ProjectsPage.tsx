@@ -2,8 +2,10 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Checklist, Dialog, Field } from '../components/Dialog';
 import { PageHeader } from '../components/PageHeader';
+import { RowActions } from '../components/RowActions';
+import { Toast } from '../components/tasks/taskUi';
 import { Avatar } from '../components/tasks/taskUi';
-import { useTaskLookups } from '../components/tasks/taskHelpers';
+import { useTaskLookups, useToast } from '../components/tasks/taskHelpers';
 import { api, canManage, type Person, type Project, type ProjectStatus } from '../lib/api';
 import { buttonClass, errorMessage, inputClass, STAFFING_QUERIES } from '../lib/forms';
 import { fmt, identityColor } from '../lib/theme';
@@ -215,6 +217,16 @@ export function ProjectsPage() {
     queryFn: () => api<Project[]>('/projects'),
   });
   const codes = projects.map((p) => p.code);
+  const qc = useQueryClient();
+  const [toastMessage, showToast] = useToast();
+  const remove = useMutation({
+    mutationFn: (p: Project) => api(`/projects/${p.id}`, { method: 'DELETE' }),
+    onSuccess: (_r, p) => {
+      STAFFING_QUERIES.forEach((queryKey) => qc.invalidateQueries({ queryKey }));
+      showToast(`${p.code} deleted`);
+    },
+    onError: (e) => showToast(errorMessage(e)),
+  });
 
   const th =
     'border-b border-line px-2.5 py-2 text-left font-semibold whitespace-nowrap text-muted';
@@ -224,7 +236,7 @@ export function ProjectsPage() {
     <>
       <PageHeader
         title="Projects"
-        subtitle={editable ? undefined : 'Sign in as an admin or PM to add or edit projects.'}
+        subtitle={editable ? undefined : 'Only admins and PMs can add, edit or delete projects.'}
       >
         {editable && (
           <button className={buttonClass('primary')} onClick={() => setEditing('new')}>
@@ -247,6 +259,7 @@ export function ProjectsPage() {
                   'Team',
                   'Open tasks',
                   'Hours logged / estimated',
+                  ...(editable ? [''] : []),
                 ].map((h) => (
                   <th key={h} className={th}>
                     {h}
@@ -257,7 +270,7 @@ export function ProjectsPage() {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={9} className="p-2.5 text-center text-xs text-muted">
+                  <td colSpan={10} className="p-2.5 text-center text-xs text-muted">
                     Loading…
                   </td>
                 </tr>
@@ -293,11 +306,21 @@ export function ProjectsPage() {
                   <td className={`${td} whitespace-nowrap`}>
                     {fmt(p.loggedHours)} / {fmt(p.estimateHours)}h
                   </td>
+                  {editable && (
+                    <td className={td}>
+                      <RowActions
+                        onEdit={() => setEditing(p)}
+                        onDelete={() => remove.mutate(p)}
+                        deleteConfirm={`Delete project ${p.code}? This can’t be undone.`}
+                        busy={remove.isPending}
+                      />
+                    </td>
+                  )}
                 </tr>
               ))}
               {!isLoading && !projects.length && (
                 <tr>
-                  <td colSpan={9} className="p-2.5 text-center text-xs text-muted">
+                  <td colSpan={10} className="p-2.5 text-center text-xs text-muted">
                     No projects yet.
                   </td>
                 </tr>
@@ -313,6 +336,7 @@ export function ProjectsPage() {
           onClose={() => setEditing(null)}
         />
       )}
+      <Toast message={toastMessage} />
     </>
   );
 }

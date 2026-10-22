@@ -2,8 +2,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Checklist, Dialog, Field } from '../components/Dialog';
 import { PageHeader } from '../components/PageHeader';
-import { Avatar } from '../components/tasks/taskUi';
-import { hours, useTaskLookups } from '../components/tasks/taskHelpers';
+import { RowActions } from '../components/RowActions';
+import { Avatar, Toast } from '../components/tasks/taskUi';
+import { hours, useTaskLookups, useToast } from '../components/tasks/taskHelpers';
 import {
   api,
   auth,
@@ -181,6 +182,20 @@ export function TeamsPage() {
   const [editing, setEditing] = useState<Person | 'new' | null>(null);
   const { people, projects, personNames } = useTaskLookups();
   const codes = projects.map((p) => p.code);
+  const me = auth.getUser();
+  const qc = useQueryClient();
+  const [toastMessage, showToast] = useToast();
+  const remove = useMutation({
+    mutationFn: (p: Person) => api(`/people/${p.id}`, { method: 'DELETE' }),
+    onSuccess: (_r, p) => {
+      STAFFING_QUERIES.forEach((queryKey) => qc.invalidateQueries({ queryKey }));
+      showToast(`${p.name} removed from the team`);
+    },
+    onError: (e) => showToast(errorMessage(e)),
+  });
+  // Same rules as the API: never yourself, and only an admin removes an admin.
+  const canRemove = (p: Person) =>
+    editable && p.id !== me?.id && (p.role !== 'ADMIN' || me?.role === 'ADMIN');
 
   const { data: departments = [] } = useQuery({
     queryKey: ['departments'],
@@ -215,7 +230,7 @@ export function TeamsPage() {
     <>
       <PageHeader
         title="Team"
-        subtitle={editable ? undefined : 'Sign in as an admin or PM to add or edit people.'}
+        subtitle={editable ? undefined : 'Only admins and PMs can add, edit or remove people.'}
       >
         {editable && (
           <button className={buttonClass('primary')} onClick={() => setEditing('new')}>
@@ -241,6 +256,7 @@ export function TeamsPage() {
                   'This week',
                   'Open tasks',
                   'Projects',
+                  ...(editable ? [''] : []),
                 ].map((h) => (
                   <th key={h} className={th}>
                     {h}
@@ -302,12 +318,23 @@ export function TeamsPage() {
                         {!p.projects.length && <span className="text-xs text-muted">None</span>}
                       </div>
                     </td>
+                    {editable && (
+                      <td className={td}>
+                        <RowActions
+                          onEdit={() => setEditing(p)}
+                          onDelete={canRemove(p) ? () => remove.mutate(p) : undefined}
+                          deleteLabel="Remove"
+                          deleteConfirm={`Remove ${p.name} from the team? Their open tasks become unassigned.`}
+                          busy={remove.isPending}
+                        />
+                      </td>
+                    )}
                   </tr>
                 );
               })}
               {!people.length && (
                 <tr>
-                  <td colSpan={7} className="p-2.5 text-center text-xs text-muted">
+                  <td colSpan={8} className="p-2.5 text-center text-xs text-muted">
                     No people yet. Add your team to start planning capacity.
                   </td>
                 </tr>
@@ -349,6 +376,7 @@ export function TeamsPage() {
           onClose={() => setEditing(null)}
         />
       )}
+      <Toast message={toastMessage} />
     </>
   );
 }

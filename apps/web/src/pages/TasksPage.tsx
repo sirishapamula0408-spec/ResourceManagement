@@ -1,5 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { RowActions } from '../components/RowActions';
 import { TaskDialog } from '../components/tasks/TaskDialog';
 import { PriorityBadge, StatusPill, TaskFilters, Toast } from '../components/tasks/taskUi';
 import {
@@ -10,10 +11,12 @@ import {
   PRIORITY_RANK,
   useTaskFilter,
   useTaskLookups,
+  useTaskPermissions,
   useToast,
 } from '../components/tasks/taskHelpers';
 import { PageHeader } from '../components/PageHeader';
 import { api, TASK_STATUSES, type Task } from '../lib/api';
+import { errorMessage } from '../lib/forms';
 import { fmt } from '../lib/theme';
 
 type SortKey = 'key' | 'title' | 'status' | 'assignee' | 'project' | 'priority' | 'est' | 'due';
@@ -57,6 +60,18 @@ export function TasksPage() {
   const [toastMessage, showToast] = useToast();
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'due', dir: 1 });
   const { people, projects } = useTaskLookups();
+  const { canManageProject, canWork } = useTaskPermissions();
+  const qc = useQueryClient();
+  const remove = useMutation({
+    mutationFn: (t: Task) => api(`/tasks/${t.id}`, { method: 'DELETE' }),
+    onSuccess: (_r, t) => {
+      for (const queryKey of [['tasks'], ['dashboard'], ['projects']]) {
+        qc.invalidateQueries({ queryKey });
+      }
+      showToast(`${t.key} deleted`);
+    },
+    onError: (e) => showToast(errorMessage(e)),
+  });
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ['tasks'],
     queryFn: () => api<Task[]>('/tasks'),
@@ -97,12 +112,13 @@ export function TasksPage() {
                     {sort.key === key && (sort.dir > 0 ? ' ▲' : ' ▼')}
                   </th>
                 ))}
+                <th className="border-b border-line" aria-label="Actions" />
               </tr>
             </thead>
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={8} className="p-2.5 text-center text-xs text-muted">
+                  <td colSpan={9} className="p-2.5 text-center text-xs text-muted">
                     Loading…
                   </td>
                 </tr>
@@ -133,11 +149,20 @@ export function TasksPage() {
                   >
                     {t.dueDate ? dueLabel(t.dueDate) : ''}
                   </td>
+                  <td className={td}>
+                    <RowActions
+                      onEdit={() => setOpen(t)}
+                      editLabel={canWork(t) ? 'Edit' : 'View'}
+                      onDelete={canManageProject(t.project.id) ? () => remove.mutate(t) : undefined}
+                      deleteConfirm={`Delete ${t.key} “${t.title}”? This can’t be undone.`}
+                      busy={remove.isPending}
+                    />
+                  </td>
                 </tr>
               ))}
               {!isLoading && !rows.length && (
                 <tr>
-                  <td colSpan={8} className="p-2.5 text-center text-xs text-muted">
+                  <td colSpan={9} className="p-2.5 text-center text-xs text-muted">
                     No tasks match. Clear the filters to see everything.
                   </td>
                 </tr>
