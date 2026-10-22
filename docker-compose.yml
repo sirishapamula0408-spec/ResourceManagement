@@ -1,0 +1,25 @@
+# Optional: PostgreSQL via Docker for teammates who have it.
+# Uses the same port/credentials as `npm run db:start`, so .env works unchanged.
+#   docker compose up -d     # start
+#   docker compose down      # stop (add -v to delete data)
+# Don't run this and `npm run db:start` at the same time - both use port 5433.
+services:
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: resource_board
+    ports:
+      - '5433:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d resource_board']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
