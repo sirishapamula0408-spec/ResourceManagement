@@ -2,12 +2,14 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Checklist, Dialog, Field } from '../components/Dialog';
 import { PageHeader } from '../components/PageHeader';
+import { Pagination } from '../components/Pagination';
 import { RowActions } from '../components/RowActions';
 import { Toast } from '../components/tasks/taskUi';
 import { Avatar } from '../components/tasks/taskUi';
 import { useTaskLookups, useToast } from '../components/tasks/taskHelpers';
 import { api, canManageStaffing, type Person, type Project, type ProjectStatus } from '../lib/api';
 import { buttonClass, errorMessage, inputClass, STAFFING_QUERIES } from '../lib/forms';
+import { usePagination } from '../lib/pagination';
 import { fmt, identityColor } from '../lib/theme';
 
 const STATUSES: [ProjectStatus, string][] = [
@@ -217,6 +219,7 @@ export function ProjectsPage() {
     queryFn: () => api<Project[]>('/projects'),
   });
   const codes = projects.map((p) => p.code);
+  const paged = usePagination(projects, 10, '');
   const qc = useQueryClient();
   const [toastMessage, showToast] = useToast();
   const remove = useMutation({
@@ -279,7 +282,7 @@ export function ProjectsPage() {
                   </td>
                 </tr>
               )}
-              {projects.map((p) => (
+              {paged.items.map((p) => (
                 <tr
                   key={p.id}
                   className={editable ? 'cursor-pointer hover:[&>td]:bg-panel2' : ''}
@@ -332,6 +335,7 @@ export function ProjectsPage() {
             </tbody>
           </table>
         </div>
+        <Pagination paged={paged} noun="projects" />
       </section>
       {editing && (
         <ProjectDialog

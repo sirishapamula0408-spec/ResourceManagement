@@ -31,6 +31,7 @@ describe('auth guards', () => {
     ['patch', '/api/tasks/t1'],
     ['delete', '/api/tasks/t1'],
     ['post', '/api/tasks/t1/worklogs'],
+    ['post', '/api/tasks/bulk-delete'],
   ] as const)('rejects unauthenticated %s %s', async (method, path) => {
     const res = await request(app)[method](path).send({});
     expect(res.status).toBe(401);

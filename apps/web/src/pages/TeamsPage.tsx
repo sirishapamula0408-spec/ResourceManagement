@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Checklist, Dialog, Field } from '../components/Dialog';
 import { PageHeader } from '../components/PageHeader';
+import { Pagination } from '../components/Pagination';
 import { RowActions } from '../components/RowActions';
 import { Avatar, Toast } from '../components/tasks/taskUi';
 import { hours, useTaskLookups, useToast } from '../components/tasks/taskHelpers';
@@ -19,6 +20,7 @@ import {
   type Team,
 } from '../lib/api';
 import { buttonClass, errorMessage, inputClass, STAFFING_QUERIES } from '../lib/forms';
+import { usePagination } from '../lib/pagination';
 import { fmt, identityColor } from '../lib/theme';
 
 /** Least to most access, for the role picker. */
@@ -205,6 +207,7 @@ export function TeamsPage() {
   const [editing, setEditing] = useState<Person | 'new' | null>(null);
   const { people, projects, personNames } = useTaskLookups();
   const codes = projects.map((p) => p.code);
+  const paged = usePagination(people, 10, '');
   const me = auth.getUser();
   const qc = useQueryClient();
   const [toastMessage, showToast] = useToast();
@@ -292,7 +295,7 @@ export function TeamsPage() {
               </tr>
             </thead>
             <tbody>
-              {people.map((p) => {
+              {paged.items.map((p) => {
                 const pct = loadOf(p.id);
                 return (
                   <tr
@@ -369,6 +372,7 @@ export function TeamsPage() {
             </tbody>
           </table>
         </div>
+        <Pagination paged={paged} noun="people" />
       </section>
 
       <section className="min-w-0 rounded-lg border border-line bg-panel shadow-[0_1px_0_rgba(23,35,59,0.06)]">

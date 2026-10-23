@@ -8,3 +8,5 @@ coverage/
 apps/api/src/generated/
 .vite/
 *.tsbuildinfo
+playwright-report/
+test-results/

@@ -1,0 +1,38 @@
+# Whole app on one server (test/UAT or on-prem). From the repo root:
+#   JWT_SECRET=<long random value> docker compose -f deploy/docker-compose.server.yml up -d --build
+#   docker compose -f deploy/docker-compose.server.yml run --rm -e NODE_ENV=development api npm run db:seed -w @rb/api
+# Then open http://<server>:8080 (change the port mapping below if needed).
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: resource_board
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d resource_board']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build: { context: .., dockerfile: deploy/api.Dockerfile }
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/resource_board?schema=public
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET to a long random value}
+    depends_on:
+      db: { condition: service_healthy }
+
+  web:
+    build: { context: .., dockerfile: deploy/web.Dockerfile }
+    restart: unless-stopped
+    ports:
+      - '8080:80'
+    depends_on: [api]
+
+volumes:
+  dbdata:

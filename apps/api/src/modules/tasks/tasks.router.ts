@@ -39,6 +39,11 @@ const datesMessage = { message: 'Due date cannot be before the start date', path
 const createBody = taskFields.refine(datesInOrder, datesMessage);
 const updateBody = taskFields.partial().refine(datesInOrder, datesMessage);
 
+// Bulk delete from the task list; capped so one request stays quick.
+const bulkDeleteBody = z.object({
+  ids: z.array(z.string().min(1)).min(1, 'Select at least one task').max(500),
+});
+
 const worklogBody = z.object({
   hours: z.number().positive().max(24),
   date: z.coerce.date().default(() => new Date()),
@@ -59,6 +64,11 @@ tasksRouter.post('/', requireAuth, async (req, res) => {
 tasksRouter.patch('/:id', requireAuth, async (req, res) => {
   const input = parse(updateBody, req.body);
   res.json(await service.updateTask(req.user!, String(req.params.id), input));
+});
+
+tasksRouter.post('/bulk-delete', requireAuth, async (req, res) => {
+  const { ids } = parse(bulkDeleteBody, req.body);
+  res.json(await service.deleteTasks(req.user!, ids));
 });
 
 tasksRouter.delete('/:id', requireAuth, async (req, res) => {

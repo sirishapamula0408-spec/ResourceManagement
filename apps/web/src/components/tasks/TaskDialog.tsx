@@ -52,7 +52,7 @@ export function TaskDialog({
     '';
   const [form, setForm] = useState({
     title: task?.title ?? '',
-    projectId: task?.project.id ?? defaultProject,
+    projectId: task?.project.id ?? '',
     assigneeId: task ? (task.assignee?.id ?? '') : filter.assigneeId,
     status: task?.status ?? ('TODO' as TaskStatus),
     priority: task?.priority ?? ('MEDIUM' as TaskPriority),
@@ -65,14 +65,17 @@ export function TaskDialog({
   const [logHours, setLogHours] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
+  // The project list may still be loading when a new-task dialog opens, so fall back to the
+  // default project on every render instead of only at first render.
+  const projectId = form.projectId || defaultProject;
 
   // What this user may do here.
-  const manages = canManageProject(task?.project.id ?? form.projectId);
+  const manages = canManageProject(task?.project.id ?? projectId);
   const works = task ? canWork(task) : manages;
   const readOnly = !manages && !works;
 
   // Assignee choices: the selected project's team (plus the current assignee, if they left it).
-  const project = projects.find((p) => p.id === form.projectId);
+  const project = projects.find((p) => p.id === projectId);
   const members = project?.members ?? [];
   const assigneeChoices =
     task?.assignee && !members.some((m) => m.id === task.assignee!.id)
@@ -90,7 +93,7 @@ export function TaskDialog({
     mutationFn: async () => {
       const fields = {
         title: form.title,
-        projectId: form.projectId,
+        projectId,
         assigneeId: form.assigneeId || null,
         status: form.status,
         priority: form.priority,
@@ -140,7 +143,7 @@ export function TaskDialog({
   function submit() {
     setLocalError(null);
     if (!form.title.trim()) return setLocalError('Add a summary to save the task.');
-    if (!form.projectId) return setLocalError('Choose a project.');
+    if (!projectId) return setLocalError('Choose a project.');
     if (form.startDate && form.dueDate && form.dueDate < form.startDate) {
       return setLocalError('Due date must be on or after the start date.');
     }
@@ -191,7 +194,7 @@ export function TaskDialog({
       <Field label="Project">
         <select
           className={inputClass}
-          value={form.projectId}
+          value={projectId}
           disabled={lock}
           onChange={(e) => {
             const next = projects.find((p) => p.id === e.target.value);

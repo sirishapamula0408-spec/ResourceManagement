@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthCard } from '../components/AuthCard';
@@ -20,6 +20,7 @@ const safeNext = (next: string | null) =>
 /** Email/password sign-in. TODO(M3): "Sign in with Microsoft" (Azure AD SSO). */
 export function LoginPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [params] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,6 +33,8 @@ export function LoginPage() {
       }),
     onSuccess: (data) => {
       auth.setToken(data.token);
+      // Start clean: nothing cached from a previous user (or from before sign-in).
+      queryClient.clear();
       navigate(data.user.mustChangePassword ? '/account/password' : safeNext(params.get('next')), {
         replace: true,
       });

@@ -158,6 +158,38 @@ export async function deleteTask(user: AuthUser, id: string) {
   await prisma.task.delete({ where: { id } });
 }
 
+/**
+ * Delete several tasks at once. All or nothing: if any task is missing or the user may not
+ * delete it, nothing is deleted and the error names the tasks concerned.
+ */
+export async function deleteTasks(user: AuthUser, ids: string[]) {
+  const unique = [...new Set(ids)];
+  const tasks = await prisma.task.findMany({
+    where: { id: { in: unique } },
+    select: { id: true, number: true, projectId: true },
+  });
+  if (tasks.length !== unique.length) {
+    throw new HttpError(404, 'Some of the selected tasks no longer exist. Refresh and try again.');
+  }
+
+  // One permission check per project, not per task.
+  const allowed = new Map<string, boolean>();
+  for (const projectId of new Set(tasks.map((t) => t.projectId))) {
+    allowed.set(projectId, await canManageProject(user, projectId));
+  }
+  const refused = tasks.filter((t) => !allowed.get(t.projectId)).map((t) => taskKey(t.number));
+  if (refused.length) {
+    throw new HttpError(
+      403,
+      `You can’t delete ${refused.join(', ')}. Only an admin or a PM on the task’s project can. Nothing was deleted.`,
+      { refused },
+    );
+  }
+
+  const { count } = await prisma.task.deleteMany({ where: { id: { in: unique } } });
+  return { deleted: count };
+}
+
 /** Move a task to a column/position (used by the drag-and-drop board). */
 export async function moveTask(user: AuthUser, id: string, status: TaskStatus, order: number) {
   await requireWork(user, await getTask(id));

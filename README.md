@@ -168,6 +168,37 @@ next sign-in (`POST /api/auth/password`); until then other endpoints return 403
 | PM               | view                       | create/edit/move on projects they own or staff | -              |
 | MEMBER           | view                       | status + hours on tasks assigned to them       | -              |
 
+## Testing
+
+| Command       | What it does                                                                                                                                                                 |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm test`    | API and web unit tests (Vitest)                                                                                                                                              |
+| `npm run e2e` | Builds the app and runs the browser tests in `e2e/` (Playwright) against a fresh `resource_board_e2e` database. Uses your installed Microsoft Edge locally; CI uses Chromium |
+
+## UAT environment
+
+A separate `resource_board_uat` database on the same local Postgres, so resetting it never touches your development data.
+
+1. `npm run uat:reset` – recreates the UAT database with the sample data and gives the UAT accounts fresh temporary
+   passwords (written to `.data/uat-credentials.txt`, gitignored; share them with the testers directly). Everyone else
+   in the UAT data has no password.
+2. `npm run uat:start` – builds the app and serves it on your network at `http://<your IP>:4173` (API on 4200). Allow
+   Node.js through Windows Firewall on private networks when asked.
+
+Testers record results on the shared UAT tracker page (link in the build board).
+
+## Server deployment (Docker)
+
+`deploy/` holds images for the API and the web app (nginx serving the build and proxying `/api`) and a compose file for
+running everything on one machine:
+
+```
+JWT_SECRET=<long random value> docker compose -f deploy/docker-compose.server.yml up -d --build
+docker compose -f deploy/docker-compose.server.yml run --rm -e NODE_ENV=development api npm run db:seed -w @rb/api
+```
+
+Then open `http://<server>:8080`. CI builds these images and smoke-tests the stack on every push.
+
 ## Milestone map
 
 | Milestone              | Scope                                                                                         | Where it lands                                                                                                                                |

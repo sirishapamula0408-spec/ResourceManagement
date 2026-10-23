@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { api, auth, canCreateTasks, ROLE_LABEL, type Role } from '../lib/api';
@@ -19,6 +19,7 @@ const nav = [
 /** App shell; only rendered for signed-in users (see RequireAuth in the router). */
 export function Layout() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
   const [toastMessage, showToast] = useToast();
   // Name and current role come from the API, so a role change shows without signing in again.
@@ -66,6 +67,8 @@ export function Layout() {
           className="rounded-md border border-line bg-panel px-3 py-1.5 font-medium hover:bg-panel2"
           onClick={() => {
             auth.clear();
+            // Drop everything cached for this user so the next person never sees it.
+            queryClient.clear();
             navigate('/login');
           }}
         >

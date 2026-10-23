@@ -25,10 +25,14 @@
     "db:studio": "npm run db:studio -w @rb/api",
     "db:stop": "node scripts/db-start.mjs stop",
     "db:status": "node scripts/db-start.mjs status",
-    "db:reset": "npm run db:reset -w @rb/api"
+    "db:reset": "npm run db:reset -w @rb/api",
+    "uat:reset": "node scripts/uat.mjs reset",
+    "uat:start": "node scripts/uat.mjs start",
+    "e2e": "npm run build && playwright test"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
     "concurrently": "^10.0.6",
     "embedded-postgres": "^17.10.0-beta.17",
     "eslint": "^10.13.0",
