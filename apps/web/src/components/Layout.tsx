@@ -14,6 +14,7 @@ const nav = [
   { to: '/tasks', label: 'Tasks' },
   { to: '/projects', label: 'Projects' },
   { to: '/teams', label: 'Team' },
+  { to: '/reports', label: 'Reports' },
 ];
 
 /** App shell; only rendered for signed-in users (see RequireAuth in the router). */
@@ -31,7 +32,7 @@ export function Layout() {
 
   return (
     <div className="min-h-screen">
-      <header className="sticky top-0 z-20 flex min-h-14 flex-wrap items-center gap-5 border-b border-line bg-panel px-5">
+      <header className="sticky top-0 z-20 flex print:hidden min-h-14 flex-wrap items-center gap-5 border-b border-line bg-panel px-5">
         <div className="flex items-center gap-2.5 text-base font-bold tracking-tight">
           <BrandMark />
           Resource Board

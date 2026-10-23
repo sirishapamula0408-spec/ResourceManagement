@@ -249,6 +249,8 @@ model Task {
   /// Estimate is spread over the working days from startDate to dueDate (utilization rules).
   startDate     DateTime?    @db.Date
   dueDate       DateTime?    @db.Date
+  /// When the task last moved to Done (cleared if it is reopened); drives "completed" in reports.
+  completedAt   DateTime?
   epicId        String?
   epic          Epic?        @relation(fields: [epicId], references: [id], onDelete: SetNull)
   sprintId      String?

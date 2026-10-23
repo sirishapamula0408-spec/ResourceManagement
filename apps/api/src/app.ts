@@ -9,6 +9,7 @@ import { authRouter } from './modules/auth/auth.router.js';
 import { dashboardRouter } from './modules/dashboard/dashboard.router.js';
 import { peopleRouter } from './modules/people/people.router.js';
 import { projectsRouter } from './modules/projects/projects.router.js';
+import { reportsRouter } from './modules/reports/reports.router.js';
 import { tasksRouter } from './modules/tasks/tasks.router.js';
 import { teamsRouter } from './modules/teams/teams.router.js';
 
@@ -33,6 +34,7 @@ export function createApp() {
   app.use('/api/projects', projectsRouter);
   app.use('/api/tasks', tasksRouter);
   app.use('/api/dashboard', dashboardRouter);
+  app.use('/api/reports', reportsRouter);
 
   app.use(notFound);
   app.use(errorHandler);

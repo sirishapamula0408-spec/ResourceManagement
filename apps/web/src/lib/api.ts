@@ -212,3 +212,73 @@ export interface Person {
   department: { id: string; name: string } | null;
   projects: { id: string; code: string; name: string }[];
 }
+
+export type Rag = 'green' | 'amber' | 'red';
+
+export interface ReportTask {
+  key: string;
+  title: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  assignee: string | null;
+  dueDate: string | null;
+  completedAt: string | null;
+  estimateHours: number;
+}
+
+export interface ProjectReport {
+  project: {
+    id: string;
+    code: string;
+    name: string;
+    client: string | null;
+    billable: boolean;
+    status: ProjectStatus;
+    owner: string | null;
+  };
+  health: { rag: Rag; reasons: string[] };
+  metrics: {
+    completed: number;
+    open: number;
+    inProgress: number;
+    blocked: number;
+    overdue: number;
+    plannedHours: number;
+    loggedHours: number;
+    estimateToDate: number;
+    loggedToDate: number;
+  };
+  completed: ReportTask[];
+  inProgress: ReportTask[];
+  dueNext: ReportTask[];
+  blocked: ReportTask[];
+  overdue: ReportTask[];
+  team: { name: string; loggedHours: number; plannedHours: number }[];
+}
+
+/** GET /reports/status - weekly or monthly project status report. */
+export interface StatusReport {
+  period: {
+    type: 'week' | 'month';
+    start: string;
+    end: string;
+    label: string;
+    previous: string;
+    next: string;
+    nextLabel: string;
+    asOf: string;
+  };
+  generatedAt: string;
+  totals: {
+    projects: number;
+    red: number;
+    amber: number;
+    green: number;
+    completed: number;
+    loggedHours: number;
+    plannedHours: number;
+    overdue: number;
+    blocked: number;
+  };
+  projects: ProjectReport[];
+}

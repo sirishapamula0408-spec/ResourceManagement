@@ -102,6 +102,13 @@ async function requireMember(projectId: string, personId: string | null | undefi
   }
 }
 
+/** Completion date follows the status: set on moving to Done, cleared when reopened. */
+function completion(from: TaskStatus | undefined, to: TaskStatus) {
+  if (to === 'DONE' && from !== 'DONE') return { completedAt: new Date() };
+  if (to !== 'DONE' && from === 'DONE') return { completedAt: null };
+  return {};
+}
+
 async function nextOrder(projectId: string, status: TaskStatus) {
   const last = await prisma.task.aggregate({
     where: { projectId, status },
@@ -129,7 +136,11 @@ export async function createTask(user: AuthUser, input: TaskInput) {
   await requireManage(user, input.projectId);
   await requireMember(input.projectId, input.assigneeId);
   return prisma.task.create({
-    data: { ...input, order: await nextOrder(input.projectId, input.status ?? 'TODO') },
+    data: {
+      ...input,
+      ...completion(undefined, input.status ?? 'TODO'),
+      order: await nextOrder(input.projectId, input.status ?? 'TODO'),
+    },
   });
 }
 
@@ -159,7 +170,11 @@ export async function updateTask(user: AuthUser, id: string, input: Partial<Task
   const moved = status !== task.status || projectId !== task.projectId;
   return prisma.task.update({
     where: { id },
-    data: { ...input, ...(moved ? { order: await nextOrder(projectId, status) } : {}) },
+    data: {
+      ...input,
+      ...completion(task.status, status),
+      ...(moved ? { order: await nextOrder(projectId, status) } : {}),
+    },
   });
 }
 
@@ -203,8 +218,12 @@ export async function deleteTasks(user: AuthUser, ids: string[]) {
 
 /** Move a task to a column/position (used by the drag-and-drop board). */
 export async function moveTask(user: AuthUser, id: string, status: TaskStatus, order: number) {
-  await requireWork(user, await getTask(id));
-  return prisma.task.update({ where: { id }, data: { status, order } });
+  const task = await getTask(id);
+  await requireWork(user, task);
+  return prisma.task.update({
+    where: { id },
+    data: { status, order, ...completion(task.status, status) },
+  });
 }
 
 /** Log hours on a task as the signed-in person. */

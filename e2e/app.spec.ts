@@ -238,3 +238,51 @@ test('a team member sees only their own projects, board, tasks and figures', asy
   await expect(page.getByRole('navigation', { name: 'people pages' })).toContainText('of 1 people');
   await expect(page.getByRole('row', { name: /Liam Chen/ })).toBeVisible();
 });
+
+test('reports: weekly and monthly project status reports with CSV download', async ({ page }) => {
+  await signIn(page, ADMIN, '/reports');
+  await expect(page.getByText('Weekly project status report')).toBeVisible();
+  await expect(page.getByRole('heading', { name: /^Week \d+/ })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Portfolio summary' })).toBeVisible();
+  const atlas = page.getByRole('region', { name: 'ATLAS status' });
+  await expect(atlas).toContainText(/On track|At risk|Off track/);
+  await expect(atlas).toContainText('Completed this week');
+  await expect(atlas).toContainText('Team effort this week');
+  await page.screenshot({ path: 'test-results/reports-weekly.png', fullPage: true });
+
+  await page.getByRole('button', { name: 'Monthly' }).click();
+  await expect(page.getByText('Monthly project status report')).toBeVisible();
+  const month = page.getByRole('heading', { level: 2 });
+  await expect(month).toHaveText(/^[A-Z][a-z]+ \d{4}$/);
+  const thisMonth = await month.textContent();
+  await page.getByRole('button', { name: '← Previous' }).click();
+  await expect(month).not.toHaveText(thisMonth!);
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Download CSV' }).click(),
+  ]);
+  expect(download.suggestedFilename()).toMatch(/^project-status-\d{4}-\d{2}\.csv$/);
+  const csv = await (await download.createReadStream()).toArray();
+  expect(Buffer.concat(csv).toString('utf8')).toContain('Project key');
+
+  // Back to this week, then export the same report as PowerPoint.
+  await page.getByRole('button', { name: 'Weekly' }).click();
+  const [deck] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Download PowerPoint' }).click(),
+  ]);
+  expect(deck.suggestedFilename()).toMatch(/^project-status-\d{4}-W\d{2}\.pptx$/);
+  await deck.saveAs('test-results/report-weekly.pptx');
+  const bytes = Buffer.concat(await (await deck.createReadStream()).toArray());
+  expect(bytes.subarray(0, 2).toString()).toBe('PK'); // a zip container, as .pptx files are
+  expect(bytes.length).toBeGreaterThan(20_000);
+});
+
+test('a team member only gets reports for their own projects', async ({ page }) => {
+  await signIn(page, MEMBER, '/reports');
+  await expect(page.getByText('Status of the projects you are on')).toBeVisible();
+  await expect(page.getByRole('region', { name: 'ATLAS status' })).toBeVisible();
+  await expect(page.getByRole('region', { name: /NOVA status|ORION status/ })).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Portfolio summary' })).toHaveCount(0);
+});

@@ -37,13 +37,16 @@ describe('auth guards', () => {
     expect(res.status).toBe(401);
   });
 
-  it.each(['/api/projects', '/api/people', '/api/tasks', '/api/dashboard/overview'])(
-    'requires sign-in to read %s',
-    async (path) => {
-      const res = await request(app).get(path);
-      expect(res.status).toBe(401);
-    },
-  );
+  it.each([
+    '/api/projects',
+    '/api/people',
+    '/api/tasks',
+    '/api/dashboard/overview',
+    '/api/reports/status',
+  ])('requires sign-in to read %s', async (path) => {
+    const res = await request(app).get(path);
+    expect(res.status).toBe(401);
+  });
 
   it('rejects a forged token', async () => {
     const res = await request(app).get('/api/projects').set('Authorization', 'Bearer not-a-jwt');

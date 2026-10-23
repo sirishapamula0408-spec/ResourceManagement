@@ -28,7 +28,8 @@
     "db:reset": "npm run db:reset -w @rb/api",
     "uat:reset": "node scripts/uat.mjs reset",
     "uat:start": "node scripts/uat.mjs start",
-    "e2e": "npm run build && playwright test"
+    "e2e": "npm run build && playwright test",
+    "db:demo:reports": "npm run db:demo:reports -w @rb/api --"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

@@ -118,33 +118,34 @@ Prisma 7 does not regenerate the client automatically in every case; run `npm ru
 
 ## API (current)
 
-| Method | Path                                     | Auth      | Notes                                       |
-| ------ | ---------------------------------------- | --------- | ------------------------------------------- |
-| GET    | `/api/health`                            | -         | liveness                                    |
-| POST   | `/api/auth/login`                        | -         | `{ email, password }` -> `{ token, user }`  |
-| GET    | `/api/auth/me`                           | Bearer    |                                             |
-| GET    | `/api/dashboard/overview`                | -         | all four widgets below in one call          |
-| GET    | `/api/dashboard/kpis`                    | -         | six KPI tiles (+ unscheduled task count)    |
-| GET    | `/api/dashboard/demand-vs-availability`  | -         | team demand % vs availability per week      |
-| GET    | `/api/dashboard/departments`             | -         | scheduled hours + avg FTE by department     |
-| GET    | `/api/dashboard/heatmap`                 | -         | person x week utilization with bands        |
-| GET    | `/api/people`, `/api/people/departments` | -         |                                             |
-| GET    | `/api/teams`                             | -         |                                             |
-| GET    | `/api/projects`                          | -         |                                             |
-| POST   | `/api/projects`                          | ADMIN, PM | create (key, name, client, billable, ...)   |
-| PATCH  | `/api/projects/:id`                      | ADMIN, PM | edit                                        |
-| DELETE | `/api/projects/:id`                      | ADMIN, PM | only when it has no tasks (else 409)        |
-| PUT    | `/api/projects/:id/members`              | ADMIN, PM | `{ personIds }` - replace team members      |
-| POST   | `/api/people`                            | ADMIN, PM | add person; department by name              |
-| PATCH  | `/api/people/:id`                        | ADMIN, PM | edit; only ADMIN changes roles              |
-| DELETE | `/api/people/:id`                        | ADMIN, PM | deactivate + unassign their open tasks      |
-| PUT    | `/api/people/:id/projects`               | ADMIN, PM | `{ projectIds }` - replace projects         |
-| GET    | `/api/tasks?projectId&assigneeId&status` | -         |                                             |
-| POST   | `/api/tasks`                             | ADMIN, PM | create; PMs only on projects they own/staff |
-| PATCH  | `/api/tasks/:id`                         | Bearer    | edit; assignees may change status only      |
-| DELETE | `/api/tasks/:id`                         | ADMIN, PM | PMs only on their projects                  |
-| PATCH  | `/api/tasks/:id/move`                    | Bearer    | `{ status, order }` - board; assignee or PM |
-| POST   | `/api/tasks/:id/worklogs`                | Bearer    | `{ hours, date?, note? }` as signed-in user |
+| Method | Path                                     | Auth                  | Notes                                       |
+| ------ | ---------------------------------------- | --------------------- | ------------------------------------------- |
+| GET    | `/api/health`                            | -                     | liveness                                    |
+| POST   | `/api/auth/login`                        | -                     | `{ email, password }` -> `{ token, user }`  |
+| GET    | `/api/auth/me`                           | Bearer                |                                             |
+| GET    | `/api/dashboard/overview`                | -                     | all four widgets below in one call          |
+| GET    | `/api/dashboard/kpis`                    | -                     | six KPI tiles (+ unscheduled task count)    |
+| GET    | `/api/dashboard/demand-vs-availability`  | -                     | team demand % vs availability per week      |
+| GET    | `/api/dashboard/departments`             | -                     | scheduled hours + avg FTE by department     |
+| GET    | `/api/dashboard/heatmap`                 | -                     | person x week utilization with bands        |
+| GET    | `/api/reports/status?period=week         | month&date&projectId` | Bearer                                      | weekly/monthly project status report |
+| GET    | `/api/people`, `/api/people/departments` | -                     |                                             |
+| GET    | `/api/teams`                             | -                     |                                             |
+| GET    | `/api/projects`                          | -                     |                                             |
+| POST   | `/api/projects`                          | ADMIN, PM             | create (key, name, client, billable, ...)   |
+| PATCH  | `/api/projects/:id`                      | ADMIN, PM             | edit                                        |
+| DELETE | `/api/projects/:id`                      | ADMIN, PM             | only when it has no tasks (else 409)        |
+| PUT    | `/api/projects/:id/members`              | ADMIN, PM             | `{ personIds }` - replace team members      |
+| POST   | `/api/people`                            | ADMIN, PM             | add person; department by name              |
+| PATCH  | `/api/people/:id`                        | ADMIN, PM             | edit; only ADMIN changes roles              |
+| DELETE | `/api/people/:id`                        | ADMIN, PM             | deactivate + unassign their open tasks      |
+| PUT    | `/api/people/:id/projects`               | ADMIN, PM             | `{ projectIds }` - replace projects         |
+| GET    | `/api/tasks?projectId&assigneeId&status` | -                     |                                             |
+| POST   | `/api/tasks`                             | ADMIN, PM             | create; PMs only on projects they own/staff |
+| PATCH  | `/api/tasks/:id`                         | Bearer                | edit; assignees may change status only      |
+| DELETE | `/api/tasks/:id`                         | ADMIN, PM             | PMs only on their projects                  |
+| PATCH  | `/api/tasks/:id/move`                    | Bearer                | `{ status, order }` - board; assignee or PM |
+| POST   | `/api/tasks/:id/worklogs`                | Bearer                | `{ hours, date?, note? }` as signed-in user |
 
 Dashboard endpoints take `?from=YYYY-MM-DD&weeks=8&projectId=` (default window: two weeks before the
 current week, eight weeks long). Utilization follows the scope plan: each non-backlog task's estimate is
@@ -170,6 +171,22 @@ API enforces this on every read (`apps/api/src/lib/visibility.ts`).
 | RESOURCE_MANAGER | edit                       | view                                           | -              |
 | PM               | view                       | create/edit/move on projects they own or staff | -              |
 | MEMBER           | view own projects only     | status + hours on tasks assigned to them       | -              |
+
+## Reports
+
+The Reports tab generates weekly (Monday to Sunday) or monthly project status reports from live data:
+health (On track / At risk / Off track, with the reasons), tasks completed, hours logged and planned in
+the period, open, overdue and blocked tasks, what is due next period, and hours per person. It prints
+cleanly (Print / Save as PDF, one project per page), exports a CSV with one row per project, and downloads a
+PowerPoint deck (title, portfolio summary, one slide per project, health rules) built in the browser.
+
+- **Off track:** a blocked critical task, 3+ overdue tasks, or hours logged above the total estimate.
+- **At risk:** any blocked or overdue task, or hours logged at 90%+ of the estimate.
+- **Demo data for checking reports:** `npm run db:demo:reports` adds three projects (`DEMO-GRN` on track,
+  `DEMO-AMB` at risk, `DEMO-RED` off track) with about 12 weeks of completed tasks and logged hours, relative to
+  today. It only adds data; `npm run db:demo:reports -- --remove` deletes the three projects again.
+- Completed dates come from `Task.completedAt`, set when a task moves to Done (tasks already done before
+  this field existed were backfilled with their last update time). Team members only get their own projects.
 
 ## Testing
 

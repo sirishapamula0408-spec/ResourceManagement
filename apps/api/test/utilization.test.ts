@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { bandOf, spreadTaskHours, utilizationPct } from '../src/modules/dashboard/utilization.js';
+import {
+  bandOf,
+  spreadTaskHours,
+  taskHoursInRange,
+  utilizationPct,
+} from '../src/modules/dashboard/utilization.js';
 
 const d = (s: string) => new Date(`${s}T00:00:00Z`);
 
@@ -73,5 +78,25 @@ describe('utilization bands', () => {
   it('treats zero capacity as 0% rather than dividing by zero', () => {
     expect(utilizationPct(10, 0)).toBe(0);
     expect(utilizationPct(30, 40)).toBe(75);
+  });
+});
+
+describe('taskHoursInRange', () => {
+  const task = { estimateHours: 20, startDate: d('2026-10-26'), dueDate: d('2026-11-06') }; // 10 working days
+
+  it('counts the share of working days inside the range', () => {
+    // October part: Mon 26 - Sat 31 = 5 working days of 10
+    expect(taskHoursInRange(task, d('2026-10-01'), d('2026-10-31'))).toBe(10);
+    expect(taskHoursInRange(task, d('2026-11-01'), d('2026-11-30'))).toBe(10);
+  });
+
+  it('returns 0 outside the task and the whole estimate when the range covers it', () => {
+    expect(taskHoursInRange(task, d('2026-12-01'), d('2026-12-31'))).toBe(0);
+    expect(taskHoursInRange(task, d('2026-10-01'), d('2026-11-30'))).toBe(20);
+  });
+
+  it('matches the weekly spread', () => {
+    const weekly = spreadTaskHours(task).get('2026-10-26');
+    expect(taskHoursInRange(task, d('2026-10-26'), d('2026-11-01'))).toBe(weekly);
   });
 });

@@ -73,3 +73,27 @@ export const utilizationPct = (hours: number, capacity: number) =>
 
 /** Round for display; calculations keep full precision until the response is built. */
 export const round1 = (n: number) => Math.round(n * 10) / 10;
+
+/** Working days (Mon-Fri) from `start` to `end`, both included. */
+export function workingDaysBetween(start: Date, end: Date): number {
+  let n = 0;
+  const last = startOfUtcDay(end).getTime();
+  for (let d = startOfUtcDay(start); d.getTime() <= last; d = addDays(d, 1)) {
+    if (isWorkingDay(d)) n++;
+  }
+  return n;
+}
+
+/**
+ * The part of a task's estimate that falls between `from` and `to` (both included), using
+ * the same even spread over working days as the weekly view. Used for monthly reports, where
+ * a period doesn't line up with whole weeks.
+ */
+export function taskHoursInRange(task: SchedulableTask, from: Date, to: Date): number {
+  const total = workingDaysBetween(task.startDate, task.dueDate);
+  if (total === 0 || task.estimateHours <= 0) return 0;
+  const start = task.startDate > from ? task.startDate : from;
+  const end = task.dueDate < to ? task.dueDate : to;
+  if (start > end) return 0;
+  return (task.estimateHours * workingDaysBetween(start, end)) / total;
+}

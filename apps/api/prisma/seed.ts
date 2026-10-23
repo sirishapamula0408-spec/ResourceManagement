@@ -313,6 +313,7 @@ async function main() {
     const order = (orderCounter.get(key) ?? 0) + 1000;
     orderCounter.set(key, order);
     const startDate = startWeek === null ? null : addDays(thisWeek, startWeek * 7);
+    const dueDate = startDate && dueAfterWorkingDays(startDate, days);
     tasks.push(
       await prisma.task.create({
         data: {
@@ -324,7 +325,9 @@ async function main() {
           estimateHours: estimate,
           order,
           startDate,
-          dueDate: startDate && dueAfterWorkingDays(startDate, days),
+          dueDate,
+          // Sample history: finished tasks were completed on their due date.
+          completedAt: status === 'DONE' ? dueDate : null,
           epicId: project === atlas ? atlasEpic.id : project === nova ? novaEpic.id : null,
           sprintId: project === atlas ? atlasSprint.id : project === nova ? novaSprint.id : null,
         },
