@@ -2,8 +2,10 @@ import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../lib/http.js';
 import type { ProjectStatus } from '../../generated/prisma/enums.js';
 
-export async function listProjects() {
+/** All projects, or only `projectIds` (a team member's own projects). */
+export async function listProjects(projectIds: string[] | null = null) {
   const projects = await prisma.project.findMany({
+    where: projectIds ? { id: { in: projectIds } } : undefined,
     orderBy: { code: 'asc' },
     include: {
       owner: { select: { id: true, name: true } },

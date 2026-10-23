@@ -10,6 +10,7 @@ import {
   api,
   auth,
   canManageStaffing,
+  isTeamMember,
   ROLE_LABEL,
   type DashboardOverview,
   type Department,
@@ -207,8 +208,11 @@ export function TeamsPage() {
   const [editing, setEditing] = useState<Person | 'new' | null>(null);
   const { people, projects, personNames } = useTaskLookups();
   const codes = projects.map((p) => p.code);
-  const paged = usePagination(people, 10, '');
   const me = auth.getUser();
+  // A team member sees only their own row (the API also limits who is returned).
+  const member = isTeamMember();
+  const shownPeople = member ? people.filter((p) => p.id === me?.id) : people;
+  const paged = usePagination(shownPeople, 10, '');
   const qc = useQueryClient();
   const [toastMessage, showToast] = useToast();
   const remove = useMutation({
@@ -259,7 +263,9 @@ export function TeamsPage() {
         subtitle={
           editable
             ? undefined
-            : 'Only admins, delivery heads and resource managers can add, edit or remove people.'
+            : member
+              ? 'Your capacity and this week’s load'
+              : 'Only admins, delivery heads and resource managers can add, edit or remove people.'
         }
       >
         {editable && (

@@ -2,9 +2,21 @@ import { prisma } from '../../lib/prisma.js';
 import { hashPassword } from '../auth/auth.service.js';
 import type { Role } from '../../generated/prisma/enums.js';
 
-export async function listPeople() {
+/**
+ * Everyone, or for a team member only themselves and the teammates on their projects
+ * (names for the board), with project badges limited to those projects.
+ */
+export async function listPeople(scope: { personId: string; projectIds: string[] } | null = null) {
   const people = await prisma.person.findMany({
-    where: { active: true },
+    where: scope
+      ? {
+          active: true,
+          OR: [
+            { id: scope.personId },
+            { projectMemberships: { some: { projectId: { in: scope.projectIds } } } },
+          ],
+        }
+      : { active: true },
     orderBy: { name: 'asc' },
     select: {
       id: true,
@@ -15,6 +27,7 @@ export async function listPeople() {
       weeklyCapacityHours: true,
       department: { select: { id: true, name: true } },
       projectMemberships: {
+        where: scope ? { projectId: { in: scope.projectIds } } : undefined,
         orderBy: { project: { code: 'asc' } },
         select: { project: { select: { id: true, code: true, name: true } } },
       },

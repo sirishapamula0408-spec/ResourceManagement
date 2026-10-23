@@ -7,7 +7,14 @@ import { RowActions } from '../components/RowActions';
 import { Toast } from '../components/tasks/taskUi';
 import { Avatar } from '../components/tasks/taskUi';
 import { useTaskLookups, useToast } from '../components/tasks/taskHelpers';
-import { api, canManageStaffing, type Person, type Project, type ProjectStatus } from '../lib/api';
+import {
+  api,
+  canManageStaffing,
+  isTeamMember,
+  type Person,
+  type Project,
+  type ProjectStatus,
+} from '../lib/api';
 import { buttonClass, errorMessage, inputClass, STAFFING_QUERIES } from '../lib/forms';
 import { usePagination } from '../lib/pagination';
 import { fmt, identityColor } from '../lib/theme';
@@ -242,7 +249,9 @@ export function ProjectsPage() {
         subtitle={
           editable
             ? undefined
-            : 'Only admins, delivery heads and resource managers can add, edit or delete projects.'
+            : isTeamMember()
+              ? 'Projects you are on'
+              : 'Only admins, delivery heads and resource managers can add, edit or delete projects.'
         }
       >
         {editable && (

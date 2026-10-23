@@ -20,6 +20,8 @@ export interface DashboardQuery {
   from?: Date;
   weeks: number;
   projectId?: string;
+  /** Limit every widget to one person (a team member sees only their own figures). */
+  personId?: string;
 }
 
 const UNASSIGNED = 'Unassigned';
@@ -41,13 +43,14 @@ async function buildUtilization(query: DashboardQuery, now: Date) {
   const currentWeekEnd = addDays(currentWeek, 6);
   const rangeEnd = windowEnd > currentWeekEnd ? windowEnd : currentWeekEnd;
 
-  const projectFilter: Prisma.TaskWhereInput = query.projectId
-    ? { projectId: query.projectId }
-    : {};
+  const projectFilter: Prisma.TaskWhereInput = {
+    ...(query.projectId ? { projectId: query.projectId } : {}),
+    ...(query.personId ? { assigneeId: query.personId } : {}),
+  };
 
   const [people, tasks, unscheduledTasks] = await Promise.all([
     prisma.person.findMany({
-      where: { active: true },
+      where: query.personId ? { id: query.personId, active: true } : { active: true },
       select: {
         id: true,
         name: true,
@@ -258,35 +261,5 @@ export async function getOverview(q: DashboardQuery, now = new Date()) {
     demandVsAvailability: demandVsAvailability(u).weeks,
     departments: departments(u).departments,
     heatmap: (({ rows, total }) => ({ rows, total }))(heatmap(u)),
-  };
-}
-
-/** Simple counts kept from the skeleton (allocation-based); superseded by the KPI endpoints. */
-export async function getSummary(now = new Date()) {
-  const weekStart = weekStartOf(now);
-
-  const [people, activeProjects, openTasks, tasksByStatus, capacity, allocated] = await Promise.all(
-    [
-      prisma.person.count({ where: { active: true } }),
-      prisma.project.count({ where: { status: 'ACTIVE' } }),
-      prisma.task.count({ where: { status: { not: 'DONE' } } }),
-      prisma.task.groupBy({ by: ['status'], _count: { _all: true } }),
-      prisma.person.aggregate({ where: { active: true }, _sum: { weeklyCapacityHours: true } }),
-      prisma.allocation.aggregate({ where: { weekStart }, _sum: { hours: true } }),
-    ],
-  );
-
-  const capacityHours = Number(capacity._sum.weeklyCapacityHours ?? 0);
-  const allocatedHours = Number(allocated._sum.hours ?? 0);
-
-  return {
-    weekStart: weekStart.toISOString().slice(0, 10),
-    people,
-    activeProjects,
-    openTasks,
-    capacityHours,
-    allocatedHours,
-    utilizationPct: capacityHours ? Math.round((allocatedHours / capacityHours) * 1000) / 10 : 0,
-    tasksByStatus: Object.fromEntries(tasksByStatus.map((t) => [t.status, t._count._all])),
   };
 }

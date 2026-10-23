@@ -12,9 +12,20 @@ export interface TaskFilter {
 /** Display key for a task, e.g. "RB-12". */
 export const taskKey = (number: number) => `RB-${number}`;
 
-export async function listTasks(filter: TaskFilter) {
+/** A team member sees the tasks on their projects (their board) plus any assigned to them. */
+export interface TaskScope {
+  projectIds: string[];
+  personId: string;
+}
+
+export async function listTasks(filter: TaskFilter, scope: TaskScope | null = null) {
   const tasks = await prisma.task.findMany({
-    where: filter,
+    where: scope
+      ? {
+          ...filter,
+          OR: [{ projectId: { in: scope.projectIds } }, { assigneeId: scope.personId }],
+        }
+      : filter,
     orderBy: [{ status: 'asc' }, { order: 'asc' }],
     include: {
       assignee: { select: { id: true, name: true } },

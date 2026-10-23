@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { ProjectStatus } from '../../generated/prisma/enums.js';
 import { parse } from '../../lib/http.js';
 import { STAFFING_ROLES } from '../../lib/permissions.js';
+import { visibleProjectIds } from '../../lib/visibility.js';
 import { requireRole } from '../../middleware/auth.js';
 import * as service from './projects.service.js';
 
@@ -40,8 +41,8 @@ const membersSchema = z.object({ personIds: z.array(z.string().min(1)) });
 
 export const projectsRouter = Router();
 
-projectsRouter.get('/', async (_req, res) => {
-  res.json(await service.listProjects());
+projectsRouter.get('/', async (req, res) => {
+  res.json(await service.listProjects(await visibleProjectIds(req.user!)));
 });
 
 // Writes: admins, delivery heads and resource managers maintain projects and staffing.

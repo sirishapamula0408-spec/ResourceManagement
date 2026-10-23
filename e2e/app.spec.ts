@@ -64,7 +64,7 @@ test('a PM creates a task in the dialog, then edits it from the task list', asyn
   await d.getByRole('button', { name: 'Save' }).click();
   await expect(toast(page)).toHaveText('Task created');
 
-  await page.getByRole('link', { name: 'Tasks' }).click();
+  await page.getByRole('link', { name: 'Tasks', exact: true }).click();
   await page.getByLabel('Search tasks').fill('E2E: export');
   const row = page.getByRole('row', { name: /E2E: export utilization report/ });
   await expect(row).toContainText('To do');
@@ -165,7 +165,7 @@ test('a new person signs in with a temporary password and must choose their own'
 test('staffing is read-only for a PM', async ({ page }) => {
   await signIn(page, PM, '/projects');
   await expect(page.getByRole('button', { name: 'Add project' })).toHaveCount(0);
-  await page.getByRole('link', { name: 'Team' }).click();
+  await page.getByRole('link', { name: 'Team', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Add person' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
 });
@@ -208,4 +208,33 @@ test('the task list pages through results and returns to page 1 when filtering',
 
   await page.getByLabel('Project').selectOption({ label: 'Orion Mobile Refresh' });
   await expect(pager).toContainText(/Showing 1–\d of \d tasks/);
+});
+
+test('a team member sees only their own projects, board, tasks and figures', async ({ page }) => {
+  // Liam is on ATLAS only and has two tasks assigned to him there.
+  await signIn(page, MEMBER, '/projects');
+  await expect(page.getByText('Projects you are on')).toBeVisible();
+  await expect(page.locator('tbody tr')).toHaveCount(1);
+  await expect(page.getByRole('row', { name: /Atlas Customer Portal/ })).toBeVisible();
+
+  await page.getByRole('link', { name: 'Board', exact: true }).click();
+  await expect(page.getByRole('button', { name: /Invoice PDF download/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Payments webhook handler/ })).toBeVisible(); // teammate, ATLAS
+  await expect(page.getByRole('button', { name: /CRM ingestion job/ })).toHaveCount(0); // NOVA
+  await expect(page.getByRole('button', { name: /Mobile UX research/ })).toHaveCount(0); // ORION
+
+  await page.getByRole('link', { name: 'Tasks', exact: true }).click();
+  await expect(page.getByText('Tasks assigned to you')).toBeVisible();
+  await expect(page.getByLabel('Assignee')).toHaveCount(0);
+  const rows = page.locator('tbody tr');
+  await expect(rows.first()).toBeVisible();
+  for (const row of await rows.all()) await expect(row).toContainText('Liam Chen');
+
+  await page.getByRole('link', { name: 'Dashboard', exact: true }).click();
+  await expect(page.getByText(/Your own workload/)).toBeVisible();
+  await expect(kpi(page, 'On bench this week')).toContainText('of 1');
+
+  await page.getByRole('link', { name: 'Team', exact: true }).click();
+  await expect(page.getByRole('navigation', { name: 'people pages' })).toContainText('of 1 people');
+  await expect(page.getByRole('row', { name: /Liam Chen/ })).toBeVisible();
 });

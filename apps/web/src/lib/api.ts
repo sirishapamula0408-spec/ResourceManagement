@@ -38,6 +38,9 @@ export const canManageStaffing = () => {
 };
 
 /** Admins and PMs create tasks (PMs on the projects they own or are staffed on). */
+/** Team members see only their own projects, tasks and figures (the API enforces it). */
+export const isTeamMember = () => auth.getUser()?.role === 'MEMBER';
+
 export const canCreateTasks = () => {
   const role = auth.getUser()?.role;
   return role === 'ADMIN' || role === 'PM';

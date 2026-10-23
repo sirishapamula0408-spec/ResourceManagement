@@ -1,7 +1,9 @@
 import { prisma } from '../../lib/prisma.js';
 
-export function listTeams() {
+/** All teams, or only the teams `personId` belongs to (a team member's view). */
+export function listTeams(personId?: string) {
   return prisma.team.findMany({
+    where: personId ? { members: { some: { personId } } } : undefined,
     orderBy: { name: 'asc' },
     include: {
       members: {

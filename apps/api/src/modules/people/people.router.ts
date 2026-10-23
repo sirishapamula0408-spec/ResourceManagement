@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { Role } from '../../generated/prisma/enums.js';
 import { HttpError, parse } from '../../lib/http.js';
 import { passwordSchema, STAFFING_ROLES } from '../../lib/permissions.js';
+import { visibleProjectIds } from '../../lib/visibility.js';
 import { requireRole } from '../../middleware/auth.js';
 import * as service from './people.service.js';
 
@@ -27,8 +28,9 @@ const projectsSchema = z.object({ projectIds: z.array(z.string().min(1)) });
 
 export const peopleRouter = Router();
 
-peopleRouter.get('/', async (_req, res) => {
-  res.json(await service.listPeople());
+peopleRouter.get('/', async (req, res) => {
+  const projectIds = await visibleProjectIds(req.user!);
+  res.json(await service.listPeople(projectIds && { personId: req.user!.id, projectIds }));
 });
 
 peopleRouter.get('/departments', async (_req, res) => {

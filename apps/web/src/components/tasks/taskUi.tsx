@@ -79,11 +79,14 @@ export function TaskFilters({
   onChange,
   people,
   projects,
+  showAssignee = true,
 }: {
   filter: TaskFilter;
   onChange: (f: TaskFilter) => void;
   people: Person[];
   projects: Project[];
+  /** Off where the list is already one person's tasks. */
+  showAssignee?: boolean;
 }) {
   return (
     <>
@@ -100,19 +103,21 @@ export function TaskFilters({
           </option>
         ))}
       </select>
-      <select
-        className={control}
-        aria-label="Assignee"
-        value={filter.assigneeId}
-        onChange={(e) => onChange({ ...filter, assigneeId: e.target.value })}
-      >
-        <option value="">Everyone</option>
-        {people.map((p) => (
-          <option key={p.id} value={p.id}>
-            {p.name}
-          </option>
-        ))}
-      </select>
+      {showAssignee && (
+        <select
+          className={control}
+          aria-label="Assignee"
+          value={filter.assigneeId}
+          onChange={(e) => onChange({ ...filter, assigneeId: e.target.value })}
+        >
+          <option value="">Everyone</option>
+          {people.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
+      )}
       <input
         type="search"
         className={`${control} min-w-[200px]`}

@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { TaskPriority, TaskStatus, TaskType } from '../../generated/prisma/enums.js';
 import { parse } from '../../lib/http.js';
+import { visibleProjectIds } from '../../lib/visibility.js';
 import { requireAuth } from '../../middleware/auth.js';
 import * as service from './tasks.service.js';
 
@@ -53,7 +54,9 @@ const worklogBody = z.object({
 export const tasksRouter = Router();
 
 tasksRouter.get('/', async (req, res) => {
-  res.json(await service.listTasks(parse(listQuery, req.query)));
+  const projectIds = await visibleProjectIds(req.user!);
+  const scope = projectIds && { projectIds, personId: req.user!.id };
+  res.json(await service.listTasks(parse(listQuery, req.query), scope));
 });
 
 // Permission checks live in the service: they depend on the task's project and assignee.

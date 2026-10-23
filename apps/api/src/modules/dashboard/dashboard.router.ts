@@ -1,9 +1,16 @@
-import { Router } from 'express';
+import { type Request, Router } from 'express';
 import { z } from 'zod';
 import { parse } from '../../lib/http.js';
+import { isMember } from '../../lib/visibility.js';
 import * as service from './dashboard.service.js';
 
 export const dashboardRouter = Router();
+
+/** The window from the query string, limited to the caller themselves for team members. */
+const scoped = (req: Request): service.DashboardQuery => ({
+  ...parse(windowQuery, req.query),
+  personId: isMember(req.user) ? req.user!.id : undefined,
+});
 
 // Shared by every widget endpoint: ?from=YYYY-MM-DD&weeks=8&projectId=...
 const windowQuery = z.object({
@@ -15,26 +22,22 @@ const windowQuery = z.object({
   projectId: z.string().min(1).optional(),
 });
 
-dashboardRouter.get('/summary', async (_req, res) => {
-  res.json(await service.getSummary());
-});
-
 dashboardRouter.get('/overview', async (req, res) => {
-  res.json(await service.getOverview(parse(windowQuery, req.query)));
+  res.json(await service.getOverview(scoped(req)));
 });
 
 dashboardRouter.get('/kpis', async (req, res) => {
-  res.json(await service.getKpis(parse(windowQuery, req.query)));
+  res.json(await service.getKpis(scoped(req)));
 });
 
 dashboardRouter.get('/demand-vs-availability', async (req, res) => {
-  res.json(await service.getDemandVsAvailability(parse(windowQuery, req.query)));
+  res.json(await service.getDemandVsAvailability(scoped(req)));
 });
 
 dashboardRouter.get('/departments', async (req, res) => {
-  res.json(await service.getDepartments(parse(windowQuery, req.query)));
+  res.json(await service.getDepartments(scoped(req)));
 });
 
 dashboardRouter.get('/heatmap', async (req, res) => {
-  res.json(await service.getHeatmap(parse(windowQuery, req.query)));
+  res.json(await service.getHeatmap(scoped(req)));
 });

@@ -6,7 +6,13 @@ import { KpiStrip } from '../components/dashboard/KpiStrip';
 import { UtilizationHeat } from '../components/dashboard/UtilizationHeat';
 import { shortDate } from '../lib/theme';
 import { PageHeader } from '../components/PageHeader';
-import { api, type DashboardOverview, type Department, type Project } from '../lib/api';
+import {
+  api,
+  isTeamMember,
+  type DashboardOverview,
+  type Department,
+  type Project,
+} from '../lib/api';
 
 /** How far the Earlier / Later buttons move the 8-week window. */
 const SHIFT_WEEKS = 4;
@@ -57,7 +63,7 @@ export function DashboardPage() {
     <>
       <PageHeader
         title="Utilization"
-        subtitle={`${shortDate(window.from)} – ${shortDate(window.to)} · ${window.weeks} weeks`}
+        subtitle={`${isTeamMember() ? 'Your own workload · ' : ''}${shortDate(window.from)} – ${shortDate(window.to)} · ${window.weeks} weeks`}
       >
         <select
           className={control}

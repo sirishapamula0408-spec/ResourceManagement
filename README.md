@@ -123,7 +123,6 @@ Prisma 7 does not regenerate the client automatically in every case; run `npm ru
 | GET    | `/api/health`                            | -         | liveness                                    |
 | POST   | `/api/auth/login`                        | -         | `{ email, password }` -> `{ token, user }`  |
 | GET    | `/api/auth/me`                           | Bearer    |                                             |
-| GET    | `/api/dashboard/summary`                 | -         | simple KPI counts for the current week      |
 | GET    | `/api/dashboard/overview`                | -         | all four widgets below in one call          |
 | GET    | `/api/dashboard/kpis`                    | -         | six KPI tiles (+ unscheduled task count)    |
 | GET    | `/api/dashboard/demand-vs-availability`  | -         | team demand % vs availability per week      |
@@ -160,13 +159,17 @@ next sign-in (`POST /api/auth/password`); until then other endpoints return 403
 
 ### Roles (scope plan: Users and roles)
 
+A team member only sees their own projects, the tasks on those projects (their board), the tasks
+assigned to them on the Tasks page, and only their own figures on the Dashboard and Team pages. The
+API enforces this on every read (`apps/api/src/lib/visibility.ts`).
+
 | Role             | People, projects, staffing | Tasks                                          | Roles / admins |
 | ---------------- | -------------------------- | ---------------------------------------------- | -------------- |
 | ADMIN            | edit                       | edit all                                       | yes            |
 | DELIVERY_HEAD    | edit                       | view                                           | -              |
 | RESOURCE_MANAGER | edit                       | view                                           | -              |
 | PM               | view                       | create/edit/move on projects they own or staff | -              |
-| MEMBER           | view                       | status + hours on tasks assigned to them       | -              |
+| MEMBER           | view own projects only     | status + hours on tasks assigned to them       | -              |
 
 ## Testing
 

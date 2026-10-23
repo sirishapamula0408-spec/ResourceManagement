@@ -16,7 +16,7 @@ import {
   useToast,
 } from '../components/tasks/taskHelpers';
 import { PageHeader } from '../components/PageHeader';
-import { api, TASK_STATUSES, type Task } from '../lib/api';
+import { api, auth, isTeamMember, TASK_STATUSES, type Task } from '../lib/api';
 import { buttonClass, errorMessage } from '../lib/forms';
 import { usePagination } from '../lib/pagination';
 import { fmt } from '../lib/theme';
@@ -128,11 +128,17 @@ export function TasksPage() {
     queryFn: () => api<Task[]>('/tasks'),
   });
 
-  const rows = applyTaskFilter(tasks, filter).sort((a, b) => {
-    const x = sortValue(a, sort.key);
-    const y = sortValue(b, sort.key);
-    return (x > y ? 1 : x < y ? -1 : 0) * sort.dir;
-  });
+  // A team member's Tasks page lists only the tasks assigned to them.
+  const member = isTeamMember();
+  const myId = auth.getUser()?.id;
+  const visible = member ? tasks.filter((t) => t.assignee?.id === myId) : tasks;
+  const rows = applyTaskFilter(visible, member ? { ...filter, assigneeId: '' } : filter).sort(
+    (a, b) => {
+      const x = sortValue(a, sort.key);
+      const y = sortValue(b, sort.key);
+      return (x > y ? 1 : x < y ? -1 : 0) * sort.dir;
+    },
+  );
 
   // Changing filters or sorting returns to page 1 and clears the selection, so a delete
   // never includes tasks that are no longer on screen.
@@ -189,8 +195,14 @@ export function TasksPage() {
 
   return (
     <>
-      <PageHeader title="Tasks">
-        <TaskFilters filter={filter} onChange={setFilter} people={people} projects={projects} />
+      <PageHeader title="Tasks" subtitle={member ? 'Tasks assigned to you' : undefined}>
+        <TaskFilters
+          filter={filter}
+          onChange={setFilter}
+          people={people}
+          projects={projects}
+          showAssignee={!member}
+        />
       </PageHeader>
       <section className="min-w-0 rounded-lg border border-line bg-panel shadow-[0_1px_0_rgba(23,35,59,0.06)]">
         {selectedTasks.length > 0 && (
