@@ -21,7 +21,7 @@ export const auth = {
 };
 
 /** App roles from the scope plan's "Users and roles" table. */
-export type Role = 'ADMIN' | 'DELIVERY_HEAD' | 'RESOURCE_MANAGER' | 'PM' | 'MEMBER';
+export type Role = 'ADMIN' | 'DELIVERY_HEAD' | 'RESOURCE_MANAGER' | 'PM' | 'MEMBER' | 'SALES';
 
 export const ROLE_LABEL: Record<Role, string> = {
   ADMIN: 'Admin',
@@ -29,6 +29,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   RESOURCE_MANAGER: 'Resource manager',
   PM: 'Project manager',
   MEMBER: 'Team member',
+  SALES: 'Sales',
 };
 
 /** Admins, delivery heads and resource managers maintain people, projects and staffing. */
@@ -37,10 +38,18 @@ export const canManageStaffing = () => {
   return role === 'ADMIN' || role === 'DELIVERY_HEAD' || role === 'RESOURCE_MANAGER';
 };
 
-/** Admins and PMs create tasks (PMs on the projects they own or are staffed on). */
+/** Sales users work leads and see a read-only project list; nothing else (API-enforced). */
+export const isSales = () => auth.getUser()?.role === 'SALES';
+
+/** Same lists as LEAD_VIEW_ROLES / LEAD_EDIT_ROLES in the API. */
+export const canViewLeads = () =>
+  ['ADMIN', 'SALES', 'DELIVERY_HEAD', 'PM'].includes(auth.getUser()?.role ?? '');
+export const canEditLeads = () => ['ADMIN', 'SALES'].includes(auth.getUser()?.role ?? '');
+
 /** Team members see only their own projects, tasks and figures (the API enforces it). */
 export const isTeamMember = () => auth.getUser()?.role === 'MEMBER';
 
+/** Admins and PMs create tasks (PMs on the projects they own or are staffed on). */
 export const canCreateTasks = () => {
   const role = auth.getUser()?.role;
   return role === 'ADMIN' || role === 'PM';
@@ -281,4 +290,30 @@ export interface StatusReport {
     blocked: number;
   };
   projects: ProjectReport[];
+}
+
+export type LeadStage =
+  'NEW' | 'CONTACTED' | 'QUALIFIED' | 'PROPOSAL' | 'NEGOTIATION' | 'WON' | 'LOST';
+export type LeadPriority = 'HIGH' | 'MEDIUM' | 'LOW';
+export type LeadSource = 'REFERRAL' | 'WEBSITE' | 'EVENT' | 'OUTBOUND' | 'PARTNER' | 'OTHER';
+
+export interface Lead {
+  id: string;
+  company: string;
+  contactName: string;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  source: LeadSource;
+  stage: LeadStage;
+  priority: LeadPriority;
+  /** INR, as a decimal string. */
+  estimatedValue: string | null;
+  expectedCloseDate: string | null;
+  nextFollowUp: string | null;
+  notes: string | null;
+  lostReason: string | null;
+  owner: { id: string; name: string } | null;
+  createdBy: { id: string; name: string } | null;
+  createdAt: string;
+  updatedAt: string;
 }

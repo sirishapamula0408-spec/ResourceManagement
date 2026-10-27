@@ -21,6 +21,7 @@ enum Role {
   RESOURCE_MANAGER // PMO: full edit on team and projects; tasks read-only
   PM // create, edit and move tasks on own projects
   MEMBER // own tasks: status and hours logged
+  SALES // leads pipeline; read-only project list
 }
 
 enum ProjectStatus {
@@ -68,6 +69,32 @@ enum LeaveType {
   OTHER
 }
 
+/// Sales pipeline stages, in order.
+enum LeadStage {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL
+  NEGOTIATION
+  WON
+  LOST
+}
+
+enum LeadPriority {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum LeadSource {
+  REFERRAL
+  WEBSITE
+  EVENT
+  OUTBOUND
+  PARTNER
+  OTHER
+}
+
 enum AlertMetric {
   OVER_ALLOCATION // person allocated above X% of capacity
   UNDER_UTILIZATION // person allocated below X% of capacity
@@ -110,6 +137,8 @@ model Person {
   worklogs           Worklog[]
   leaves             Leave[]
   auditLogs          AuditLog[]
+  ownedLeads         Lead[]          @relation("LeadOwner")
+  createdLeads       Lead[]          @relation("LeadCreator")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -295,6 +324,35 @@ model Leave {
   updatedAt DateTime  @updatedAt
 
   @@index([personId, startDate])
+}
+
+// ---------- Sales ----------
+
+/// A sales lead: a company that might become a client, worked by the sales team.
+model Lead {
+  id                String       @id @default(cuid())
+  company           String
+  contactName       String
+  contactEmail      String?
+  contactPhone      String?
+  source            LeadSource   @default(OTHER)
+  stage             LeadStage    @default(NEW)
+  priority          LeadPriority @default(MEDIUM)
+  /// Estimated deal value in INR.
+  estimatedValue    Decimal?     @db.Decimal(14, 2)
+  expectedCloseDate DateTime?    @db.Date
+  nextFollowUp      DateTime?    @db.Date
+  notes             String?
+  lostReason        String?
+  ownerId           String?
+  owner             Person?      @relation("LeadOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  createdById       String?
+  createdBy         Person?      @relation("LeadCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@index([stage])
+  @@index([ownerId])
 }
 
 // ---------- Settings & compliance ----------

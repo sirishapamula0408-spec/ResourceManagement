@@ -43,6 +43,7 @@ describe('auth guards', () => {
     '/api/tasks',
     '/api/dashboard/overview',
     '/api/reports/status',
+    '/api/leads',
   ])('requires sign-in to read %s', async (path) => {
     const res = await request(app).get(path);
     expect(res.status).toBe(401);

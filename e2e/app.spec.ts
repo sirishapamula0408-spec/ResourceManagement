@@ -145,6 +145,11 @@ test('a new person signs in with a temporary password and must choose their own'
   await d.getByLabel('Department').fill('Engineering');
   await d.getByLabel('Temporary password').fill('Welcome2026');
   await d.getByRole('button', { name: 'Save' }).click();
+  // The team list is paged (10 per page); show more so the new person is on screen.
+  await page
+    .getByRole('navigation', { name: 'people pages' })
+    .getByLabel('Rows per page')
+    .selectOption('25');
   await expect(page.getByRole('row', { name: /Nisha Verma/ })).toBeVisible();
 
   await page.getByRole('button', { name: 'Sign out' }).click();
@@ -285,4 +290,81 @@ test('a team member only gets reports for their own projects', async ({ page }) 
   await expect(page.getByRole('region', { name: 'ATLAS status' })).toBeVisible();
   await expect(page.getByRole('region', { name: /NOVA status|ORION status/ })).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Portfolio summary' })).toHaveCount(0);
+});
+
+const SALES = { email: 'rohan.gupta@resourceboard.local', password: 'Sales@12345' };
+
+test('a sales user lands on Leads, logs a lead and sets its priority', async ({ page }) => {
+  await signIn(page, SALES, '/');
+  await expect(page).toHaveURL(/\/leads$/);
+  const nav = page.getByRole('navigation', { name: 'Views' });
+  await expect(nav.getByRole('link')).toHaveText(['Leads', 'Projects']);
+  await expect(page.getByRole('region', { name: 'Pipeline summary' })).toContainText(
+    'Open pipeline',
+  );
+  await expect(page.getByRole('row', { name: /Kaveri Finance/ })).toBeVisible();
+  await page.screenshot({ path: 'test-results/leads-sales.png', fullPage: true });
+
+  await page.getByRole('button', { name: 'Add lead' }).click();
+  const d = dialog(page);
+  await d.getByLabel('Company').fill('E2E Shipping Co');
+  await d.getByLabel('Contact name').fill('Asha Verma');
+  await d.getByLabel('Contact email').fill('asha@e2e-shipping.example');
+  await d.getByLabel('Stage').selectOption({ label: 'Qualified' });
+  await d.getByLabel('Priority').selectOption({ label: 'Low' });
+  await d.getByLabel('Estimated value (₹)').fill('1250000');
+  await d.getByLabel('Next follow-up').fill('2026-11-05');
+  await d.getByRole('button', { name: 'Save' }).click();
+  await expect(toast(page)).toHaveText('E2E Shipping Co added');
+  // 45 sample leads span two pages, so find the new one by searching.
+  await page.getByLabel('Search leads').fill('E2E Shipping');
+  const row = page.getByRole('row', { name: /E2E Shipping Co/ });
+  await expect(row).toContainText('Qualified');
+  await expect(row).toContainText('₹12,50,000');
+  await expect(row).toContainText('Low');
+
+  await row.click();
+  await dialog(page).getByLabel('Priority').selectOption({ label: 'High' });
+  await dialog(page).getByRole('button', { name: 'Save' }).click();
+  await expect(row).toContainText('High');
+
+  await page.getByRole('combobox', { name: 'Priority' }).selectOption({ label: 'High' });
+  await expect(row).toBeVisible();
+});
+
+test('a sales user sees projects read-only and nothing else', async ({ page }) => {
+  await signIn(page, SALES, '/projects');
+  await expect(page.getByRole('columnheader', { name: 'Client' })).toBeVisible();
+  await expect(page.getByRole('columnheader', { name: 'Open tasks' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add project' })).toHaveCount(0);
+
+  await page.goto('/dashboard');
+  await expect(page).toHaveURL(/\/leads$/);
+
+  const status = await page.evaluate(async () => {
+    const token = localStorage.getItem('rb.token');
+    const res = await fetch('/api/tasks', { headers: { Authorization: `Bearer ${token}` } });
+    return res.status;
+  });
+  expect(status).toBe(403);
+});
+
+test('PMs can read the pipeline; team members have no Leads page', async ({ page }) => {
+  await signIn(page, PM, '/leads');
+  await expect(
+    page.getByText('View only: sales users and admins update the pipeline.'),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Add lead' })).toHaveCount(0);
+  await page.getByRole('row', { name: /Kaveri Finance/ }).click();
+  await expect(dialog(page).getByLabel('Company')).toBeDisabled();
+  await dialog(page).getByRole('button', { name: 'Close' }).first().click();
+
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await signIn(page, MEMBER);
+  await expect(page.getByRole('link', { name: 'Leads', exact: true })).toHaveCount(0);
+  const status = await page.evaluate(async () => {
+    const token = localStorage.getItem('rb.token');
+    return (await fetch('/api/leads', { headers: { Authorization: `Bearer ${token}` } })).status;
+  });
+  expect(status).toBe(403);
 });

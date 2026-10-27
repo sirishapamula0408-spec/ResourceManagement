@@ -1,5 +1,7 @@
-import { createBrowserRouter, Navigate } from 'react-router-dom';
+import { createBrowserRouter } from 'react-router-dom';
+import { HomeRedirect } from './components/HomeRedirect';
 import { Layout } from './components/Layout';
+import { LeadsPage } from './pages/LeadsPage';
 import { RequireAuth } from './components/RequireAuth';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { BoardPage } from './pages/BoardPage';
@@ -28,13 +30,14 @@ export const router = createBrowserRouter([
       </RequireAuth>
     ),
     children: [
-      { index: true, element: <Navigate to="/dashboard" replace /> },
+      { index: true, element: <HomeRedirect /> },
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'board', element: <BoardPage /> },
       { path: 'tasks', element: <TasksPage /> },
       { path: 'teams', element: <TeamsPage /> },
       { path: 'projects', element: <ProjectsPage /> },
       { path: 'reports', element: <ReportsPage /> },
+      { path: 'leads', element: <LeadsPage /> },
       { path: '*', element: <p className="text-muted">Page not found.</p> },
     ],
   },

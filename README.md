@@ -59,6 +59,7 @@ Don't run both at once.
 | PM               | `daniel.okafor@resourceboard.local`                                                 | `Password@123` |
 | DELIVERY_HEAD    | `kavya.rao@resourceboard.local` (fresh seeds only)                                  | `Password@123` |
 | RESOURCE_MANAGER | `omar.haddad@resourceboard.local` (fresh seeds only)                                | `Password@123` |
+| SALES            | `rohan.gupta@` / `ananya.iyer@resourceboard.local`                                  | `Sales@12345`  |
 | MEMBER           | e.g. `liam.chen@resourceboard.local` (all others: `first.last@resourceboard.local`) | `Password@123` |
 
 Sample data: 5 departments, 13 people, 4 teams, 3 projects (ATLAS, NOVA active; ORION planned),
@@ -164,13 +165,14 @@ A team member only sees their own projects, the tasks on those projects (their b
 assigned to them on the Tasks page, and only their own figures on the Dashboard and Team pages. The
 API enforces this on every read (`apps/api/src/lib/visibility.ts`).
 
-| Role             | People, projects, staffing | Tasks                                          | Roles / admins |
-| ---------------- | -------------------------- | ---------------------------------------------- | -------------- |
-| ADMIN            | edit                       | edit all                                       | yes            |
-| DELIVERY_HEAD    | edit                       | view                                           | -              |
-| RESOURCE_MANAGER | edit                       | view                                           | -              |
-| PM               | view                       | create/edit/move on projects they own or staff | -              |
-| MEMBER           | view own projects only     | status + hours on tasks assigned to them       | -              |
+| Role             | People, projects, staffing                  | Tasks                                          | Roles / admins |
+| ---------------- | ------------------------------------------- | ---------------------------------------------- | -------------- |
+| ADMIN            | edit                                        | edit all                                       | yes            |
+| DELIVERY_HEAD    | edit                                        | view                                           | -              |
+| RESOURCE_MANAGER | edit                                        | view                                           | -              |
+| PM               | view                                        | create/edit/move on projects they own or staff | -              |
+| MEMBER           | view own projects only                      | status + hours on tasks assigned to them       | -              |
+| SALES            | project list only (no team, tasks or hours) | none; works the Leads pipeline (all leads)     | -              |
 
 ## Reports
 
@@ -187,6 +189,20 @@ PowerPoint deck (title, portfolio summary, one slide per project, health rules) 
   today. It only adds data; `npm run db:demo:reports -- --remove` deletes the three projects again.
 - Completed dates come from `Task.completedAt`, set when a task moves to Done (tasks already done before
   this field existed were backfilled with their last update time). Team members only get their own projects.
+
+## Leads (sales pipeline)
+
+Sales users sign in to a **Leads** page: company and contact, source, stage (New → Contacted → Qualified →
+Proposal → Negotiation → Won / Lost), **priority** (High / Medium / Low), estimated value in INR, expected
+close, next follow-up, owner and notes, with a summary (open pipeline, high priority, follow-ups due, won
+this month), stage chips, filters, sorting and paging. Every sales user can see and edit every lead; admins
+have full access; delivery heads and PMs can read the pipeline. Sales users also get a read-only project
+list and nothing else (`salesAreaGuard` in the API).
+
+`npm run db:demo:sales` adds the two sample sales users and 45 leads (every stage, priority and source;
+follow-ups due today, overdue, upcoming and none; won this month and last month; unassigned leads; missing
+values and contact details) to an existing database
+(`-- --remove` deletes them); the main seed includes them.
 
 ## Testing
 

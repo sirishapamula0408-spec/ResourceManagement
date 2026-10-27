@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { api, auth, canCreateTasks, ROLE_LABEL, type Role } from '../lib/api';
 import { buttonClass } from '../lib/forms';
 import { BrandMark } from './AuthCard';
@@ -8,7 +8,7 @@ import { useToast } from './tasks/taskHelpers';
 import { TaskDialog } from './tasks/TaskDialog';
 import { Toast } from './tasks/taskUi';
 
-const nav = [
+const NAV = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/board', label: 'Board' },
   { to: '/tasks', label: 'Tasks' },
@@ -16,6 +16,15 @@ const nav = [
   { to: '/teams', label: 'Team' },
   { to: '/reports', label: 'Reports' },
 ];
+const LEADS = { to: '/leads', label: 'Leads' };
+
+/** Pages a sales user may open; everything else sends them to Leads. */
+const SALES_PAGES = ['/leads', '/projects'];
+
+function navFor(role: Role | undefined) {
+  if (role === 'SALES') return [LEADS, { to: '/projects', label: 'Projects' }];
+  return role && ['ADMIN', 'DELIVERY_HEAD', 'PM'].includes(role) ? [...NAV, LEADS] : NAV;
+}
 
 /** App shell; only rendered for signed-in users (see RequireAuth in the router). */
 export function Layout() {
@@ -29,6 +38,10 @@ export function Layout() {
     queryFn: () => api<{ name: string; email: string; role: Role }>('/auth/me'),
   });
   const role = me?.role ?? auth.getUser()?.role;
+  const location = useLocation();
+  if (role === 'SALES' && !SALES_PAGES.some((p) => location.pathname.startsWith(p))) {
+    return <Navigate to="/leads" replace />;
+  }
 
   return (
     <div className="min-h-screen">
@@ -38,7 +51,7 @@ export function Layout() {
           Resource Board
         </div>
         <nav className="flex gap-0.5 self-stretch" aria-label="Views">
-          {nav.map((item) => (
+          {navFor(role).map((item) => (
             <NavLink
               key={item.to}
               to={item.to}

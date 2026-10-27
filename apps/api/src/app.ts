@@ -4,10 +4,11 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config.js';
 import { errorHandler, notFound } from './lib/http.js';
-import { requireAuth } from './middleware/auth.js';
+import { requireAuth, salesAreaGuard } from './middleware/auth.js';
 import { authRouter } from './modules/auth/auth.router.js';
 import { dashboardRouter } from './modules/dashboard/dashboard.router.js';
 import { peopleRouter } from './modules/people/people.router.js';
+import { leadsRouter } from './modules/leads/leads.router.js';
 import { projectsRouter } from './modules/projects/projects.router.js';
 import { reportsRouter } from './modules/reports/reports.router.js';
 import { tasksRouter } from './modules/tasks/tasks.router.js';
@@ -29,12 +30,14 @@ export function createApp() {
   // Everything except health and sign-in requires a signed-in, active user.
   app.use('/api/auth', authRouter);
   app.use('/api', requireAuth);
+  app.use('/api', salesAreaGuard);
   app.use('/api/people', peopleRouter);
   app.use('/api/teams', teamsRouter);
   app.use('/api/projects', projectsRouter);
   app.use('/api/tasks', tasksRouter);
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api/reports', reportsRouter);
+  app.use('/api/leads', leadsRouter);
 
   app.use(notFound);
   app.use(errorHandler);

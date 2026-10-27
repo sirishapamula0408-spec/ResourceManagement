@@ -8,6 +8,7 @@
  */
 import bcrypt from 'bcryptjs';
 import { prisma } from '../src/lib/prisma.js';
+import { addSalesDemo, SALES_PASSWORD } from './sales-demo.js';
 import { weekStartOf } from '../src/modules/dashboard/dashboard.service.js';
 import type { Person } from '../src/generated/prisma/client.js';
 import type { Role, TaskPriority, TaskStatus } from '../src/generated/prisma/enums.js';
@@ -24,6 +25,7 @@ async function main() {
   console.log('Clearing existing data ...');
   await prisma.$transaction([
     prisma.auditLog.deleteMany(),
+    prisma.lead.deleteMany(),
     prisma.alertThreshold.deleteMany(),
     prisma.worklog.deleteMany(),
     prisma.task.deleteMany(),
@@ -400,6 +402,10 @@ async function main() {
   console.log(
     `Seeded ${deptNames.length} departments, ${people.length} people, ${teams.length} teams, ` +
       `${projects.length} projects, ${allocations.length} allocations, ${tasks.length} tasks, ${worklogs.length} worklogs.`,
+  );
+  const leads = await addSalesDemo(prisma);
+  console.log(
+    `Sales pipeline: ${leads} leads, sales logins rohan.gupta@ / ananya.iyer@${DOMAIN} / ${SALES_PASSWORD}`,
   );
   console.log(`Admin login: admin@${DOMAIN} / ${ADMIN_PASSWORD}`);
   console.log(`Other users: <first>.<last>@${DOMAIN} / ${USER_PASSWORD}`);

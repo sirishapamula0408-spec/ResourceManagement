@@ -48,6 +48,8 @@ export function useTaskLookups() {
   const { data: people = [] } = useQuery({
     queryKey: ['people'],
     queryFn: () => api<Person[]>('/people'),
+    // Sales users have no access to people (they only see leads and the project list).
+    enabled: auth.getUser()?.role !== 'SALES',
   });
   const { data: projects = [] } = useQuery({
     queryKey: ['projects'],

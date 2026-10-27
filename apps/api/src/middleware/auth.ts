@@ -68,3 +68,19 @@ export function requireRole(...roles: Role[]) {
     next();
   };
 }
+
+/**
+ * Sales users work the leads pipeline and may read the project list; every other part of the
+ * API (tasks, people, teams, dashboard, reports) is off limits to them.
+ */
+export function salesAreaGuard(req: Request, _res: Response, next: NextFunction) {
+  if (req.user?.role !== 'SALES') return next();
+  const path = req.baseUrl + req.path;
+  const allowed =
+    path.startsWith('/api/leads') ||
+    path.startsWith('/api/auth/') ||
+    (req.method === 'GET' && (path === '/api/projects' || path === '/api/projects/'));
+  if (!allowed)
+    return next(new HttpError(403, 'This part of the app isn’t available to sales users'));
+  next();
+}

@@ -10,6 +10,7 @@ import { useTaskLookups, useToast } from '../components/tasks/taskHelpers';
 import {
   api,
   canManageStaffing,
+  isSales,
   isTeamMember,
   type Person,
   type Project,
@@ -219,6 +220,7 @@ function MemberStack({ members, allNames }: { members: Project['members']; allNa
 
 export function ProjectsPage() {
   const editable = canManageStaffing();
+  const sales = isSales();
   const [editing, setEditing] = useState<Project | 'new' | null>(null);
   const { people, personNames } = useTaskLookups();
   const { data: projects = [], isLoading } = useQuery({
@@ -272,9 +274,8 @@ export function ProjectsPage() {
                   'Billing',
                   'Status',
                   'Owner',
-                  'Team',
-                  'Open tasks',
-                  'Hours logged / estimated',
+                  // Sales users see client-facing facts only (the API leaves the rest out).
+                  ...(sales ? [] : ['Team', 'Open tasks', 'Hours logged / estimated']),
                   ...(editable ? [''] : []),
                 ].map((h) => (
                   <th key={h} className={th}>
@@ -315,13 +316,17 @@ export function ProjectsPage() {
                     </span>
                   </td>
                   <td className={td}>{p.owner?.name ?? <span className="text-muted">—</span>}</td>
-                  <td className={td}>
-                    <MemberStack members={p.members} allNames={personNames} />
-                  </td>
-                  <td className={td}>{p.openTasks}</td>
-                  <td className={`${td} whitespace-nowrap`}>
-                    {fmt(p.loggedHours)} / {fmt(p.estimateHours)}h
-                  </td>
+                  {!sales && (
+                    <>
+                      <td className={td}>
+                        <MemberStack members={p.members} allNames={personNames} />
+                      </td>
+                      <td className={td}>{p.openTasks}</td>
+                      <td className={`${td} whitespace-nowrap`}>
+                        {fmt(p.loggedHours)} / {fmt(p.estimateHours)}h
+                      </td>
+                    </>
+                  )}
                   {editable && (
                     <td className={td}>
                       <RowActions

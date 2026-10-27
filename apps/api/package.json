@@ -18,7 +18,8 @@
     "db:seed": "prisma db seed",
     "db:studio": "prisma studio",
     "postinstall": "prisma generate",
-    "db:demo:reports": "tsx prisma/report-demo.ts"
+    "db:demo:reports": "tsx prisma/report-demo.ts",
+    "db:demo:sales": "tsx prisma/sales-demo.ts"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

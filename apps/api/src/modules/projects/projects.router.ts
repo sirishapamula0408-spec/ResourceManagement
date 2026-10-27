@@ -42,7 +42,25 @@ const membersSchema = z.object({ personIds: z.array(z.string().min(1)) });
 export const projectsRouter = Router();
 
 projectsRouter.get('/', async (req, res) => {
-  res.json(await service.listProjects(await visibleProjectIds(req.user!)));
+  const projects = await service.listProjects(await visibleProjectIds(req.user!));
+  // Sales users get the client-facing facts only: no team, tasks or hours.
+  if (req.user!.role === 'SALES') {
+    res.json(
+      projects.map((p) => ({
+        id: p.id,
+        code: p.code,
+        name: p.name,
+        client: p.client,
+        billable: p.billable,
+        status: p.status,
+        startDate: p.startDate,
+        endDate: p.endDate,
+        owner: p.owner,
+      })),
+    );
+    return;
+  }
+  res.json(projects);
 });
 
 // Writes: admins, delivery heads and resource managers maintain projects and staffing.

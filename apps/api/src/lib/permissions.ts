@@ -17,3 +17,9 @@ export const passwordSchema = z
   .max(128)
   .regex(/[A-Za-z]/, 'Include a letter')
   .regex(/[0-9]/, 'Include a number');
+
+/** Who sees the sales pipeline (delivery heads and PMs read it to plan upcoming work). */
+export const LEAD_VIEW_ROLES: Role[] = ['ADMIN', 'SALES', 'DELIVERY_HEAD', 'PM'];
+
+/** Who adds, edits and deletes leads: every sales user can work every lead. */
+export const LEAD_EDIT_ROLES: Role[] = ['ADMIN', 'SALES'];
