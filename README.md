@@ -204,6 +204,14 @@ follow-ups due today, overdue, upcoming and none; won this month and last month;
 values and contact details) to an existing database
 (`-- --remove` deletes them); the main seed includes them.
 
+## Claude connector (MCP)
+
+Everyone can use Resource Board from Claude (web, desktop, mobile, Claude Code) with their own account.
+The API serves an MCP endpoint at `/mcp` with OAuth sign-in through the normal login and a consent page
+(`/connect`); every tool calls the REST API as that person, so roles and visibility are unchanged. Code:
+`apps/api/src/modules/mcp/`. It's on when `PUBLIC_URL` is set (defaults to `http://localhost:5173`
+outside production). How-to articles: [`docs/how-to/`](docs/how-to/README.md).
+
 ## Testing
 
 | Command       | What it does                                                                                                                                                                 |

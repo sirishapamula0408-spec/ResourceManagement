@@ -2,6 +2,8 @@
 #   JWT_SECRET=<long random value> docker compose -f deploy/docker-compose.server.yml up -d --build
 #   docker compose -f deploy/docker-compose.server.yml run --rm -e NODE_ENV=development api npm run db:seed -w @rb/api
 # Then open http://<server>:8080 (change the port mapping below if needed).
+# Claude connector: also set PUBLIC_URL=https://<public address> (HTTPS in front of port 8080);
+# see docs/how-to/set-up-claude-connector.md.
 services:
   db:
     image: postgres:17
@@ -24,6 +26,7 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/resource_board?schema=public
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET to a long random value}
+      PUBLIC_URL: ${PUBLIC_URL:-}
     depends_on:
       db: { condition: service_healthy }
 

@@ -40,6 +40,8 @@ export async function requireAuth(req: Request, _res: Response, next: NextFuncti
   let id: string;
   try {
     const payload = jwt.verify(header.slice(7), config.JWT_SECRET) as jwt.JwtPayload;
+    // App tokens carry no audience; connector tokens (aud "mcp") only work at /mcp.
+    if (payload.aud !== undefined) throw new Error('Wrong token audience');
     id = payload.sub as string;
   } catch {
     return next(new HttpError(401, 'Invalid or expired token'));
@@ -79,6 +81,7 @@ export function salesAreaGuard(req: Request, _res: Response, next: NextFunction)
   const allowed =
     path.startsWith('/api/leads') ||
     path.startsWith('/api/auth/') ||
+    path.startsWith('/api/oauth/') ||
     (req.method === 'GET' && (path === '/api/projects' || path === '/api/projects/'));
   if (!allowed)
     return next(new HttpError(403, 'This part of the app isn’t available to sales users'));

@@ -131,14 +131,16 @@ model Person {
 
   teamMemberships    TeamMember[]
   projectMemberships ProjectMember[]
-  ownedProjects      Project[]       @relation("ProjectOwner")
+  ownedProjects      Project[]           @relation("ProjectOwner")
   allocations        Allocation[]
-  assignedTasks      Task[]          @relation("TaskAssignee")
+  assignedTasks      Task[]              @relation("TaskAssignee")
   worklogs           Worklog[]
   leaves             Leave[]
   auditLogs          AuditLog[]
-  ownedLeads         Lead[]          @relation("LeadOwner")
-  createdLeads       Lead[]          @relation("LeadCreator")
+  ownedLeads         Lead[]              @relation("LeadOwner")
+  createdLeads       Lead[]              @relation("LeadCreator")
+  oauthCodes         OAuthCode[]
+  oauthRefreshTokens OAuthRefreshToken[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -388,4 +390,48 @@ model AuditLog {
   @@index([entityType, entityId])
   @@index([actorId])
   @@index([createdAt])
+}
+
+// ---------- Claude connector (MCP over OAuth) ----------
+
+/// An app such as Claude, registered through OAuth dynamic client registration.
+model OAuthClient {
+  id            String              @id // OAuth client_id
+  /// Client information as registered (name, redirect URIs, ...).
+  metadata      Json
+  createdAt     DateTime            @default(now())
+  codes         OAuthCode[]
+  refreshTokens OAuthRefreshToken[]
+}
+
+/// Short-lived authorization code from the consent page, exchanged once for tokens.
+model OAuthCode {
+  /// SHA-256 of the code; the code itself is never stored.
+  codeHash      String      @id
+  clientId      String
+  client        OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  personId      String
+  person        Person      @relation(fields: [personId], references: [id], onDelete: Cascade)
+  codeChallenge String
+  redirectUri   String
+  scopes        String[]
+  resource      String?
+  expiresAt     DateTime
+}
+
+/// Long-lived refresh token; rotated on every use and revoked on sign-out.
+model OAuthRefreshToken {
+  /// SHA-256 of the token; the token itself is never stored.
+  tokenHash String      @id
+  clientId  String
+  client    OAuthClient @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  personId  String
+  person    Person      @relation(fields: [personId], references: [id], onDelete: Cascade)
+  scopes    String[]
+  resource  String?
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime    @default(now())
+
+  @@index([personId])
 }

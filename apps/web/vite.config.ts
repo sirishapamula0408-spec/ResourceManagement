@@ -7,7 +7,14 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '../../', '');
   // API_PORT lets the UAT environment point at its own API (see scripts/uat.mjs).
   const apiPort = process.env.API_PORT || env.PORT || '4100';
-  const proxy = { '/api': { target: `http://localhost:${apiPort}`, changeOrigin: true } };
+  const target = `http://localhost:${apiPort}`;
+  // The Claude connector's MCP and OAuth endpoints live at the root, outside /api.
+  const proxy = Object.fromEntries(
+    ['/api', '/mcp', '/authorize', '/token', '/register', '/revoke', '/.well-known'].map((path) => [
+      path,
+      { target, changeOrigin: true },
+    ]),
+  );
 
   return {
     plugins: [react(), tailwindcss()],
