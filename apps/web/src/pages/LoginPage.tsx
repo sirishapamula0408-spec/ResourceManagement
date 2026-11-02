@@ -1,21 +1,10 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { AuthCard } from '../components/AuthCard';
 import { Field } from '../components/Dialog';
-import { api, ApiError, auth, type Role } from '../lib/api';
+import { api, ApiError, auth, type LoginResponse, safeNext } from '../lib/api';
 import { buttonClass, inputClass } from '../lib/forms';
-
-interface LoginResponse {
-  token: string;
-  user: { id: string; name: string; email: string; role: Role; mustChangePassword: boolean };
-}
-
-/** Only return to pages inside this app after signing in. */
-const safeNext = (next: string | null) =>
-  next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/login')
-    ? next
-    : '/dashboard';
 
 /** Email/password sign-in. TODO(M3): "Sign in with Microsoft" (Azure AD SSO). */
 export function LoginPage() {
@@ -24,6 +13,12 @@ export function LoginPage() {
   const [params] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  // Sign-up is offered only when the server allows some email domains.
+  const { data: signup } = useQuery({
+    queryKey: ['signup-domains'],
+    queryFn: () => api<{ domains: string[] }>('/auth/signup'),
+  });
+  const next = params.get('next');
 
   const login = useMutation({
     mutationFn: () =>
@@ -91,6 +86,17 @@ export function LoginPage() {
           {login.isPending ? 'Signing in…' : 'Sign in'}
         </button>
       </form>
+      {!!signup?.domains.length && (
+        <p className="mt-4 text-center text-muted">
+          New here?{' '}
+          <Link
+            to={next ? `/signup?next=${encodeURIComponent(next)}` : '/signup'}
+            className="text-teal underline"
+          >
+            Create an account
+          </Link>
+        </p>
+      )}
     </AuthCard>
   );
 }

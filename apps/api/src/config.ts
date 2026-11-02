@@ -22,6 +22,11 @@ const schema = z.object({
    * Turns on the Claude connector (MCP at /mcp, OAuth sign-in). Must be HTTPS outside localhost.
    */
   PUBLIC_URL: z.preprocess((v) => v || undefined, z.url().optional()),
+  /**
+   * Email domains allowed to sign up on the login page, comma-separated, e.g.
+   * "example.com,example.in". Empty turns sign-up off (admins add people on the Team page).
+   */
+  SIGNUP_DOMAINS: z.string().optional(),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -36,6 +41,14 @@ export const config = {
   PUBLIC_URL:
     parsed.data.PUBLIC_URL ??
     (parsed.data.NODE_ENV === 'production' ? undefined : 'http://localhost:5173'),
+  // Outside production, the sample data's domain can sign up so the flow is easy to try.
+  SIGNUP_DOMAINS: (
+    parsed.data.SIGNUP_DOMAINS ??
+    (parsed.data.NODE_ENV === 'production' ? '' : 'resourceboard.local')
+  )
+    .split(',')
+    .map((d) => d.trim().toLowerCase().replace(/^@/, ''))
+    .filter(Boolean),
 };
 
 if (config.NODE_ENV === 'production' && config.JWT_SECRET === 'dev-only-insecure-secret') {

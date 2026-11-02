@@ -10,11 +10,13 @@ import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { SignupPage } from './pages/SignupPage';
 import { TasksPage } from './pages/TasksPage';
 import { TeamsPage } from './pages/TeamsPage';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/signup', element: <SignupPage /> },
   {
     path: '/connect',
     element: (

@@ -204,6 +204,16 @@ follow-ups due today, overdue, upcoming and none; won this month and last month;
 values and contact details) to an existing database
 (`-- --remove` deletes them); the main seed includes them.
 
+## Sign-up
+
+People with a company email address can create their own account from the login page (**Create an
+account**). Allowed domains come from `SIGNUP_DOMAINS` (comma-separated, e.g. `example.com,example.in`);
+when it is empty, sign-up is off and admins add people on the Team page. Outside production it defaults
+to `resourceboard.local`. New accounts are team members with no projects, signed in straight away; an
+admin changes their role and staffing. Emails are not verified, so only list domains whose addresses
+you trust, and review new people on the Team page. `POST /api/auth/signup` allows 20 attempts an hour
+per address.
+
 ## Claude connector (MCP)
 
 Everyone can use Resource Board from Claude (web, desktop, mobile, Claude Code) with their own account.

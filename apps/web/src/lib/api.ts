@@ -20,6 +20,22 @@ export const auth = {
   },
 };
 
+/** Response of sign-in and sign-up. */
+export interface LoginResponse {
+  token: string;
+  user: { id: string; name: string; email: string; role: Role; mustChangePassword: boolean };
+}
+
+/** Only return to pages inside this app after signing in or up. */
+export const safeNext = (next: string | null) =>
+  next &&
+  next.startsWith('/') &&
+  !next.startsWith('//') &&
+  !next.startsWith('/login') &&
+  !next.startsWith('/signup')
+    ? next
+    : '/dashboard';
+
 /** App roles from the scope plan's "Users and roles" table. */
 export type Role = 'ADMIN' | 'DELIVERY_HEAD' | 'RESOURCE_MANAGER' | 'PM' | 'MEMBER' | 'SALES';
 

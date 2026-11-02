@@ -27,6 +27,8 @@ services:
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/resource_board?schema=public
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET to a long random value}
       PUBLIC_URL: ${PUBLIC_URL:-}
+      # Email domains allowed to sign up on the login page, e.g. example.com (empty: sign-up off).
+      SIGNUP_DOMAINS: ${SIGNUP_DOMAINS:-}
     depends_on:
       db: { condition: service_healthy }
 

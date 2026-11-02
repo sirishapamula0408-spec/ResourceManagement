@@ -37,7 +37,8 @@ Ask your Claude owner to add Resource Board for the organization.
 ### Sign in and allow access
 
 1. A Resource Board page opens. Sign in with your usual email and password (skip this if you're
-   already signed in).
+   already signed in). No account yet? Select **Create an account** and sign up with your company
+   email address (if your organization has turned sign-up on).
 2. The page shows **Connect Claude** and the account it will use. Check that it's you; if not, select
    **Not you?** and sign in again.
 3. Select **Allow**. You're sent back to Claude and the connector shows as connected.
