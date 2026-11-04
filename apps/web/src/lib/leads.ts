@@ -61,11 +61,11 @@ export const SOURCE_LABEL: Record<LeadSource, string> = {
 
 export const isOpenLead = (l: Lead) => l.stage !== 'WON' && l.stage !== 'LOST';
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
-
-/** Follow-up date today or earlier on an open lead. */
-export const followUpDue = (l: Lead) =>
-  isOpenLead(l) && !!l.nextFollowUp && l.nextFollowUp.slice(0, 10) <= todayIso();
+/** Follow-up date today (or on `now`) or earlier on an open lead. */
+export const followUpDue = (l: Lead, now = new Date()) =>
+  isOpenLead(l) &&
+  !!l.nextFollowUp &&
+  l.nextFollowUp.slice(0, 10) <= now.toISOString().slice(0, 10);
 
 const inr = new Intl.NumberFormat('en-IN', {
   style: 'currency',
@@ -94,7 +94,7 @@ export function pipelineSummary(leads: Lead[], now = new Date()) {
     openCount: open.length,
     openValue: open.reduce((s, l) => s + value(l), 0),
     highPriority: open.filter((l) => l.priority === 'HIGH').length,
-    followUpsDue: leads.filter(followUpDue).length,
+    followUpsDue: leads.filter((l) => followUpDue(l, now)).length,
     // Won this month: closed as won with an expected close date in the current month.
     wonThisMonth: leads
       .filter(
