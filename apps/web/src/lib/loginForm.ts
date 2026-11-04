@@ -11,7 +11,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function validateEmail(value: string): string | undefined {
   const email = value.trim();
   if (!email) return 'Enter your work email.';
-  if (!EMAIL_PATTERN.test(email)) return 'Enter a valid email address, like name@company.com.';
+  if (!EMAIL_PATTERN.test(email)) return 'Enter a valid email address.';
   return undefined;
 }
 
@@ -27,6 +27,20 @@ export function validateLoginForm(values: { email: string; password: string }): 
   if (email) errors.email = email;
   if (password) errors.password = password;
   return errors;
+}
+
+/**
+ * The error to show under a field: none on first render, only once the field has lost focus
+ * (touched) or the form was submitted, and gone as soon as the value is valid again.
+ */
+export function visibleError(
+  field: LoginField,
+  value: string,
+  touched: boolean,
+  submitAttempted: boolean,
+): string | undefined {
+  if (!touched && !submitAttempted) return undefined;
+  return field === 'email' ? validateEmail(value) : validatePassword(value);
 }
 
 export const MESSAGES = {

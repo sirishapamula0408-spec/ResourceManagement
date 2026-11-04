@@ -9,13 +9,14 @@ import {
   validateEmail,
   validateLoginForm,
   validatePassword,
+  visibleError,
 } from './loginForm';
 
 describe('sign-in validation', () => {
   it('requires an email in a valid format', () => {
     expect(validateEmail('')).toBe('Enter your work email.');
     expect(validateEmail('   ')).toBe('Enter your work email.');
-    expect(validateEmail('priya')).toMatch(/valid email/);
+    expect(validateEmail('priya')).toBe('Enter a valid email address.');
     expect(validateEmail('priya@company')).toMatch(/valid email/);
     expect(validateEmail('pri ya@company.com')).toMatch(/valid email/);
     expect(validateEmail(' priya@company.com ')).toBeUndefined();
@@ -35,6 +36,29 @@ describe('sign-in validation', () => {
       email: expect.stringMatching(/valid email/),
     });
     expect(validateLoginForm({ email: 'a@b.co', password: 'x' })).toEqual({});
+  });
+});
+
+describe('when field errors show', () => {
+  it('shows nothing before the field is left or the form is sent', () => {
+    expect(visibleError('email', '', false, false)).toBeUndefined();
+    expect(visibleError('password', '', false, false)).toBeUndefined();
+  });
+
+  it('shows the error once the field was left (touched)', () => {
+    expect(visibleError('email', '', true, false)).toBe('Enter your work email.');
+    expect(visibleError('email', 'priya@', true, false)).toBe('Enter a valid email address.');
+    expect(visibleError('password', '', true, false)).toBe('Enter your password.');
+  });
+
+  it('shows every field’s error after a submit attempt, touched or not', () => {
+    expect(visibleError('email', '', false, true)).toBe('Enter your work email.');
+    expect(visibleError('password', '', false, true)).toBe('Enter your password.');
+  });
+
+  it('clears as soon as the value is fixed', () => {
+    expect(visibleError('email', 'priya@company.com', true, true)).toBeUndefined();
+    expect(visibleError('password', 'x', true, true)).toBeUndefined();
   });
 });
 

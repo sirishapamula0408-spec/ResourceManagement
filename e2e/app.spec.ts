@@ -46,15 +46,30 @@ test('sign-in checks the fields when they lose focus and on submit', async ({ pa
   await page.goto('/login');
   const email = page.getByLabel('Work email');
   const password = page.getByLabel('Password', { exact: true });
+  const card = page
+    .locator('section')
+    .filter({ has: page.getByRole('heading', { name: 'Sign in' }) });
+  const height = async () => (await card.boundingBox())!.height;
   await expect(email).toBeFocused();
   await expect(email).toHaveAttribute('autocomplete', 'username');
   await expect(password).toHaveAttribute('autocomplete', 'current-password');
 
-  await email.fill('not-an-email');
+  // Nothing is flagged on first render.
+  for (const message of ['Enter your work email.', 'Enter your password.']) {
+    await expect(page.getByText(message)).toHaveCount(0);
+  }
+  await expect(email).toHaveAttribute('aria-invalid', 'false');
+  const before = await height();
+
+  // Leaving a field shows its error; the card keeps its height.
   await email.press('Tab');
-  await expect(page.getByText('Enter a valid email address')).toBeVisible();
+  await expect(page.getByText('Enter your work email.')).toBeVisible();
   await expect(email).toHaveAttribute('aria-invalid', 'true');
   await expect(email).toHaveAttribute('aria-describedby', 'login-email-error');
+  await expect(page.getByText('Enter your password.')).toHaveCount(0);
+  expect(await height()).toBe(before);
+  await email.fill('not-an-email');
+  await expect(page.getByText('Enter a valid email address.')).toBeVisible();
 
   // Submitting shows every problem and puts the cursor on the first one; nothing is sent.
   let sent = 0;
@@ -66,10 +81,15 @@ test('sign-in checks the fields when they lose focus and on submit', async ({ pa
   await expect(page.getByText('Enter your password.')).toBeVisible();
   await expect(email).toBeFocused();
   expect(sent).toBe(0);
+  expect(await height()).toBe(before);
 
+  // Fixing a value clears its error straight away.
   await email.fill(ADMIN.email);
-  await expect(page.getByText('Enter a valid email address')).toHaveCount(0);
+  await expect(page.getByText('Enter a valid email address.')).toHaveCount(0);
   await expect(email).toHaveAttribute('aria-invalid', 'false');
+  await password.fill('x');
+  await expect(page.getByText('Enter your password.')).toHaveCount(0);
+  expect(await height()).toBe(before);
 });
 
 test('sign-in page: no SSO or sign-up link by default, Remember me off', async ({ page }) => {

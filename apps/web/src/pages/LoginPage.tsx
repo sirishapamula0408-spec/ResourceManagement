@@ -10,6 +10,7 @@ import {
   loginErrorMessage,
   signInNotice,
   validateLoginForm,
+  visibleError,
 } from '../lib/loginForm';
 import { type MfaChallenge, type MfaState, needsMfa } from '../lib/mfa';
 
@@ -43,7 +44,11 @@ function MicrosoftLogo() {
   );
 }
 
-/** A visible label, the input box with its leading icon, and the field's error and hint lines. */
+/**
+ * A visible label, the input box with its leading icon, and one line under it for the field's
+ * error (or else a hint). The line always takes its height, so the card doesn't jump when an
+ * error comes or goes.
+ */
 function Field({
   id,
   label,
@@ -56,7 +61,7 @@ function Field({
   label: string;
   icon: ReactNode;
   error?: string;
-  hint?: ReactNode;
+  hint?: string;
   children: ReactNode;
 }) {
   return (
@@ -68,12 +73,12 @@ function Field({
         <span className="text-[#5b6785]">{icon}</span>
         {children}
       </div>
-      {error && (
-        <p id={`${id}-error`} className="mt-1 text-xs text-[#b42318]">
-          {error}
-        </p>
-      )}
-      {hint}
+      <p
+        id={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
+        className={`mt-1 min-h-4 text-xs leading-4 ${error ? 'text-[#b42318]' : 'font-medium text-[#8a4b00]'}`}
+      >
+        {error ?? hint}
+      </p>
     </div>
   );
 }
@@ -83,8 +88,8 @@ const describedBy = (...ids: (string | false | undefined)[]) =>
 
 /**
  * Sign in with email and password, in the SedHub design. "Remember me" keeps the session in this
- * browser; without it (the default) the session ends when the browser closes. Fields are checked
- * when they lose focus and on submit; server errors show in a banner that takes focus. Microsoft
+ * browser; without it (the default) the session ends when the browser closes. Field errors show
+ * once a field has lost focus or the form was submitted, never on first render; server errors show in a banner that takes focus. Microsoft
  * sign-in shows only when VITE_SSO_ENABLED is on. There is no self-registration link: people ask
  * their administrator (VITE_ADMIN_EMAIL) for access.
  */
@@ -97,6 +102,7 @@ export function LoginPage() {
     email: false,
     password: false,
   });
+  const [submitAttempted, setSubmitAttempted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
   const [remember, setRemember] = useState(false);
@@ -108,7 +114,7 @@ export function LoginPage() {
   const notice = signInNotice(params.get('reason'));
 
   const errors = validateLoginForm(values);
-  const shown = (f: LoginField) => (touched[f] ? errors[f] : undefined);
+  const shown = (f: LoginField) => visibleError(f, values[f], touched[f], submitAttempted);
 
   const login = useMutation({
     mutationFn: (body: { email: string; password: string }) =>
@@ -146,7 +152,7 @@ export function LoginPage() {
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     if (login.isPending) return; // no double submit (the button is disabled too)
-    setTouched({ email: true, password: true });
+    setSubmitAttempted(true);
     if (errors.email) return emailRef.current?.focus();
     if (errors.password) return passwordRef.current?.focus();
     login.mutate({ email: values.email.trim(), password: values.password });
@@ -233,13 +239,7 @@ export function LoginPage() {
                 <path d="M8 10V7a4 4 0 0 1 8 0v3" />
               </svg>
             }
-            hint={
-              capsLock && (
-                <p id="login-caps" className="mt-1 text-xs font-medium text-[#8a4b00]">
-                  Caps Lock is on
-                </p>
-              )
-            }
+            hint={capsLock ? 'Caps Lock is on' : undefined}
           >
             <input
               ref={passwordRef}
@@ -255,7 +255,7 @@ export function LoginPage() {
               aria-invalid={!!shown('password')}
               aria-describedby={describedBy(
                 shown('password') && 'login-password-error',
-                capsLock && 'login-caps',
+                !shown('password') && capsLock && 'login-password-hint',
               )}
               onChange={set('password')}
               onKeyDown={(e) => setCapsLock(isCapsLockOn(e))}
