@@ -191,7 +191,8 @@ export function BoardPage({ project }: { project?: Project } = {}) {
   const [filter, setFilter] = useScopedTaskFilter(project?.id, activeSprint?.id);
   const [toastMessage, showToast] = useToast();
   const navigate = useNavigate();
-  const openTask = (t: Task) => navigate(`/browse/${t.key}`);
+  const openTask = (t: Task) =>
+    navigate(`/browse/${t.key}`, { state: project ? { from: 'board' } : undefined });
   // A short drag threshold lets a plain click open the card instead of starting a drag.
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const { people, projects, personNames, projectCodes } = useTaskLookups();

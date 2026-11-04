@@ -294,7 +294,7 @@ export function ProjectBacklog() {
     canMove: manages,
     targets,
     personNames,
-    onOpen: (t: Task) => navigate(`/browse/${t.key}`),
+    onOpen: (t: Task) => navigate(`/browse/${t.key}`, { state: { from: 'backlog' } }),
     onMove,
   };
   const created = (title: string) => showToast(`Created “${title}”`);

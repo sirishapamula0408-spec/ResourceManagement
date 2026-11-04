@@ -310,7 +310,9 @@ export function TasksPage({ project }: { project?: Project } = {}) {
                 <tr
                   key={t.id}
                   className={`cursor-pointer hover:[&>td]:bg-panel2 ${selected.has(t.id) ? '[&>td]:bg-teal-soft/40' : ''}`}
-                  onClick={() => navigate(`/browse/${t.key}`)}
+                  onClick={() =>
+                    navigate(`/browse/${t.key}`, { state: project ? { from: 'list' } : undefined })
+                  }
                 >
                   {selecting && (
                     <td className={td} onClick={(e) => e.stopPropagation()}>
