@@ -1,6 +1,9 @@
+import { readFileSync } from 'node:fs';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig, loadEnv } from 'vite';
+
+const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
 
 export default defineConfig(({ mode }) => {
   // Read PORT from the monorepo root .env so the proxy always targets the API.
@@ -18,6 +21,8 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react(), tailwindcss()],
+    // Shown in the sign-in footer (lib/appConfig.ts).
+    define: { __APP_VERSION__: JSON.stringify(version) },
     server: {
       port: 5173,
       proxy,

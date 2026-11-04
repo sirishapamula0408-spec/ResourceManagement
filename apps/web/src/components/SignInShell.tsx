@@ -1,4 +1,6 @@
 import { type ReactNode, useId, useState } from 'react';
+import { appConfig } from '../lib/appConfig';
+import { useDocumentTitle } from '../lib/useDocumentTitle';
 
 /** The SedHub mark: an "S" made of two hexagon ribbons, blue above and green below. */
 export function SedHubMark({ size = 44, className }: { size?: number; className?: string }) {
@@ -158,6 +160,25 @@ function Building() {
   );
 }
 
+/** Which environment this is (DEV, UAT), next to Help/Support; nothing in PROD. */
+function EnvironmentBadge() {
+  const env = appConfig.appEnv;
+  if (env === 'PROD') return null;
+  const tone =
+    env === 'UAT'
+      ? 'border-[#d6c6f7] bg-[#f3eefe] text-[#5b21b6]'
+      : 'border-[#f3d39b] bg-[#fff6e6] text-[#8a4b00]';
+  return (
+    <span
+      className={`rounded border px-2 py-0.5 text-[11px] font-semibold tracking-wide ${tone}`}
+      title={`${env} environment`}
+    >
+      <span className="sr-only">Environment: </span>
+      {env}
+    </span>
+  );
+}
+
 /** Help and Support at the top right: short answers, since there is no help site yet. */
 function HelpLinks() {
   const [open, setOpen] = useState<'help' | 'support' | null>(null);
@@ -168,6 +189,7 @@ function HelpLinks() {
   const btn = 'inline-flex items-center gap-1.5 text-[13px] text-[#1f2b4d] hover:text-teal';
   return (
     <div className="relative flex items-center justify-end gap-4 px-6 pt-[clamp(0.75rem,2.2vh,1.25rem)] text-sm sm:px-10">
+      <EnvironmentBadge />
       <button
         type="button"
         className={btn}
@@ -264,11 +286,40 @@ export function TrustBadges() {
   );
 }
 
+/** "© 2026 Sedin Technologies · Privacy · Terms · v0.1.0" under the card. */
+function SignInFooter() {
+  const link = (label: string, href?: string) =>
+    href ? (
+      <a href={href} className="hover:text-[#1546d6] hover:underline">
+        {label}
+      </a>
+    ) : (
+      label
+    );
+  const parts: ReactNode[] = [
+    `© ${new Date().getFullYear()} Sedin Technologies`,
+    link('Privacy', appConfig.privacyUrl),
+    link('Terms', appConfig.termsUrl),
+    appConfig.version && `v${appConfig.version}`,
+  ].filter(Boolean);
+  return (
+    <footer className="mt-[clamp(0.625rem,2vh,1.25rem)] text-center text-xs text-[#4a5675] [@media(max-height:700px)]:mt-2">
+      {parts.map((part, i) => (
+        <span key={i}>
+          {i > 0 && <span aria-hidden> · </span>}
+          {part}
+        </span>
+      ))}
+    </footer>
+  );
+}
+
 /**
  * Sign-in layout from the SedHub design: a blue brand panel with the product's areas on the left
  * (hidden on small screens), and the sign-in card on a light background on the right.
  */
 export function SignInShell({ children }: { children: ReactNode }) {
+  useDocumentTitle('Sign in · SedHub');
   return (
     <div className="grid min-h-dvh bg-[#f4f6fb] lg:grid-cols-[minmax(0,44fr)_minmax(0,56fr)]">
       <aside className="relative hidden overflow-hidden bg-[radial-gradient(120%_90%_at_10%_0%,#123a9c_0%,#0a2a7a_45%,#061c55_100%)] text-white lg:block [clip-path:ellipse(100%_120%_at_0%_50%)]">
@@ -320,6 +371,7 @@ export function SignInShell({ children }: { children: ReactNode }) {
         <div className="flex flex-1 flex-col justify-center px-4 py-[clamp(0.75rem,3vh,2rem)] sm:px-10 [@media(max-height:700px)]:py-2">
           <div className="mx-auto w-full max-w-[460px] lg:mr-auto lg:ml-[clamp(0.5rem,3vw,3rem)]">
             {children}
+            <SignInFooter />
           </div>
         </div>
       </main>
