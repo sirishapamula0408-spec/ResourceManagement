@@ -12,6 +12,7 @@ import { errorMessage, inputClass } from '../../lib/forms';
 import { fmt } from '../../lib/theme';
 import { Dialog, Field } from '../Dialog';
 import { TaskComments } from './TaskComments';
+import { LabelInput } from './taskUi';
 import {
   currentTaskFilter,
   hours,
@@ -19,6 +20,7 @@ import {
   SPRINT_STATUS_LABEL,
   STATUS_LABEL,
   TYPE_LABEL,
+  useLabels,
   usePlanningLookups,
   useTaskLookups,
   useTaskPermissions,
@@ -47,6 +49,7 @@ export function TaskDialog({
   const qc = useQueryClient();
   const { people, projects, personNames } = useTaskLookups();
   const { sprints, epics } = usePlanningLookups();
+  const labelSuggestions = useLabels();
   const { canManageProject, canWork, manageableProjects } = useTaskPermissions();
 
   const filter = currentTaskFilter();
@@ -68,6 +71,7 @@ export function TaskDialog({
     // A new task joins the sprint or epic the board is filtered to, if it is a real one.
     sprintId: task ? (task.sprint?.id ?? '') : filter.sprintId !== 'none' ? filter.sprintId : '',
     epicId: task ? (task.epic?.id ?? '') : filter.epicId !== 'none' ? filter.epicId : '',
+    labels: task?.labels ?? (filter.label ? [filter.label] : []),
   });
   const [logHours, setLogHours] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
@@ -99,7 +103,14 @@ export function TaskDialog({
   const epicId = epicChoices.some((ep) => ep.id === form.epicId) ? form.epicId : '';
 
   const refresh = () => {
-    for (const queryKey of [['tasks'], ['dashboard'], ['projects'], ['sprints'], ['epics']]) {
+    for (const queryKey of [
+      ['tasks'],
+      ['dashboard'],
+      ['projects'],
+      ['sprints'],
+      ['epics'],
+      ['labels'],
+    ]) {
       qc.invalidateQueries({ queryKey });
     }
   };
@@ -119,6 +130,7 @@ export function TaskDialog({
         description: form.description || null,
         sprintId: sprintId || null,
         epicId: epicId || null,
+        labels: form.labels,
       };
       let id = task?.id;
       if (!task) {
@@ -325,6 +337,14 @@ export function TaskDialog({
             </option>
           ))}
         </select>
+      </Field>
+      <Field label="Labels" full>
+        <LabelInput
+          value={form.labels}
+          onChange={(labels) => set({ labels })}
+          suggestions={labelSuggestions}
+          disabled={lock}
+        />
       </Field>
       <Field label="Estimate (hours)">
         <input

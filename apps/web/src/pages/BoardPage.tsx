@@ -17,7 +17,14 @@ import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { TaskDialog } from '../components/tasks/TaskDialog';
-import { Avatar, EpicChip, PriorityBadge, TaskFilters, Toast } from '../components/tasks/taskUi';
+import {
+  Avatar,
+  EpicChip,
+  LabelChips,
+  PriorityBadge,
+  TaskFilters,
+  Toast,
+} from '../components/tasks/taskUi';
 import {
   applyTaskFilter,
   dueLabel,
@@ -26,6 +33,7 @@ import {
   PRIORITY_RANK,
   STATUS_LABEL,
   TYPE_LABEL,
+  useLabels,
   usePlanningLookups,
   useTaskFilter,
   useTaskLookups,
@@ -68,9 +76,10 @@ function TaskCard({ task, personNames, projectCodes, onOpen }: CardProps & { tas
         <PriorityBadge priority={task.priority} />
       </div>
       <div className="mt-1 mb-2 font-medium">{task.title}</div>
-      {task.epic && (
-        <div className="mb-2">
-          <EpicChip epic={task.epic} />
+      {(task.epic || task.labels.length > 0) && (
+        <div className="mb-2 flex flex-wrap items-center gap-1">
+          {task.epic && <EpicChip epic={task.epic} />}
+          <LabelChips labels={task.labels} />
         </div>
       )}
       <div className="flex items-center gap-2 text-xs text-muted">
@@ -176,6 +185,7 @@ export function BoardPage() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const { people, projects, personNames, projectCodes } = useTaskLookups();
   const { sprints, epics } = usePlanningLookups();
+  const labels = useLabels();
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ['tasks'],
     queryFn: () => api<Task[]>('/tasks'),
@@ -269,6 +279,7 @@ export function BoardPage() {
           projects={projects}
           sprints={sprints}
           epics={epics}
+          labels={labels}
         />
       </PageHeader>
       {isLoading ? (

@@ -1,7 +1,9 @@
-import type { Epic, Person, Project, Sprint, TaskStatus } from '../../lib/api';
+import { useState } from 'react';
+import type { Epic, LabelCount, Person, Project, Sprint, TaskStatus } from '../../lib/api';
 import { identityColor, initials } from '../../lib/theme';
 import {
   NONE,
+  normalizeLabel,
   PRIORITY_LABEL,
   SPRINT_STATUS_LABEL,
   STATUS_LABEL,
@@ -59,6 +61,109 @@ export function EpicChip({ epic }: { epic: { name: string; color: string | null 
   );
 }
 
+/** A label on a card or row. */
+export function LabelChip({ name }: { name: string }) {
+  return (
+    <span className="inline-block max-w-[10rem] truncate rounded-[3px] bg-panel2 px-1.5 py-px text-[11px] text-muted ring-1 ring-line">
+      {name}
+    </span>
+  );
+}
+
+/** Labels on a card or row: the first few, then "+n". */
+export function LabelChips({ labels, max = 3 }: { labels: string[]; max?: number }) {
+  if (!labels.length) return null;
+  return (
+    <span className="inline-flex flex-wrap gap-1" aria-label={`Labels: ${labels.join(', ')}`}>
+      {labels.slice(0, max).map((l) => (
+        <LabelChip key={l} name={l} />
+      ))}
+      {labels.length > max && (
+        <span className="text-[11px] text-muted">+{labels.length - max}</span>
+      )}
+    </span>
+  );
+}
+
+/**
+ * Label editor: chips with a remove button, and a box that adds a label on Enter or comma,
+ * suggesting labels already in use.
+ */
+export function LabelInput({
+  value,
+  onChange,
+  suggestions,
+  disabled = false,
+}: {
+  value: string[];
+  onChange: (labels: string[]) => void;
+  suggestions: LabelCount[];
+  disabled?: boolean;
+}) {
+  const [text, setText] = useState('');
+  const add = (raw: string) => {
+    const l = normalizeLabel(raw);
+    if (l && !value.includes(l) && value.length < 10) onChange([...value, l]);
+    setText('');
+  };
+  return (
+    <div className="flex min-h-[38px] flex-wrap items-center gap-1.5 rounded-md border border-line bg-panel px-2 py-1.5">
+      {value.map((l) => (
+        <span
+          key={l}
+          className="inline-flex items-center gap-1 rounded-[3px] bg-panel2 px-1.5 py-px text-xs text-ink ring-1 ring-line"
+        >
+          {l}
+          {!disabled && (
+            <button
+              type="button"
+              className="text-muted hover:text-red"
+              aria-label={`Remove label ${l}`}
+              onClick={() => onChange(value.filter((x) => x !== l))}
+            >
+              ×
+            </button>
+          )}
+        </span>
+      ))}
+      {!disabled && value.length < 10 && (
+        <>
+          <input
+            className="min-w-[8rem] flex-1 bg-transparent text-sm text-ink outline-none"
+            list="label-suggestions"
+            placeholder={value.length ? 'Add another' : 'Add labels, e.g. frontend'}
+            aria-label="Add a label"
+            value={text}
+            onChange={(e) => {
+              // Picking a suggestion or typing a comma adds the label.
+              const v = e.target.value;
+              if (v.endsWith(',')) add(v.slice(0, -1));
+              else if (suggestions.some((s) => s.name === v)) add(v);
+              else setText(v);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && text.trim()) {
+                e.preventDefault();
+                add(text);
+              } else if (e.key === 'Backspace' && !text && value.length) {
+                onChange(value.slice(0, -1));
+              }
+            }}
+            onBlur={() => text.trim() && add(text)}
+          />
+          <datalist id="label-suggestions">
+            {suggestions
+              .filter((s) => !value.includes(s.name))
+              .map((s) => (
+                <option key={s.name} value={s.name} />
+              ))}
+          </datalist>
+        </>
+      )}
+    </div>
+  );
+}
+
 /** Initials avatar coloured by person, consistent with the dashboard heat map. */
 export function Avatar({
   name,
@@ -102,6 +207,7 @@ export function TaskFilters({
   projects,
   sprints = [],
   epics = [],
+  labels = [],
   showAssignee = true,
 }: {
   filter: TaskFilter;
@@ -110,6 +216,7 @@ export function TaskFilters({
   projects: Project[];
   sprints?: Sprint[];
   epics?: Epic[];
+  labels?: LabelCount[];
   /** Off where the list is already one person's tasks. */
   showAssignee?: boolean;
 }) {
@@ -196,6 +303,24 @@ export function TaskFilters({
             </option>
           ))}
           <option value={NONE}>No epic</option>
+        </select>
+      )}
+      {(labels.length > 0 || filter.label) && (
+        <select
+          className={control}
+          aria-label="Label"
+          value={filter.label}
+          onChange={(e) => onChange({ ...filter, label: e.target.value })}
+        >
+          <option value="">All labels</option>
+          {labels.map((l) => (
+            <option key={l.name} value={l.name}>
+              {l.name}
+            </option>
+          ))}
+          {filter.label && !labels.some((l) => l.name === filter.label) && (
+            <option value={filter.label}>{filter.label}</option>
+          )}
         </select>
       )}
       <input

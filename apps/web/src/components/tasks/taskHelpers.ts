@@ -5,6 +5,7 @@ import {
   auth,
   type Person,
   type Epic,
+  type LabelCount,
   type Project,
   type Sprint,
   type SprintStatus,
@@ -82,6 +83,20 @@ export function usePlanningLookups() {
   return { sprints, epics };
 }
 
+/** Labels in use, most used first (suggestions and the label filter). */
+export function useLabels() {
+  const { data: labels = [] } = useQuery({
+    queryKey: ['labels'],
+    queryFn: () => api<LabelCount[]>('/tasks/labels'),
+    enabled: auth.getUser()?.role !== 'SALES',
+  });
+  return labels;
+}
+
+/** The API's label rule: one lowercase word, spaces become dashes. */
+export const normalizeLabel = (s: string) =>
+  s.trim().toLowerCase().replace(/\s+/g, '-').slice(0, 30);
+
 export const SPRINT_STATUS_LABEL: Record<SprintStatus, string> = {
   PLANNED: 'Planned',
   ACTIVE: 'Active',
@@ -98,10 +113,19 @@ export interface TaskFilter {
   sprintId: string;
   /** An epic id, NONE, or '' for any. */
   epicId: string;
+  /** A label, or '' for any. */
+  label: string;
   q: string;
 }
 
-const EMPTY_FILTER: TaskFilter = { projectId: '', assigneeId: '', sprintId: '', epicId: '', q: '' };
+const EMPTY_FILTER: TaskFilter = {
+  projectId: '',
+  assigneeId: '',
+  sprintId: '',
+  epicId: '',
+  label: '',
+  q: '',
+};
 
 // Shared between the Board and Tasks pages, like the prototype, so switching views keeps them.
 let lastFilter: TaskFilter = EMPTY_FILTER;
@@ -127,7 +151,8 @@ export function applyTaskFilter(tasks: Task[], f: TaskFilter) {
       (!f.assigneeId || t.assignee?.id === f.assigneeId) &&
       (!f.sprintId || (f.sprintId === NONE ? !t.sprint : t.sprint?.id === f.sprintId)) &&
       (!f.epicId || (f.epicId === NONE ? !t.epic : t.epic?.id === f.epicId)) &&
-      (!q || `${t.title} ${t.key}`.toLowerCase().includes(q)),
+      (!f.label || t.labels.includes(f.label)) &&
+      (!q || `${t.title} ${t.key} ${t.labels.join(' ')}`.toLowerCase().includes(q)),
   );
 }
 

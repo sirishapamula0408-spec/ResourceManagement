@@ -9,6 +9,8 @@ export interface TaskFilter {
   status?: TaskStatus;
   sprintId?: string;
   epicId?: string;
+  /** Tasks carrying this label. */
+  label?: string;
 }
 
 /** Display key for a task: its project's code and its number on that project, e.g. "ATLAS-12". */
@@ -30,14 +32,13 @@ export interface TaskScope {
   personId: string;
 }
 
-export async function listTasks(filter: TaskFilter, scope: TaskScope | null = null) {
+/** Where clause for a team member: their projects' tasks plus any assigned to them. */
+const inScope = (scope: TaskScope | null) =>
+  scope ? { OR: [{ projectId: { in: scope.projectIds } }, { assigneeId: scope.personId }] } : {};
+
+export async function listTasks({ label, ...filter }: TaskFilter, scope: TaskScope | null = null) {
   const tasks = await prisma.task.findMany({
-    where: scope
-      ? {
-          ...filter,
-          OR: [{ projectId: { in: scope.projectIds } }, { assigneeId: scope.personId }],
-        }
-      : filter,
+    where: { ...filter, ...(label ? { labels: { has: label } } : {}), ...inScope(scope) },
     orderBy: [{ status: 'asc' }, { order: 'asc' }],
     include: {
       assignee: { select: { id: true, name: true } },
@@ -62,6 +63,19 @@ export async function listTasks(filter: TaskFilter, scope: TaskScope | null = nu
     key: taskKey(t.project.code, t.number),
     loggedHours: loggedByTask.get(t.id) ?? 0,
   }));
+}
+
+/** Every label in use, most used first, for suggestions and the label filter. */
+export async function listLabels(scope: TaskScope | null = null) {
+  const tasks = await prisma.task.findMany({
+    where: { labels: { isEmpty: false }, ...inScope(scope) },
+    select: { labels: true },
+  });
+  const counts = new Map<string, number>();
+  for (const t of tasks) for (const l of t.labels) counts.set(l, (counts.get(l) ?? 0) + 1);
+  return [...counts]
+    .map(([name, tasks]) => ({ name, tasks }))
+    .sort((a, b) => b.tasks - a.tasks || a.name.localeCompare(b.name));
 }
 
 // ---------- Permissions (Users and roles in the scope plan) ----------
@@ -176,6 +190,7 @@ export interface TaskInput {
   dueDate?: Date | null;
   sprintId?: string | null;
   epicId?: string | null;
+  labels?: string[];
 }
 
 export async function createTask(user: AuthUser, input: TaskInput) {
@@ -185,6 +200,7 @@ export async function createTask(user: AuthUser, input: TaskInput) {
   return prisma.task.create({
     data: {
       ...input,
+      ...(input.labels ? { labels: [...new Set(input.labels)] } : {}),
       ...completion(undefined, input.status ?? 'TODO'),
       order: await nextOrder(input.status ?? 'TODO'),
       number: await nextTaskNumber(input.projectId),
@@ -236,6 +252,7 @@ export async function updateTask(user: AuthUser, id: string, input: Partial<Task
     where: { id },
     data: {
       ...input,
+      ...(input.labels ? { labels: [...new Set(input.labels)] } : {}),
       ...planning,
       ...completion(task.status, status),
       ...(moved ? { order: await nextOrder(status) } : {}),

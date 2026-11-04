@@ -204,6 +204,14 @@ export interface Task {
   sprint: { id: string; name: string; status: SprintStatus } | null;
   epic: { id: string; name: string; color: string | null } | null;
   commentCount: number;
+  /** Lowercase labels, e.g. ["frontend", "customer-request"]. */
+  labels: string[];
+}
+
+/** A label in use and how many tasks carry it. */
+export interface LabelCount {
+  name: string;
+  tasks: number;
 }
 
 /** A comment on a task. */

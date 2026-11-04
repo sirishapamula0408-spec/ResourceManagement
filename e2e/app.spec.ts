@@ -103,11 +103,14 @@ test('a PM moves a card on the board by dragging it', async ({ page }) => {
   await signIn(page, PM, '/board');
   const card = page.getByRole('button', { name: /Project kickoff deck/ });
   const target = page.getByRole('region', { name: 'In progress' });
+  // Cards can sit below the fold; drag within the visible part of the board.
+  await card.scrollIntoViewIfNeeded();
   const from = (await card.boundingBox())!;
   const to = (await target.boundingBox())!;
+  const y = Math.min(from.y + from.height / 2, to.y + to.height - 20);
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
-  await page.mouse.move(to.x + to.width / 2, to.y + 80, { steps: 15 });
+  await page.mouse.move(to.x + to.width / 2, y, { steps: 15 });
   await page.mouse.up();
   await expect(toast(page)).toContainText('moved to In progress');
   await expect(target).toContainText('Project kickoff deck');
@@ -367,4 +370,69 @@ test('PMs can read the pipeline; team members have no Leads page', async ({ page
     return (await fetch('/api/leads', { headers: { Authorization: `Bearer ${token}` } })).status;
   });
   expect(status).toBe(403);
+});
+
+test('a PM reorders cards within a column', async ({ page }) => {
+  await signIn(page, PM, '/board');
+  // Earlier tests move and delete cards, so use whichever column has two or more.
+  let column = page.getByRole('region', { name: 'To do' });
+  for (const name of ['To do', 'In progress', 'Backlog', 'In review', 'Done']) {
+    const c = page.getByRole('region', { name });
+    if ((await c.locator('div.font-medium').count()) >= 2) {
+      column = c;
+      break;
+    }
+  }
+  const titles = () => column.locator('div.font-medium').allTextContents();
+  const [first, second] = await titles();
+  const top = (await column.locator('div.font-medium').nth(0).boundingBox())!;
+  const below = (await column.locator('div.font-medium').nth(1).boundingBox())!;
+  await page.mouse.move(below.x + 20, below.y + 5);
+  await page.mouse.down();
+  await page.mouse.move(below.x + 20, below.y - 10, { steps: 5 });
+  await page.mouse.move(top.x + 20, top.y - 5, { steps: 15 });
+  await page.mouse.up();
+  await expect(toast(page)).toContainText('reordered');
+  await expect.poll(async () => (await titles()).slice(0, 2)).toEqual([second, first]);
+  // The new order is saved.
+  await page.reload();
+  await expect.poll(async () => (await titles()).slice(0, 2)).toEqual([second, first]);
+});
+
+test('a PM plans a sprint, then labels a task and comments on it', async ({ page }) => {
+  await signIn(page, PM, '/sprints');
+  await page.getByRole('button', { name: 'New sprint' }).click();
+  await dialog(page).getByLabel('Project').selectOption({ label: 'ATLAS · Atlas Customer Portal' });
+  await dialog(page).getByLabel('Name').fill('ATLAS Sprint 8');
+  await dialog(page).getByLabel('Goal').fill('Polish the portal');
+  await dialog(page).getByRole('button', { name: 'Save' }).click();
+  const row = page.getByRole('row', { name: /ATLAS Sprint 8/ });
+  await expect(row).toContainText('Planned');
+  // One active sprint per project: Sprint 7 is still running.
+  await row.getByRole('button', { name: 'Start' }).click();
+  await expect(toast(page)).toContainText('Complete ATLAS Sprint 7 before starting another sprint');
+
+  // A new ATLAS task, put in the new sprint with a label.
+  await page.getByRole('link', { name: 'Tasks', exact: true }).click();
+  await page.getByRole('button', { name: 'Create task' }).click();
+  await dialog(page).getByLabel('Summary').fill('Keyboard navigation fixes');
+  await dialog(page).getByLabel('Project').selectOption({ label: 'ATLAS · Atlas Customer Portal' });
+  await dialog(page).getByLabel('Sprint').selectOption({ label: 'ATLAS Sprint 8' });
+  await dialog(page).getByLabel('Add a label').fill('Customer Request');
+  await dialog(page).getByLabel('Add a label').press('Enter');
+  await dialog(page).getByRole('button', { name: 'Save' }).click();
+  await page.getByLabel('Search tasks').fill('Keyboard navigation');
+  const task = page.getByRole('row', { name: /Keyboard navigation fixes/ });
+  await expect(task).toContainText('ATLAS Sprint 8');
+  await expect(task).toContainText('customer-request');
+
+  await page.getByLabel('Search tasks').fill('');
+  await page.getByLabel('Label', { exact: true }).selectOption('customer-request');
+  await expect(page.getByRole('row')).toHaveCount(2); // header + the one labelled task
+
+  await task.click();
+  await dialog(page).getByLabel('Add a comment').fill('Checked with the client: WCAG AA.');
+  await dialog(page).getByRole('button', { name: 'Comment', exact: true }).click();
+  await expect(dialog(page).getByRole('heading', { name: 'Comments · 1' })).toBeVisible();
+  await expect(dialog(page)).toContainText('Priya Sharma');
 });

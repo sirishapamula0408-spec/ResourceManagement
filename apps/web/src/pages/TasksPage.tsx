@@ -5,6 +5,7 @@ import { RowActions } from '../components/RowActions';
 import { TaskDialog } from '../components/tasks/TaskDialog';
 import {
   EpicChip,
+  LabelChips,
   PriorityBadge,
   StatusPill,
   TaskFilters,
@@ -16,6 +17,7 @@ import {
   hours,
   isOverdue,
   PRIORITY_RANK,
+  useLabels,
   usePlanningLookups,
   useTaskFilter,
   useTaskLookups,
@@ -104,6 +106,7 @@ export function TasksPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const { people, projects } = useTaskLookups();
   const { sprints, epics } = usePlanningLookups();
+  const labels = useLabels();
   const { canManageProject, canWork, manageableProjects } = useTaskPermissions();
   const qc = useQueryClient();
   const refresh = () => TASK_QUERIES.forEach((queryKey) => qc.invalidateQueries({ queryKey }));
@@ -215,6 +218,7 @@ export function TasksPage() {
           projects={projects}
           sprints={sprints}
           epics={epics}
+          labels={labels}
           showAssignee={!member}
         />
       </PageHeader>
@@ -316,9 +320,10 @@ export function TasksPage() {
                   <td className={`${td} text-xs font-semibold text-muted`}>{t.key}</td>
                   <td className={td}>
                     {t.title}
-                    {t.epic && (
-                      <span className="ml-2">
-                        <EpicChip epic={t.epic} />
+                    {(t.epic || t.labels.length > 0) && (
+                      <span className="ml-2 inline-flex flex-wrap items-center gap-1 align-middle">
+                        {t.epic && <EpicChip epic={t.epic} />}
+                        <LabelChips labels={t.labels} />
                       </span>
                     )}
                   </td>

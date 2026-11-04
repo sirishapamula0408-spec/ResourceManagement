@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { TaskPriority, TaskStatus, TaskType } from '../../generated/prisma/enums.js';
 import { parse } from '../../lib/http.js';
 import { visibleProjectIds } from '../../lib/visibility.js';
-import { requireAuth } from '../../middleware/auth.js';
+import { requireAuth, type AuthUser } from '../../middleware/auth.js';
 import * as comments from './comments.service.js';
 import * as service from './tasks.service.js';
 
@@ -13,6 +13,7 @@ const listQuery = z.object({
   status: z.enum(TaskStatus).optional(),
   sprintId: z.string().optional(),
   epicId: z.string().optional(),
+  label: z.string().optional(),
 });
 
 // Either an explicit order, or the neighbouring cards it was dropped between.
@@ -24,6 +25,14 @@ const moveBody = z.object({
 });
 
 const optionalDate = z.coerce.date().nullable().optional();
+
+/** A label is one lowercase word: spaces become dashes, as in JIRA ("Customer request" → "customer-request"). */
+const label = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .transform((s) => s.replace(/\s+/g, '-'))
+  .pipe(z.string().min(1).max(30, 'Keep labels to 30 characters'));
 
 const taskFields = z.object({
   projectId: z.string().min(1),
@@ -38,6 +47,7 @@ const taskFields = z.object({
   dueDate: optionalDate,
   sprintId: z.string().min(1).nullable().optional(),
   epicId: z.string().min(1).nullable().optional(),
+  labels: z.array(label).max(10, 'Use at most 10 labels').optional(),
 });
 
 // Scope plan: due date cannot be before start.
@@ -65,10 +75,19 @@ const commentBody = z.object({
 
 export const tasksRouter = Router();
 
+/** A team member's view: their projects' tasks and their own (null = everything). */
+const scopeOf = async (user: AuthUser | undefined) => {
+  const projectIds = await visibleProjectIds(user!);
+  return projectIds && { projectIds, personId: user!.id };
+};
+
 tasksRouter.get('/', async (req, res) => {
-  const projectIds = await visibleProjectIds(req.user!);
-  const scope = projectIds && { projectIds, personId: req.user!.id };
-  res.json(await service.listTasks(parse(listQuery, req.query), scope));
+  res.json(await service.listTasks(parse(listQuery, req.query), await scopeOf(req.user)));
+});
+
+// Labels in use (on the tasks you can see), most used first.
+tasksRouter.get('/labels', async (req, res) => {
+  res.json(await service.listLabels(await scopeOf(req.user)));
 });
 
 // Permission checks live in the service: they depend on the task's project and assignee.
