@@ -113,7 +113,7 @@ function Building() {
   return (
     <svg
       viewBox="0 0 400 260"
-      className="pointer-events-none absolute bottom-0 left-0 w-[min(88%,560px,55vh)] opacity-80"
+      className="pointer-events-none absolute bottom-0 left-0 w-[min(88%,560px,55vh)] opacity-35"
       aria-hidden="true"
     >
       <defs>
