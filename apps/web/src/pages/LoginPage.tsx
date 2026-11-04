@@ -14,10 +14,12 @@ import {
 } from '../lib/loginForm';
 import { type MfaChallenge, type MfaState, needsMfa } from '../lib/mfa';
 
+// An errored field keeps its red border when focused and gets a solid blue ring outside it, so
+// keyboard users always see where focus is.
 const fieldBox = (invalid: boolean) =>
   `flex h-[clamp(2.5rem,5.2vh,3rem)] items-center gap-3 rounded-md border bg-white px-3.5 text-[#1f2b4d] focus-within:ring-2 ${
     invalid
-      ? 'border-error focus-within:border-error focus-within:ring-error/20'
+      ? 'border-error focus-within:border-error focus-within:ring-[#1546d6]'
       : 'border-[#cfd6e4] focus-within:border-[#1546d6] focus-within:ring-[#1546d6]/15'
   }`;
 const svg = {

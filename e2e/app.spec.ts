@@ -120,6 +120,21 @@ test('sign-in page: no SSO or sign-up link by default, Remember me off', async (
   await expect(page).toHaveTitle('SedHub');
 });
 
+test('an input with an error still shows the blue focus ring', async ({ page }) => {
+  await page.goto('/login');
+  const email = page.getByLabel('Work email');
+  await email.press('Tab'); // leave it empty: error
+  await expect(email).toHaveAttribute('aria-invalid', 'true');
+  await page.keyboard.press('Shift+Tab');
+  await expect(email).toBeFocused();
+  const box = await email.evaluate((el) => {
+    const style = getComputedStyle(el.parentElement!);
+    return { border: style.borderTopColor, shadow: style.boxShadow };
+  });
+  expect(box.border).toBe('rgb(180, 35, 24)'); // --color-error
+  expect(box.shadow).toContain('rgb(21, 70, 214)'); // the blue ring
+});
+
 test('the sign-in page fills the window exactly, with nothing stray along the bottom', async ({
   page,
 }) => {
