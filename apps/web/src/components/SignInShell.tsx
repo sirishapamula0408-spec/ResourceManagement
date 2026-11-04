@@ -205,6 +205,15 @@ function HelpLinks() {
   );
 }
 
+/** The white card that each sign-in step (password, MFA code) sits in. */
+export function SignInCard({ children }: { children: ReactNode }) {
+  return (
+    <section className="mx-auto w-full max-w-[460px] rounded-2xl bg-white px-8 py-[clamp(1.25rem,3.4vh,2.25rem)] shadow-[0_12px_40px_rgba(16,34,94,0.10)] sm:px-11">
+      {children}
+    </section>
+  );
+}
+
 /**
  * Trust badges for the foot of the sign-in card. Each is true: TLS comes from the deployment
  * (nginx/HTTPS), roles are enforced by the API, and sign-ins are written to the audit log.

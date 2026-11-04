@@ -103,7 +103,8 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const body = res.status === 204 ? undefined : await res.json().catch(() => undefined);
   if (!res.ok) {
     // Expired, invalid or deactivated session: sign in again and come back here.
-    if (res.status === 401 && path !== '/auth/login') {
+    // (Not for the sign-in steps themselves: there a 401 means a wrong password or code.)
+    if (res.status === 401 && path !== '/auth/login' && !path.startsWith('/auth/mfa/')) {
       auth.clear();
       const here = window.location.pathname + window.location.search;
       const reason = token ? 'reason=expired&' : '';

@@ -186,6 +186,44 @@ test('an expired session returns to sign-in with a notice, then to the page', as
   await expect(page).toHaveURL(/\/projects$/);
 });
 
+test('a sign-in that needs MFA continues on the code page', async ({ page }) => {
+  // The API has no MFA yet: answer the sign-in with a challenge and the code with a real session.
+  const real = await page.request.post('/api/auth/login', { data: PM });
+  const session = await real.json();
+  await page.route('**/api/auth/login', (route) =>
+    route.fulfill({
+      json: { mfaRequired: true, mfaToken: 'mfa-123', destination: 'p•••@resourceboard.local' },
+    }),
+  );
+  let verified: unknown;
+  await page.route('**/api/auth/mfa/verify', (route) => {
+    verified = route.request().postDataJSON();
+    return route.fulfill({ json: session });
+  });
+
+  await page.goto('/login?next=%2Fprojects');
+  await page.getByLabel('Work email').fill(PM.email);
+  await page.getByLabel('Password', { exact: true }).fill(PM.password);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page).toHaveURL(/\/login\/mfa$/);
+  await expect(page.getByRole('heading', { name: 'Verify it’s you' })).toBeVisible();
+  await expect(page.getByText('p•••@resourceboard.local')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Resend code \(\d+s\)/ })).toBeDisabled();
+
+  // Each digit moves to the next box; the sixth sends the code.
+  await expect(page.getByLabel('Digit 1 of 6')).toBeFocused();
+  await page.keyboard.type('12345');
+  await expect(page.getByLabel('Digit 6 of 6')).toBeFocused();
+  await page.keyboard.type('6');
+  await expect(page).toHaveURL(/\/projects$/);
+  expect(verified).toEqual({ mfaToken: 'mfa-123', code: '123456' });
+});
+
+test('the MFA page sends people without a challenge back to sign-in', async ({ page }) => {
+  await page.goto('/login/mfa');
+  await expect(page).toHaveURL(/\/login$/);
+});
+
 test('dashboard shows the KPIs and the project filter applies to them', async ({ page }) => {
   await signIn(page, ADMIN);
   await expect(kpi(page, 'Total demand')).toContainText('hrs');

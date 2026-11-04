@@ -8,6 +8,7 @@ import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { ConnectPage } from './pages/ConnectPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
+import { MfaVerifyPage } from './pages/MfaVerifyPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectBacklog } from './pages/project/ProjectBacklog';
 import { ProjectLayout } from './pages/project/ProjectLayout';
@@ -21,6 +22,7 @@ import { TeamsPage } from './pages/TeamsPage';
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  { path: '/login/mfa', element: <MfaVerifyPage /> },
   { path: '/signup', element: <SignupPage /> },
   {
     path: '/connect',

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { SignInShell, TrustBadges } from '../components/SignInShell';
+import { SignInCard, SignInShell, TrustBadges } from '../components/SignInShell';
 import { api, auth, type LoginResponse, safeNext } from '../lib/api';
 import { appConfig } from '../lib/appConfig';
 import {
@@ -11,6 +11,7 @@ import {
   signInNotice,
   validateLoginForm,
 } from '../lib/loginForm';
+import { type MfaChallenge, type MfaState, needsMfa } from '../lib/mfa';
 
 const fieldBox = (invalid: boolean) =>
   `flex h-[clamp(2.5rem,5.2vh,3rem)] items-center gap-3 rounded-md border bg-white px-3.5 text-[#1f2b4d] focus-within:ring-2 ${
@@ -111,8 +112,22 @@ export function LoginPage() {
 
   const login = useMutation({
     mutationFn: (body: { email: string; password: string }) =>
-      api<LoginResponse>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
+      api<LoginResponse | MfaChallenge>('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
     onSuccess: (data) => {
+      // A second step is needed: the MFA page finishes the sign-in.
+      if (needsMfa(data)) {
+        const state: MfaState = {
+          mfaToken: data.mfaToken,
+          next,
+          remember,
+          destination: data.destination,
+        };
+        navigate('/login/mfa', { state });
+        return;
+      }
       auth.setToken(data.token, remember);
       // Start clean: nothing cached from a previous user (or from before sign-in).
       queryClient.clear();
@@ -143,7 +158,7 @@ export function LoginPage() {
 
   return (
     <SignInShell>
-      <section className="mx-auto w-full max-w-[460px] rounded-2xl bg-white px-8 py-[clamp(1.25rem,3.4vh,2.25rem)] shadow-[0_12px_40px_rgba(16,34,94,0.10)] sm:px-11">
+      <SignInCard>
         <h1 className="text-[1.55rem] font-bold text-[#0b1f5c]">Sign in</h1>
         <p className="mb-[clamp(0.75rem,2vh,1.25rem)] text-[13px] text-[#3b4867]">
           Access your workspace
@@ -367,7 +382,7 @@ export function LoginPage() {
         </p>
 
         <TrustBadges />
-      </section>
+      </SignInCard>
     </SignInShell>
   );
 }
