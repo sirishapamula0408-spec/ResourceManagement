@@ -18,7 +18,8 @@ export default defineConfig({
   workers: 1,
   fullyParallel: false,
   retries: CI ? 1 : 0,
-  reporter: CI ? [['list'], ['html', { open: 'never' }]] : 'list',
+  // On CI, 'github' turns failures into annotations readable on the run's page.
+  reporter: CI ? [['list'], ['github'], ['html', { open: 'never' }]] : 'list',
   globalSetup: './e2e/global-setup.ts',
   use: {
     baseURL: `http://localhost:${WEB_PORT}`,
