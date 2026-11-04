@@ -92,7 +92,7 @@ test('sign-in page: no SSO or sign-up link by default, Remember me off', async (
   // Page chrome: tab title, footer with the version, no environment badge in a PROD build.
   await expect(page).toHaveTitle('Sign in · SedHub');
   await expect(page.locator('footer')).toHaveText(
-    /^© d{4} Sedin Technologies · Privacy · Terms · vd+.d+.d+$/,
+    /^© \d{4} Sedin Technologies · Privacy · Terms · v\d+\.\d+\.\d+$/,
   );
   await expect(page.getByText('Environment:')).toHaveCount(0);
   await signIn(page, PM, '/login');
