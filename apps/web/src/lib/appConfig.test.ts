@@ -25,8 +25,10 @@ describe('app config', () => {
     expect(parseAppEnv(' PROD ', true)).toBe('PROD');
     expect(parseAppEnv(undefined, true)).toBe('DEV');
     expect(parseAppEnv('staging', false)).toBe('PROD');
-    expect(readAppConfig({ DEV: true }).appEnv).toBe('DEV');
-    expect(readAppConfig({ DEV: false }).appEnv).toBe('PROD');
+    expect(readAppConfig({ MODE: 'development', DEV: true }).appEnv).toBe('DEV');
+    expect(readAppConfig({ MODE: 'production', DEV: false }).appEnv).toBe('PROD');
+    // A build with NODE_ENV=test (CI) has DEV=true but is still a production build.
+    expect(readAppConfig({ MODE: 'production', DEV: true }).appEnv).toBe('PROD');
   });
 
   it('reads footer links and the version', () => {

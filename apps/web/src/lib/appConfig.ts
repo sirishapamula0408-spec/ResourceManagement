@@ -39,7 +39,9 @@ export function readAppConfig(env: Record<string, unknown>, version = ''): AppCo
   return {
     ssoEnabled: parseFlag(env.VITE_SSO_ENABLED),
     adminEmail: text(env.VITE_ADMIN_EMAIL),
-    appEnv: parseAppEnv(env.VITE_APP_ENV, env.DEV === true),
+    // MODE, not DEV: a build run with NODE_ENV=test (as on CI) still has DEV=true, but its mode
+    // is 'production'; only the dev server runs in 'development'.
+    appEnv: parseAppEnv(env.VITE_APP_ENV, env.MODE === 'development'),
     privacyUrl: text(env.VITE_PRIVACY_URL),
     termsUrl: text(env.VITE_TERMS_URL),
     version,
