@@ -2,6 +2,10 @@ import { type ReactNode, useId, useState } from 'react';
 import { appConfig } from '../lib/appConfig';
 import { useDocumentTitle } from '../lib/useDocumentTitle';
 
+/** Visible keyboard focus for links and buttons on the sign-in pages. */
+export const focusRing =
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1546d6]';
+
 /** The SedHub mark: an "S" made of two hexagon ribbons, blue above and green below. */
 export function SedHubMark({ size = 44, className }: { size?: number; className?: string }) {
   const ribbon = 'M24 4 42 14.4V21L24 10.6 12.6 17.2 24 23.8 18.3 27.1 6 20V14.4Z';
@@ -186,9 +190,9 @@ function HelpLinks() {
     help: 'Sign in with your company email and the password you were given. New accounts may be asked to choose a new password first.',
     support: 'For access, a new account or a password reset, contact your SedHub administrator.',
   };
-  const btn = 'inline-flex items-center gap-1.5 text-[13px] text-[#1f2b4d] hover:text-teal';
+  const btn = `inline-flex items-center gap-1.5 rounded text-[13px] text-[#1f2b4d] hover:text-teal ${focusRing}`;
   return (
-    <div className="relative flex items-center justify-end gap-4 px-6 pt-[clamp(0.75rem,2.2vh,1.25rem)] text-sm sm:px-10">
+    <div className="relative flex items-center justify-end gap-4 px-4 pt-[clamp(0.75rem,2.2vh,1.25rem)] text-sm min-[769px]:px-10">
       <EnvironmentBadge />
       <button
         type="button"
@@ -218,7 +222,7 @@ function HelpLinks() {
       {open && (
         <p
           role="status"
-          className="absolute top-12 right-6 z-10 max-w-xs rounded-md border border-line bg-panel px-3 py-2 text-xs text-ink shadow-lg sm:right-10"
+          className="absolute top-12 right-4 z-10 max-w-xs rounded-md border border-line bg-panel px-3 py-2 text-xs text-ink shadow-lg min-[769px]:right-10"
         >
           {text[open]}
         </p>
@@ -230,7 +234,7 @@ function HelpLinks() {
 /** The white card that each sign-in step (password, MFA code) sits in. */
 export function SignInCard({ children }: { children: ReactNode }) {
   return (
-    <section className="mx-auto w-full max-w-[460px] rounded-2xl bg-white px-8 py-[clamp(1.25rem,3.4vh,2.25rem)] shadow-[0_12px_40px_rgba(16,34,94,0.10)] sm:px-11">
+    <section className="mx-auto w-full max-w-[480px] rounded-2xl bg-white px-6 py-[clamp(1.25rem,3.4vh,2.25rem)] shadow-[0_12px_40px_rgba(16,34,94,0.10)] sm:px-11">
       {children}
     </section>
   );
@@ -290,7 +294,7 @@ export function TrustBadges() {
 function SignInFooter() {
   const link = (label: string, href?: string) =>
     href ? (
-      <a href={href} className="hover:text-[#1546d6] hover:underline">
+      <a href={href} className={`rounded hover:text-[#1546d6] hover:underline ${focusRing}`}>
         {label}
       </a>
     ) : (
@@ -315,13 +319,16 @@ function SignInFooter() {
 }
 
 /**
- * Sign-in layout from the SedHub design: a blue brand panel with the product's areas on the left
- * (hidden on small screens), and the sign-in card on a light background on the right.
+ * Sign-in layout from the SedHub design: a blue brand panel with the product's areas on the left,
+ * and the sign-in card on a light background on the right, its right edge under Support. The
+ * right column is just wide enough for the card and a modest gap to the panel's curve. Below
+ * lg the panel becomes a slim header (logo and tagline) and the card takes the full width with
+ * 16px gutters (up to 768px).
  */
 export function SignInShell({ children }: { children: ReactNode }) {
   useDocumentTitle('Sign in · SedHub');
   return (
-    <div className="grid min-h-dvh bg-[#f4f6fb] lg:grid-cols-[minmax(0,44fr)_minmax(0,56fr)]">
+    <div className="grid min-h-dvh bg-[#f4f6fb] lg:grid-cols-[minmax(0,1fr)_clamp(37rem,36vw,40rem)]">
       <aside className="relative hidden overflow-hidden bg-[radial-gradient(120%_90%_at_10%_0%,#123a9c_0%,#0a2a7a_45%,#061c55_100%)] text-white lg:block [clip-path:ellipse(100%_120%_at_0%_50%)]">
         {/* Faint flowing lines, as in the design. */}
         <svg
@@ -367,9 +374,19 @@ export function SignInShell({ children }: { children: ReactNode }) {
         <Building />
       </aside>
       <main className="flex min-h-dvh flex-col">
+        {/* Small screens: the brand panel as a slim header. */}
+        <header className="flex items-center gap-3 bg-[radial-gradient(120%_160%_at_10%_0%,#123a9c_0%,#0a2a7a_50%,#061c55_100%)] px-4 py-3 text-white lg:hidden">
+          <SedHubMark size={34} />
+          <div className="min-w-0">
+            <p className="text-lg leading-tight font-bold tracking-tight">SedHub</p>
+            <p className="text-xs leading-snug text-white/90">
+              Enterprise Work &amp; Resource Management Platform
+            </p>
+          </div>
+        </header>
         <HelpLinks />
-        <div className="flex flex-1 flex-col justify-center px-4 py-[clamp(0.75rem,3vh,2rem)] sm:px-10 [@media(max-height:700px)]:py-2">
-          <div className="mx-auto w-full max-w-[460px] lg:mr-auto lg:ml-[clamp(0.5rem,3vw,3rem)]">
+        <div className="flex flex-1 flex-col justify-center px-4 py-[clamp(0.75rem,3vh,2rem)] min-[769px]:px-10 [@media(max-height:700px)]:py-2">
+          <div className="mx-auto w-full max-w-[480px] lg:mr-0 lg:ml-auto">
             {children}
             <SignInFooter />
           </div>

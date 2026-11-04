@@ -177,6 +177,25 @@ test('the password field warns about Caps Lock and can show its characters', asy
   await expect(password).toHaveAttribute('type', 'password');
 });
 
+test('the sign-in form works from the keyboard with visible focus', async ({ page }) => {
+  await page.goto('/login');
+  await expect(page.getByLabel('Work email')).toBeFocused();
+  for (const target of [
+    page.getByLabel('Password', { exact: true }),
+    page.getByRole('button', { name: 'Show password' }),
+    page.getByLabel('Remember me'),
+    page.getByRole('button', { name: 'Forgot Password?' }),
+    page.getByRole('button', { name: 'Sign in', exact: true }),
+  ]) {
+    await page.keyboard.press('Tab');
+    await expect(target).toBeFocused();
+  }
+  const outline = await page
+    .getByRole('button', { name: 'Sign in', exact: true })
+    .evaluate((el) => getComputedStyle(el).outlineStyle);
+  expect(outline).toBe('solid');
+});
+
 test('an expired session returns to sign-in with a notice, then to the page', async ({ page }) => {
   await signIn(page, PM);
   // Replace the token with one whose expiry has passed (the payload is all the app reads).

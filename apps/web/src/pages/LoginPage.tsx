@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { SignInCard, SignInShell, TrustBadges } from '../components/SignInShell';
+import { focusRing, SignInCard, SignInShell, TrustBadges } from '../components/SignInShell';
 import { api, auth, type LoginResponse, safeNext } from '../lib/api';
 import { appConfig } from '../lib/appConfig';
 import {
@@ -267,7 +267,7 @@ export function LoginPage() {
             />
             <button
               type="button"
-              className="rounded text-[#3b4867] hover:text-[#1546d6]"
+              className={`rounded text-[#3b4867] hover:text-[#1546d6] ${focusRing}`}
               aria-label={showPassword ? 'Hide password' : 'Show password'}
               aria-controls="login-password"
               title={showPassword ? 'Hide password' : 'Show password'}
@@ -292,7 +292,7 @@ export function LoginPage() {
               <input
                 type="checkbox"
                 name="remember"
-                className="h-4 w-4 accent-[#1546d6]"
+                className={`h-4 w-4 accent-[#1546d6] ${focusRing}`}
                 checked={remember}
                 onChange={(e) => setRemember(e.target.checked)}
               />
@@ -300,7 +300,7 @@ export function LoginPage() {
             </label>
             <button
               type="button"
-              className="font-medium text-[#1546d6] hover:underline"
+              className={`rounded font-medium text-[#1546d6] hover:underline ${focusRing}`}
               aria-expanded={forgot}
               onClick={() => setForgot((f) => !f)}
             >
@@ -317,7 +317,7 @@ export function LoginPage() {
           <button
             type="submit"
             disabled={login.isPending}
-            className="mt-1 flex h-[clamp(2.5rem,5.2vh,3rem)] items-center justify-center gap-2 rounded-md bg-[#0f3bcf] text-[15px] font-semibold text-white shadow-sm hover:bg-[#0b31b0] disabled:cursor-wait disabled:opacity-80"
+            className={`mt-1 flex h-[clamp(2.5rem,5.2vh,3rem)] items-center justify-center gap-2 rounded-md bg-[#0f3bcf] text-[15px] font-semibold text-white shadow-sm hover:bg-[#0b31b0] disabled:cursor-wait disabled:opacity-80 ${focusRing}`}
           >
             {login.isPending && (
               <svg
@@ -359,7 +359,7 @@ export function LoginPage() {
             {/* TODO(M3): the API has no Azure AD (OIDC) sign-in yet; this is where it starts. */}
             <a
               href="/api/auth/sso/microsoft"
-              className="flex h-[clamp(2.5rem,5.2vh,3rem)] w-full items-center justify-center gap-3 rounded-md border border-[#b9c2d6] bg-white text-[15px] font-medium text-[#1f2b4d] hover:bg-[#f4f6fb]"
+              className={`flex h-[clamp(2.5rem,5.2vh,3rem)] w-full items-center justify-center gap-3 rounded-md border border-[#b9c2d6] bg-white text-[15px] font-medium text-[#1f2b4d] hover:bg-[#f4f6fb] ${focusRing}`}
             >
               <MicrosoftLogo />
               Sign in with Microsoft (SSO)
@@ -372,7 +372,7 @@ export function LoginPage() {
           {appConfig.adminEmail ? (
             <a
               href={`mailto:${appConfig.adminEmail}`}
-              className="font-medium text-[#1546d6] hover:underline"
+              className={`rounded font-medium text-[#1546d6] hover:underline ${focusRing}`}
             >
               Contact your administrator
             </a>

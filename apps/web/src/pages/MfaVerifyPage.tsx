@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { SignInCard, SignInShell, TrustBadges } from '../components/SignInShell';
+import { focusRing, SignInCard, SignInShell, TrustBadges } from '../components/SignInShell';
 import { ApiError, auth, safeNext } from '../lib/api';
 import { loginErrorMessage } from '../lib/loginForm';
 import {
@@ -106,8 +106,7 @@ export function MfaVerifyPage() {
     else boxes.current[digits.findIndex((d) => !d)]?.focus();
   }
 
-  const link =
-    'font-medium text-[#1546d6] hover:underline disabled:text-[#5b6785] disabled:no-underline';
+  const link = `rounded font-medium text-[#1546d6] hover:underline disabled:text-[#5b6785] disabled:no-underline ${focusRing}`;
 
   return (
     <SignInShell>
@@ -163,7 +162,7 @@ export function MfaVerifyPage() {
           <button
             type="submit"
             disabled={verify.isPending}
-            className="mt-[clamp(0.875rem,2.2vh,1.25rem)] flex h-[clamp(2.5rem,5.2vh,3rem)] w-full items-center justify-center gap-2 rounded-md bg-[#0f3bcf] text-[15px] font-semibold text-white shadow-sm hover:bg-[#0b31b0] disabled:cursor-wait disabled:opacity-80"
+            className={`mt-[clamp(0.875rem,2.2vh,1.25rem)] flex h-[clamp(2.5rem,5.2vh,3rem)] w-full items-center justify-center gap-2 rounded-md bg-[#0f3bcf] text-[15px] font-semibold text-white shadow-sm hover:bg-[#0b31b0] disabled:cursor-wait disabled:opacity-80 ${focusRing}`}
           >
             {verify.isPending ? 'Verifying…' : 'Verify'}
           </button>
@@ -193,7 +192,10 @@ export function MfaVerifyPage() {
         {otherMethod && (
           <p className="mt-3 rounded-md bg-[#eef3ff] px-3 py-2 text-sm text-[#1f2b4d]">
             No other sign-in methods are set up for your account. Contact your administrator, or{' '}
-            <Link to="/login" className="font-medium text-[#1546d6] hover:underline">
+            <Link
+              to="/login"
+              className={`rounded font-medium text-[#1546d6] hover:underline ${focusRing}`}
+            >
               go back to sign in
             </Link>
             .
