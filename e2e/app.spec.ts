@@ -9,7 +9,7 @@ async function signIn(page: Page, who: { email: string; password: string }, path
   await page.goto(path);
   await page.getByLabel('Email').fill(who.email);
   await page.getByLabel('Password').fill(who.password);
-  await page.getByRole('button', { name: 'Sign In', exact: true }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).not.toHaveURL(/\/login/);
 }
 
@@ -29,7 +29,7 @@ test('signed-out visitors go to sign-in and come back to the page they asked for
   await expect(page).toHaveURL(/\/login\?next=%2Fprojects/);
   await page.getByLabel('Email').fill(ADMIN.email);
   await page.getByLabel('Password').fill(ADMIN.password);
-  await page.getByRole('button', { name: 'Sign In', exact: true }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/projects$/);
   await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
 });
@@ -38,8 +38,8 @@ test('wrong password shows an error', async ({ page }) => {
   await page.goto('/login');
   await page.getByLabel('Email').fill(ADMIN.email);
   await page.getByLabel('Password').fill('not-the-password');
-  await page.getByRole('button', { name: 'Sign In', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('don’t match');
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('Email or password is incorrect.');
 });
 
 test('dashboard shows the KPIs and the project filter applies to them', async ({ page }) => {
@@ -171,7 +171,7 @@ test('a new person signs in with a temporary password and must choose their own'
   await page.getByRole('button', { name: 'Sign out' }).click();
   await page.getByLabel('Email').fill('nisha.verma@resourceboard.local');
   await page.getByLabel('Password').fill('Welcome2026');
-  await page.getByRole('button', { name: 'Sign In', exact: true }).click();
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/account\/password$/);
   await expect(page.getByRole('heading', { name: 'Choose your password' })).toBeVisible();
 
@@ -367,7 +367,7 @@ test('a sales user sees projects read-only and nothing else', async ({ page }) =
   await expect(page).toHaveURL(/\/leads$/);
 
   const status = await page.evaluate(async () => {
-    const token = localStorage.getItem('rb.token');
+    const token = localStorage.getItem('rb.token') ?? sessionStorage.getItem('rb.token');
     const res = await fetch('/api/tasks', { headers: { Authorization: `Bearer ${token}` } });
     return res.status;
   });
@@ -388,7 +388,7 @@ test('PMs can read the pipeline; team members have no Leads page', async ({ page
   await signIn(page, MEMBER);
   await expect(page.getByRole('link', { name: 'Leads', exact: true })).toHaveCount(0);
   const status = await page.evaluate(async () => {
-    const token = localStorage.getItem('rb.token');
+    const token = localStorage.getItem('rb.token') ?? sessionStorage.getItem('rb.token');
     return (await fetch('/api/leads', { headers: { Authorization: `Bearer ${token}` } })).status;
   });
   expect(status).toBe(403);

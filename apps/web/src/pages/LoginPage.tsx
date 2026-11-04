@@ -1,8 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { SedHubMark, SignInShell } from '../components/SignInShell';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { SignInShell, TrustBadges } from '../components/SignInShell';
 import { api, ApiError, auth, type LoginResponse, safeNext } from '../lib/api';
+import { appConfig } from '../lib/appConfig';
 
 const field =
   'flex h-[clamp(2.5rem,5.2vh,3rem)] items-center gap-3 rounded-md border border-[#cfd6e4] bg-white px-3.5 text-[#1f2b4d] focus-within:border-[#1546d6] focus-within:ring-2 focus-within:ring-[#1546d6]/15';
@@ -32,8 +33,9 @@ function MicrosoftLogo() {
 
 /**
  * Sign in with email and password, in the SedHub design. "Remember me" keeps the session in this
- * browser; without it the session ends when the browser closes. Microsoft sign-in (M3) and a
- * self-service password reset are not built yet, so those controls say so instead of failing.
+ * browser; without it (the default) the session ends when the browser closes. Microsoft sign-in
+ * shows only when VITE_SSO_ENABLED is on. There is no self-registration link: people ask their
+ * administrator (VITE_ADMIN_EMAIL) for access.
  */
 export function LoginPage() {
   const navigate = useNavigate();
@@ -42,13 +44,8 @@ export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(true);
+  const [remember, setRemember] = useState(false);
   const [forgot, setForgot] = useState(false);
-  // Sign-up is offered only when the server allows some email domains.
-  const { data: signup } = useQuery({
-    queryKey: ['signup-domains'],
-    queryFn: () => api<{ domains: string[] }>('/auth/signup'),
-  });
   const next = params.get('next');
 
   const login = useMutation({
@@ -74,27 +71,15 @@ export function LoginPage() {
 
   const error =
     login.error instanceof ApiError && login.error.status === 401
-      ? 'That email and password don’t match an active account.'
+      ? 'Email or password is incorrect.'
       : login.error?.message;
 
   return (
     <SignInShell>
       <section className="mx-auto w-full max-w-[460px] rounded-2xl bg-white px-8 py-[clamp(1.25rem,3.4vh,2.25rem)] shadow-[0_12px_40px_rgba(16,34,94,0.10)] sm:px-11">
-        <div className="mb-[clamp(1rem,3vh,2rem)] text-center [@media(max-height:700px)]:mb-3">
-          <div className="flex items-center justify-center gap-3">
-            <SedHubMark size={46} className="[@media(max-height:700px)]:size-10" />
-            <span className="text-[2.15rem] leading-none font-bold [@media(max-height:700px)]:text-[1.9rem] tracking-tight text-[#0b1f5c]">
-              SedHub
-            </span>
-          </div>
-          <p className="mt-2 text-[13px] font-medium text-[#1f2b4d]">
-            Enterprise Project &amp; Resource Management
-          </p>
-        </div>
-
-        <h1 className="text-[1.55rem] font-bold text-[#0b1f5c]">Sign In</h1>
+        <h1 className="text-[1.55rem] font-bold text-[#0b1f5c]">Sign in</h1>
         <p className="mb-[clamp(0.75rem,2vh,1.25rem)] text-[13px] text-[#3b4867]">
-          {next ? 'Sign in to continue to that page.' : 'Access your workspace'}
+          Access your workspace
         </p>
 
         <form onSubmit={onSubmit} className="flex flex-col gap-[clamp(0.625rem,1.6vh,1rem)]">
@@ -194,42 +179,46 @@ export function LoginPage() {
             disabled={login.isPending}
             className="mt-1 h-[clamp(2.5rem,5.2vh,3rem)] rounded-md bg-[#0f3bcf] text-[15px] font-semibold text-white shadow-sm hover:bg-[#0b31b0] disabled:opacity-70"
           >
-            {login.isPending ? 'Signing in…' : 'Sign In'}
+            {login.isPending ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
 
-        <div
-          className="my-[clamp(0.625rem,2vh,1.25rem)] flex items-center gap-4 text-[13px] text-[#5b6785]"
-          aria-hidden="true"
-        >
-          <span className="h-px flex-1 bg-[#d8deea]" />
-          or
-          <span className="h-px flex-1 bg-[#d8deea]" />
-        </div>
-        <button
-          type="button"
-          disabled
-          title="Microsoft sign-in is coming soon"
-          className="flex h-[clamp(2.5rem,5.2vh,3rem)] w-full cursor-not-allowed items-center justify-center gap-3 rounded-md border border-[#b9c2d6] bg-white text-[15px] font-medium text-[#1f2b4d] opacity-70"
-        >
-          <MicrosoftLogo />
-          Sign in with Microsoft (SSO)
-        </button>
-        <p className="mt-2 text-center text-[11px] text-[#5b6785]">
-          Microsoft sign-in is coming soon.
-        </p>
+        {appConfig.ssoEnabled && (
+          <>
+            <div
+              className="my-[clamp(0.625rem,2vh,1.25rem)] flex items-center gap-4 text-[13px] text-[#5b6785]"
+              aria-hidden="true"
+            >
+              <span className="h-px flex-1 bg-[#d8deea]" />
+              or
+              <span className="h-px flex-1 bg-[#d8deea]" />
+            </div>
+            {/* TODO(M3): the API has no Azure AD (OIDC) sign-in yet; this is where it starts. */}
+            <a
+              href="/api/auth/sso/microsoft"
+              className="flex h-[clamp(2.5rem,5.2vh,3rem)] w-full items-center justify-center gap-3 rounded-md border border-[#b9c2d6] bg-white text-[15px] font-medium text-[#1f2b4d] hover:bg-[#f4f6fb]"
+            >
+              <MicrosoftLogo />
+              Sign in with Microsoft (SSO)
+            </a>
+          </>
+        )}
 
-        {!!signup?.domains.length && (
-          <p className="mt-[clamp(0.75rem,2vh,1.25rem)] text-center text-[13px] text-[#3b4867]">
-            New here?{' '}
-            <Link
-              to={next ? `/signup?next=${encodeURIComponent(next)}` : '/signup'}
+        <p className="mt-[clamp(0.75rem,2vh,1.25rem)] text-center text-[13px] text-[#3b4867]">
+          Need access?{' '}
+          {appConfig.adminEmail ? (
+            <a
+              href={`mailto:${appConfig.adminEmail}`}
               className="font-medium text-[#1546d6] hover:underline"
             >
-              Create an account
-            </Link>
-          </p>
-        )}
+              Contact your administrator
+            </a>
+          ) : (
+            'Contact your administrator'
+          )}
+        </p>
+
+        <TrustBadges />
       </section>
     </SignInShell>
   );

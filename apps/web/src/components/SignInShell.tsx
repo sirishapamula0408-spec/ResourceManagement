@@ -205,58 +205,50 @@ function HelpLinks() {
   );
 }
 
-/** Small trust badges under the card; each states something the app really does. */
-function Badges() {
-  const badge = (icon: ReactNode, label: ReactNode) => (
-    <span className="flex items-center gap-2.5 text-xs leading-tight text-[#3b4867]">
-      <span className="text-[#3b4867]">{icon}</span>
-      <span>{label}</span>
-    </span>
-  );
-  const shield = (
-    <svg {...iconProps} width={26} height={26} strokeWidth={1.5}>
-      <path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6Z" />
-      <path d="m9 12 2 2 4-4" />
-    </svg>
-  );
-  const lock = (
-    <svg {...iconProps} width={26} height={26} strokeWidth={1.5}>
-      <rect x="5" y="10" width="14" height="10" rx="2" />
-      <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v2" />
-    </svg>
-  );
-  const items = [
-    badge(
-      shield,
-      <>
-        Secure sign-in
-        <br />
-        (hashed passwords)
-      </>,
-    ),
-    badge(
-      lock,
-      <>
-        Role-Based
-        <br />
-        Access Control
-      </>,
-    ),
-    badge(
-      shield,
-      <>
-        Private to
-        <br />
-        your company
-      </>,
-    ),
+/**
+ * Trust badges for the foot of the sign-in card. Each is true: TLS comes from the deployment
+ * (nginx/HTTPS), roles are enforced by the API, and sign-ins are written to the audit log.
+ */
+export function TrustBadges() {
+  const icon = { ...iconProps, width: 20, height: 20, strokeWidth: 1.6 };
+  const items: { label: string; icon: ReactNode }[] = [
+    {
+      label: 'Encrypted connection (TLS)',
+      icon: (
+        <svg {...icon}>
+          <rect x="5" y="10" width="14" height="10" rx="2" />
+          <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v2" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Role-based access control',
+      icon: (
+        <svg {...icon}>
+          <path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6Z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+      ),
+    },
+    {
+      label: 'Audit-logged access',
+      icon: (
+        <svg {...icon}>
+          <path d="M7 3h7l4 4v14H7Z" />
+          <path d="M14 3v4h4M10 12h5M10 16h5" />
+        </svg>
+      ),
+    },
   ];
   return (
-    <ul className="mx-auto mt-[clamp(1rem,3vh,2rem)] flex [@media(max-height:700px)]:mt-3 max-w-[460px] flex-wrap items-center justify-center gap-x-5 gap-y-3">
-      {items.map((item, i) => (
-        <li key={i} className="flex items-center gap-5">
-          {i > 0 && <span className="hidden h-9 w-px bg-[#cfd6e4] sm:block" aria-hidden />}
-          {item}
+    <ul className="mt-[clamp(0.875rem,2.4vh,1.5rem)] grid grid-cols-3 gap-2 border-t border-[#e3e8f2] pt-[clamp(0.625rem,1.8vh,1rem)] [@media(max-height:700px)]:mt-3">
+      {items.map((item) => (
+        <li
+          key={item.label}
+          className="flex flex-col items-center gap-1 text-center text-[11px] leading-tight text-[#3b4867]"
+        >
+          {item.icon}
+          {item.label}
         </li>
       ))}
     </ul>
@@ -319,7 +311,6 @@ export function SignInShell({ children }: { children: ReactNode }) {
         <div className="flex flex-1 flex-col justify-center px-4 py-[clamp(0.75rem,3vh,2rem)] sm:px-10 [@media(max-height:700px)]:py-2">
           <div className="mx-auto w-full max-w-[460px] lg:mr-auto lg:ml-[clamp(0.5rem,3vw,3rem)]">
             {children}
-            <Badges />
           </div>
         </div>
       </main>
