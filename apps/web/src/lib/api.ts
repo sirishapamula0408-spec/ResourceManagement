@@ -511,3 +511,20 @@ export interface NotificationList {
   items: AppNotification[];
   unreadCount: number;
 }
+
+/** One day of a sprint burndown; remaining work is null for days still to come. */
+export interface BurndownDay {
+  date: string;
+  remainingHours: number | null;
+  remainingTasks: number | null;
+  idealHours: number;
+  idealTasks: number;
+}
+
+/** GET /sprints/:id/burndown. */
+export interface Burndown {
+  sprint: { id: string; name: string; status: SprintStatus; startDate: string; endDate: string };
+  days: BurndownDay[];
+  totalHours: number;
+  totalTasks: number;
+}

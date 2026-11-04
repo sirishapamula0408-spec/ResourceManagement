@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { BurndownChart } from '../../components/BurndownChart';
 import { PageHeader } from '../../components/PageHeader';
 import { Avatar, EpicChip, StatusPill } from '../../components/tasks/taskUi';
 import {
@@ -111,12 +112,18 @@ export function ProjectSummary() {
                   ` – ${dueLabel(active.endDate)} · ${Math.max(0, daysLeft(active.endDate))} days left`}
               </p>
               <Progress done={active.done} tasks={active.tasks} />
-              <Link
-                to={`/projects/${project.code}/board`}
-                className="text-sm text-teal hover:underline"
-              >
-                Open the board
-              </Link>
+              {active.startDate && active.endDate && <BurndownChart sprintId={active.id} compact />}
+              <span className="flex gap-4 text-sm">
+                <Link to={`/projects/${project.code}/board`} className="text-teal hover:underline">
+                  Open the board
+                </Link>
+                <Link
+                  to={`/projects/${project.code}/sprints`}
+                  className="text-teal hover:underline"
+                >
+                  Sprint burndown
+                </Link>
+              </span>
             </div>
           ) : (
             <p className="text-sm text-muted">

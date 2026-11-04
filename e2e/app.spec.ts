@@ -1031,3 +1031,28 @@ test('a PM assigns a task; the assignee sees it under the bell and opens it', as
     }),
   ).toBeVisible();
 });
+
+test('the Sprints view and the Summary show the active sprint’s burndown', async ({ page }) => {
+  await signIn(page, PM, '/projects/ATLAS/sprints');
+  const burndown = page.getByRole('region', { name: 'Burndown · ATLAS Sprint 7' });
+  await expect(burndown).toBeVisible();
+  const chart = burndown.getByRole('figure', { name: 'Burndown of ATLAS Sprint 7' });
+  await expect(chart.locator('.recharts-line')).toHaveCount(2); // remaining and ideal
+  await expect(chart).toContainText('remaining on');
+  await expect(chart.getByRole('table')).toContainText('Ideal');
+
+  // Hours by default; switch to tasks.
+  await chart.getByRole('button', { name: 'Tasks', exact: true }).click();
+  await expect(chart.getByRole('button', { name: 'Tasks', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(chart).toContainText(/\d+ tasks? of \d+ tasks remaining/);
+
+  await page
+    .getByRole('navigation', { name: 'Project views' })
+    .getByRole('link', { name: 'Summary', exact: true })
+    .click();
+  const card = page.getByRole('region', { name: 'Active sprint' });
+  await expect(card.getByRole('figure', { name: 'Burndown of ATLAS Sprint 7' })).toBeVisible();
+});

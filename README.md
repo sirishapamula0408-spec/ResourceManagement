@@ -155,6 +155,7 @@ Prisma 7 does not regenerate the client automatically in every case; run `npm ru
 | GET    | `/api/notifications/count`               | Bearer                | `{ unreadCount }`                           |
 | POST   | `/api/notifications/:id/read`            | Bearer                | own only; returns `{ unreadCount }`         |
 | POST   | `/api/notifications/read-all`            | Bearer                | returns `{ unreadCount }`                   |
+| GET    | `/api/sprints/:id/burndown`              | Bearer                | remaining vs ideal per day; needs dates     |
 
 Dashboard endpoints take `?from=YYYY-MM-DD&weeks=8&projectId=` (default window: two weeks before the
 current week, eight weeks long). Utilization follows the scope plan: each non-backlog task's estimate is
@@ -211,6 +212,19 @@ regains focus); opening one marks it read and goes to its task. You get one when
 
 Never for your own actions. A team member only sees notifications about tasks they can still see. Sales
 users have no bell (no task access). Notifications are kept; there is no automatic clean-up yet.
+
+## Sprint burndown
+
+The project's Sprints view shows a burndown for the active sprint (or the one picked with **Burndown** on
+its row), in hours or tasks, and the Summary's Active sprint card a compact one.
+`GET /api/sprints/:id/burndown` returns `{ sprint, days: [{ date, remainingHours, remainingTasks, idealHours,
+idealTasks }], totalHours, totalTasks }` for every day from the start to the end date; days after today have
+`null` remaining work. Remaining = current estimates (and count) of the tasks in the sprint and not Done at
+the end of that day, rebuilt from the task history (status and sprint changes) where it exists and from
+`completedAt` and current sprint membership where it doesn't (so days before history was recorded are an
+approximation; see `apps/api/src/modules/planning/burndown.service.ts`). The ideal line runs from the
+current scope to zero on the last day. Completing a sprint now records the tasks it sends back to the
+backlog in their history, so a completed sprint's chart keeps them.
 
 ## Reports
 

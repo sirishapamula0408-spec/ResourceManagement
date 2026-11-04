@@ -2,6 +2,7 @@ import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../lib/http.js';
 import type { AuthUser } from '../../middleware/auth.js';
 import type { SprintStatus } from '../../generated/prisma/enums.js';
+import { record } from '../tasks/history.service.js';
 import { canManageProject } from '../tasks/tasks.service.js';
 
 /** Sprints and epics belong to one project; an admin or a PM on it manages them. */
@@ -92,6 +93,12 @@ export async function updateSprint(
     if (active) throw new HttpError(409, `Complete ${active.name} before starting another sprint`);
   }
   const closing = input.status === 'CLOSED' && sprint.status !== 'CLOSED';
+  const unfinished = closing
+    ? await prisma.task.findMany({
+        where: { sprintId: id, status: { not: 'DONE' } },
+        select: { id: true },
+      })
+    : [];
   const [updated] = await prisma.$transaction([
     prisma.sprint.update({ where: { id }, data: input }),
     ...(closing
@@ -103,6 +110,10 @@ export async function updateSprint(
         ]
       : []),
   ]);
+  // In the task history too, so the sprint's burndown still counts them.
+  for (const t of unfinished) {
+    await record(user.id, t.id, 'task.update', { sprintId: id }, { sprintId: null });
+  }
   return updated;
 }
 

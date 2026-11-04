@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { BurndownChart } from '../components/BurndownChart';
 import { Dialog, Field } from '../components/Dialog';
 import { PageHeader } from '../components/PageHeader';
 import { RowActions } from '../components/RowActions';
@@ -241,6 +242,7 @@ export function SprintsPage({ project }: { project: Project }) {
   const qc = useQueryClient();
   const [toastMessage, showToast] = useToast();
   const [editingSprint, setEditingSprint] = useState<Sprint | 'new' | null>(null);
+  const [chartFor, setChartFor] = useState<string | null>(null);
   const { sprints } = usePlanningLookups();
   const { canManageProject } = useTaskPermissions();
   const manages = canManageProject(project.id);
@@ -273,6 +275,12 @@ export function SprintsPage({ project }: { project: Project }) {
   const shownSprints = sprints
     .filter((s) => s.projectId === project.id)
     .sort((a, b) => rank[a.status] - rank[b.status]);
+  // The burndown shows the chosen sprint, else the active one, else the latest with dates.
+  const dated = shownSprints.filter((s) => s.startDate && s.endDate);
+  const charted =
+    dated.find((s) => s.id === chartFor) ??
+    dated.find((s) => s.status === 'ACTIVE') ??
+    [...dated].sort((a, b) => b.startDate!.localeCompare(a.startDate!))[0];
 
   const th =
     'border-b border-line px-2.5 py-2 text-left font-semibold whitespace-nowrap text-muted';
@@ -291,6 +299,18 @@ export function SprintsPage({ project }: { project: Project }) {
           </button>
         )}
       </PageHeader>
+
+      {charted && (
+        <section
+          className="mb-4 min-w-0 rounded-lg border border-line bg-panel p-4 shadow-[0_1px_0_rgba(23,35,59,0.06)]"
+          aria-labelledby="burndown-heading"
+        >
+          <h2 id="burndown-heading" className="mb-2 font-semibold">
+            Burndown · {charted.name}
+          </h2>
+          <BurndownChart key={charted.id} sprintId={charted.id} />
+        </section>
+      )}
 
       <section
         className="min-w-0 rounded-lg border border-line bg-panel shadow-[0_1px_0_rgba(23,35,59,0.06)]"
@@ -336,40 +356,57 @@ export function SprintsPage({ project }: { project: Project }) {
                     <Progress done={s.done} tasks={s.tasks} />
                   </td>
                   <td className={`${td} whitespace-nowrap`}>
-                    {manages && (
-                      <span className="flex items-center justify-end gap-1.5">
-                        {s.status === 'PLANNED' && (
-                          <button
-                            type="button"
-                            className={buttonClass()}
-                            disabled={setStatus.isPending}
-                            onClick={() => setStatus.mutate({ sprint: s, status: 'ACTIVE' })}
-                          >
-                            Start
-                          </button>
-                        )}
-                        {s.status === 'ACTIVE' && (
-                          <button
-                            type="button"
-                            className={buttonClass()}
-                            disabled={setStatus.isPending}
-                            onClick={() =>
-                              window.confirm(
-                                `Complete ${s.name}? ${s.tasks - s.done} unfinished tasks go back to the backlog.`,
-                              ) && setStatus.mutate({ sprint: s, status: 'CLOSED' })
-                            }
-                          >
-                            Complete
-                          </button>
-                        )}
-                        <RowActions
-                          onEdit={() => setEditingSprint(s)}
-                          onDelete={() => remove.mutate(s)}
-                          deleteConfirm={`Delete ${s.name}? Its tasks are kept, out of any sprint.`}
-                          busy={remove.isPending}
-                        />
-                      </span>
-                    )}
+                    <span className="flex items-center justify-end gap-1.5">
+                      {s.startDate && s.endDate && (
+                        <button
+                          type="button"
+                          className={`rounded-[3px] px-2 py-1 text-xs font-medium ${
+                            charted?.id === s.id
+                              ? 'bg-teal-soft text-teal'
+                              : 'text-muted hover:bg-btn'
+                          }`}
+                          aria-pressed={charted?.id === s.id}
+                          aria-label={`Show the burndown of ${s.name}`}
+                          onClick={() => setChartFor(s.id)}
+                        >
+                          Burndown
+                        </button>
+                      )}
+                      {manages && (
+                        <>
+                          {s.status === 'PLANNED' && (
+                            <button
+                              type="button"
+                              className={buttonClass()}
+                              disabled={setStatus.isPending}
+                              onClick={() => setStatus.mutate({ sprint: s, status: 'ACTIVE' })}
+                            >
+                              Start
+                            </button>
+                          )}
+                          {s.status === 'ACTIVE' && (
+                            <button
+                              type="button"
+                              className={buttonClass()}
+                              disabled={setStatus.isPending}
+                              onClick={() =>
+                                window.confirm(
+                                  `Complete ${s.name}? ${s.tasks - s.done} unfinished tasks go back to the backlog.`,
+                                ) && setStatus.mutate({ sprint: s, status: 'CLOSED' })
+                              }
+                            >
+                              Complete
+                            </button>
+                          )}
+                          <RowActions
+                            onEdit={() => setEditingSprint(s)}
+                            onDelete={() => remove.mutate(s)}
+                            deleteConfirm={`Delete ${s.name}? Its tasks are kept, out of any sprint.`}
+                            busy={remove.isPending}
+                          />
+                        </>
+                      )}
+                    </span>
                   </td>
                 </tr>
               ))}

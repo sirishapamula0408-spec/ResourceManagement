@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { SprintStatus } from '../../generated/prisma/enums.js';
 import { parse } from '../../lib/http.js';
 import { visibleProjectIds } from '../../lib/visibility.js';
+import { sprintBurndown } from './burndown.service.js';
 import * as service from './planning.service.js';
 
 const listQuery = z.object({ projectId: z.string().optional() });
@@ -44,6 +45,11 @@ export const planningRouter = Router();
 planningRouter.get('/sprints', async (req, res) => {
   const { projectId } = parse(listQuery, req.query);
   res.json(await service.listSprints(projectId, await visibleProjectIds(req.user!)));
+});
+
+// Remaining work per day of the sprint, with the ideal line (M4 JIRA-lite).
+planningRouter.get('/sprints/:id/burndown', async (req, res) => {
+  res.json(await sprintBurndown(String(req.params.id), await visibleProjectIds(req.user!)));
 });
 
 planningRouter.post('/sprints', async (req, res) => {
