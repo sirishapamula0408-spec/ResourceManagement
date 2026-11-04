@@ -1,9 +1,13 @@
 import request from 'supertest';
-import { afterAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it, vi } from 'vitest';
 import { createApp } from '../src/app.js';
 import { prisma } from '../src/lib/prisma.js';
 
-// Tests run outside production, so the sample domain (resourceboard.local) may sign up.
+// Sign-up is off unless SIGNUP_DOMAINS lists domains; turn it on for the sample domain before
+// the config is read (vi.hoisted runs ahead of the imports).
+vi.hoisted(() => {
+  process.env.SIGNUP_DOMAINS = 'resourceboard.local';
+});
 const app = createApp();
 const email = `signup.test.${Date.now()}@resourceboard.local`;
 

@@ -206,13 +206,28 @@ values and contact details) to an existing database
 
 ## Sign-up
 
-People with a company email address can create their own account from the login page (**Create an
-account**). Allowed domains come from `SIGNUP_DOMAINS` (comma-separated, e.g. `example.com,example.in`);
-when it is empty, sign-up is off and admins add people on the Team page. Outside production it defaults
-to `resourceboard.local`. New accounts are team members with no projects, signed in straight away; an
-admin changes their role and staffing. Emails are not verified, so only list domains whose addresses
+Self-registration is **off by default** in every environment: admins add people on the Team page, and
+the login page only says **Need access? Contact your administrator**. To turn it on, list the allowed
+email domains in `SIGNUP_DOMAINS` (comma-separated, e.g. `example.com,example.in`); people with such an
+address can then create an account at `/signup`. New accounts are team members with no projects,
+signed in straight away; an admin changes their role and staffing. Emails are not verified, so only list domains whose addresses
 you trust, and review new people on the Team page. `POST /api/auth/signup` allows 20 attempts an hour
 per address.
+
+## Sign-in security
+
+- An unknown email and a wrong password get the same `401` (and take about as long: a bcrypt check runs
+  either way). A disabled account is reported (`403`, `details.code: ACCOUNT_DISABLED`) only after the
+  right password.
+- 5 failed sign-ins for one email within 15 minutes lock it for 15 minutes: `423` with a `Retry-After`
+  header and `details.retryAfterSeconds`. A successful sign-in clears the count. Each client address may
+  also fail 20 times per 15 minutes (`429`). Both are kept in memory, which suits the single API
+  instance; several instances would need a shared store.
+- Sign-ins, failures and lockouts are written to the audit log (`auth.login`, `auth.login_failed`,
+  `auth.locked`, with the client address).
+- "Encrypted connection (TLS)" on the sign-in page relies on the deployment: the bundled nginx
+  (`deploy/nginx.conf`) listens on plain HTTP, so put HTTPS in front of it (load balancer or reverse
+  proxy), as the Claude connector also requires.
 
 ## Claude connector (MCP)
 

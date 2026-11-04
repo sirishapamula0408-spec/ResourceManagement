@@ -23,8 +23,9 @@ const schema = z.object({
    */
   PUBLIC_URL: z.preprocess((v) => v || undefined, z.url().optional()),
   /**
-   * Email domains allowed to sign up on the login page, comma-separated, e.g.
-   * "example.com,example.in". Empty turns sign-up off (admins add people on the Team page).
+   * Email domains allowed to self-register at /signup, comma-separated, e.g.
+   * "example.com,example.in". Unset or empty (the default) turns sign-up off: admins add people
+   * on the Team page.
    */
   SIGNUP_DOMAINS: z.string().optional(),
 });
@@ -41,11 +42,8 @@ export const config = {
   PUBLIC_URL:
     parsed.data.PUBLIC_URL ??
     (parsed.data.NODE_ENV === 'production' ? undefined : 'http://localhost:5173'),
-  // Outside production, the sample data's domain can sign up so the flow is easy to try.
-  SIGNUP_DOMAINS: (
-    parsed.data.SIGNUP_DOMAINS ??
-    (parsed.data.NODE_ENV === 'production' ? '' : 'resourceboard.local')
-  )
+  // Self-registration is off unless an operator lists domains (in every environment).
+  SIGNUP_DOMAINS: (parsed.data.SIGNUP_DOMAINS ?? '')
     .split(',')
     .map((d) => d.trim().toLowerCase().replace(/^@/, ''))
     .filter(Boolean),

@@ -1,18 +1,70 @@
 import bcrypt from 'bcryptjs';
 import { config } from '../../config.js';
-import type { Person } from '../../generated/prisma/client.js';
+import type { Person, Prisma } from '../../generated/prisma/client.js';
 import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../lib/http.js';
 import { signToken } from '../../middleware/auth.js';
+import { clearFailures, lockedFor, recordFailure } from './lockout.js';
 
 export const hashPassword = (password: string) => bcrypt.hash(password, 10);
 
-export async function login(email: string, password: string) {
-  const person = await prisma.person.findUnique({ where: { email: email.toLowerCase() } });
-  if (!person?.passwordHash || !person.active) throw new HttpError(401, 'Invalid credentials');
+// Compared against when there is no account (or no password), so every attempt costs one bcrypt
+// check and an unknown email takes as long as a wrong password.
+const DUMMY_HASH = bcrypt.hashSync('no-account-has-this-password', 10);
 
-  const ok = await bcrypt.compare(password, person.passwordHash);
-  if (!ok) throw new HttpError(401, 'Invalid credentials');
+type AuthAction = 'auth.login' | 'auth.login_failed' | 'auth.locked';
+
+/** Sign-in events in the audit log ("Audit-logged access" on the sign-in page). */
+function audit(action: AuthAction, personId: string | null, ip?: string, after?: object) {
+  return prisma.auditLog.create({
+    data: {
+      actorId: action === 'auth.login' ? personId : null,
+      action,
+      entityType: 'Person',
+      entityId: personId,
+      ip,
+      after: after as Prisma.InputJsonValue | undefined,
+    },
+  });
+}
+
+const lockedError = (retryAfterSeconds: number) =>
+  new HttpError(
+    423,
+    'Too many failed sign-in attempts. Try again later or contact your administrator.',
+    { code: 'ACCOUNT_LOCKED', retryAfterSeconds },
+  );
+
+/**
+ * Email and password sign-in. An unknown email and a wrong password get the same 401. After
+ * MAX_FAILURES failures the address is locked (423 with retryAfterSeconds). A disabled account
+ * is only reported (403 ACCOUNT_DISABLED) once the password has been shown to be right.
+ */
+export async function login(email: string, password: string, ip?: string) {
+  const key = email.toLowerCase();
+  const wait = lockedFor(key);
+  if (wait) throw lockedError(wait);
+
+  const person = await prisma.person.findUnique({ where: { email: key } });
+  const matches = await bcrypt.compare(password, person?.passwordHash ?? DUMMY_HASH);
+  if (!person?.passwordHash || !matches) {
+    const { locked, retryAfterSeconds } = recordFailure(key);
+    await audit('auth.login_failed', person?.id ?? null, ip, { email: key });
+    if (locked) {
+      await audit('auth.locked', person?.id ?? null, ip, { email: key, retryAfterSeconds });
+      throw lockedError(retryAfterSeconds);
+    }
+    throw new HttpError(401, 'Invalid credentials');
+  }
+  if (!person.active) {
+    await audit('auth.login_failed', person.id, ip, { email: key, reason: 'disabled' });
+    throw new HttpError(403, 'This account is disabled. Contact your administrator.', {
+      code: 'ACCOUNT_DISABLED',
+    });
+  }
+
+  clearFailures(key);
+  await audit('auth.login', person.id, ip);
   return session(person);
 }
 
