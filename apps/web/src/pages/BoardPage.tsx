@@ -72,6 +72,11 @@ function TaskCard({ task, personNames, projectCodes, onOpen }: CardProps & { tas
     >
       <div className="flex items-center gap-2 text-xs text-muted">
         <span className="font-semibold">{task.key}</span>
+        {task.parent && (
+          <span title={`Sub-task of ${task.parent.key} · ${task.parent.title}`}>
+            ↳ {task.parent.key}
+          </span>
+        )}
         <span className="flex-1">{TYPE_LABEL[task.type]}</span>
         <PriorityBadge priority={task.priority} />
       </div>
@@ -301,7 +306,15 @@ export function BoardPage() {
         </DndContext>
       )}
       <Toast message={toastMessage} />
-      {open && <TaskDialog task={open} onClose={() => setOpen(null)} onSaved={showToast} />}
+      {open && (
+        <TaskDialog
+          key={open.id}
+          task={open}
+          onClose={() => setOpen(null)}
+          onSaved={showToast}
+          onOpenTask={setOpen}
+        />
+      )}
     </>
   );
 }

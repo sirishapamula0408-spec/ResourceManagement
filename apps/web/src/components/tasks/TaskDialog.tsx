@@ -12,6 +12,7 @@ import { errorMessage, inputClass } from '../../lib/forms';
 import { fmt } from '../../lib/theme';
 import { Dialog, Field } from '../Dialog';
 import { TaskComments } from './TaskComments';
+import { ParentLink, TaskSubtasks } from './TaskSubtasks';
 import { LabelInput } from './taskUi';
 import {
   currentTaskFilter,
@@ -40,9 +41,12 @@ export function TaskDialog({
   task,
   onClose,
   onSaved,
+  onOpenTask,
 }: {
   task: Task | null;
   onClose: () => void;
+  /** Open another task (a sub-task or the parent) in place of this one. */
+  onOpenTask?: (task: Task) => void;
   /** Called with a short confirmation, e.g. for a toast. */
   onSaved?: (message: string) => void;
 }) {
@@ -211,6 +215,7 @@ export function TaskDialog({
             : undefined
       }
     >
+      {task && <ParentLink task={task} onOpen={onOpenTask} />}
       <Field label="Summary" full>
         <input
           className={inputClass}
@@ -403,6 +408,7 @@ export function TaskDialog({
           onChange={(e) => set({ description: e.target.value })}
         />
       </Field>
+      {task && !task.parent && <TaskSubtasks task={task} canAdd={manages} onOpen={onOpenTask} />}
       {task && <TaskComments taskId={task.id} personNames={personNames} />}
     </Dialog>
   );

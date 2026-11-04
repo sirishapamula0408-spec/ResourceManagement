@@ -48,6 +48,7 @@ const taskFields = z.object({
   sprintId: z.string().min(1).nullable().optional(),
   epicId: z.string().min(1).nullable().optional(),
   labels: z.array(label).max(10, 'Use at most 10 labels').optional(),
+  parentId: z.string().min(1).nullable().optional(),
 });
 
 // Scope plan: due date cannot be before start.

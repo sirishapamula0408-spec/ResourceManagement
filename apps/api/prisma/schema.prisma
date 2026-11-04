@@ -285,6 +285,10 @@ model Task {
   dueDate       DateTime?    @db.Date
   /// When the task last moved to Done (cleared if it is reopened); drives "completed" in reports.
   completedAt   DateTime?
+  /// Parent task when this is a sub-task (M4 JIRA-lite); one level deep, same project.
+  parentId      String?
+  parent        Task?        @relation("Subtasks", fields: [parentId], references: [id], onDelete: SetNull)
+  subtasks      Task[]       @relation("Subtasks")
   /// Free-form labels (M4 JIRA-lite), e.g. ["frontend", "customer-request"].
   labels        String[]     @default([])
   epicId        String?
@@ -302,6 +306,7 @@ model Task {
   @@index([assigneeId])
   @@index([sprintId])
   @@index([epicId])
+  @@index([parentId])
 }
 
 /// A comment on a task (M4 JIRA-lite). Its author may edit or delete it; admins may delete any.

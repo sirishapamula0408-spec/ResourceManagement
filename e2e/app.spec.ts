@@ -374,6 +374,7 @@ test('PMs can read the pipeline; team members have no Leads page', async ({ page
 
 test('a PM reorders cards within a column', async ({ page }) => {
   await signIn(page, PM, '/board');
+  await page.locator('div.font-medium').first().waitFor(); // board loaded
   // Earlier tests move and delete cards, so use whichever column has two or more.
   let column = page.getByRole('region', { name: 'To do' });
   for (const name of ['To do', 'In progress', 'Backlog', 'In review', 'Done']) {

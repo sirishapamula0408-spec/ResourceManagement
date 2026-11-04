@@ -206,6 +206,9 @@ export interface Task {
   commentCount: number;
   /** Lowercase labels, e.g. ["frontend", "customer-request"]. */
   labels: string[];
+  /** Set when this is a sub-task. */
+  parent: { id: string; key: string; title: string } | null;
+  subtaskCount: number;
 }
 
 /** A label in use and how many tasks carry it. */

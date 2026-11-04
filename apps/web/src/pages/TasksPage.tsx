@@ -319,7 +319,20 @@ export function TasksPage() {
                   )}
                   <td className={`${td} text-xs font-semibold text-muted`}>{t.key}</td>
                   <td className={td}>
+                    {t.parent && (
+                      <span
+                        className="mr-1.5 text-xs text-muted"
+                        title={`Sub-task of ${t.parent.title}`}
+                      >
+                        ↳ {t.parent.key}
+                      </span>
+                    )}
                     {t.title}
+                    {t.subtaskCount > 0 && (
+                      <span className="ml-1.5 text-xs text-muted">
+                        · {t.subtaskCount} {t.subtaskCount === 1 ? 'sub-task' : 'sub-tasks'}
+                      </span>
+                    )}
                     {(t.epic || t.labels.length > 0) && (
                       <span className="ml-2 inline-flex flex-wrap items-center gap-1 align-middle">
                         {t.epic && <EpicChip epic={t.epic} />}
@@ -371,7 +384,15 @@ export function TasksPage() {
         </div>
         <Pagination paged={paged} noun="tasks" />
       </section>
-      {open && <TaskDialog task={open} onClose={() => setOpen(null)} onSaved={showToast} />}
+      {open && (
+        <TaskDialog
+          key={open.id}
+          task={open}
+          onClose={() => setOpen(null)}
+          onSaved={showToast}
+          onOpenTask={setOpen}
+        />
+      )}
       <Toast message={toastMessage} />
     </>
   );

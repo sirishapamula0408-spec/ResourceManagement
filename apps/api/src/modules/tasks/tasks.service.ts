@@ -45,7 +45,10 @@ export async function listTasks({ label, ...filter }: TaskFilter, scope: TaskSco
       project: { select: { id: true, code: true, name: true } },
       sprint: { select: { id: true, name: true, status: true } },
       epic: { select: { id: true, name: true, color: true } },
-      _count: { select: { comments: true } },
+      parent: {
+        select: { id: true, number: true, title: true, project: { select: { code: true } } },
+      },
+      _count: { select: { comments: true, subtasks: true } },
     },
   });
 
@@ -57,9 +60,15 @@ export async function listTasks({ label, ...filter }: TaskFilter, scope: TaskSco
   });
   const loggedByTask = new Map(logged.map((l) => [l.taskId, Number(l._sum.hours ?? 0)]));
 
-  return tasks.map(({ _count, ...t }) => ({
+  return tasks.map(({ _count, parent, ...t }) => ({
     ...t,
+    parent: parent && {
+      id: parent.id,
+      key: taskKey(parent.project.code, parent.number),
+      title: parent.title,
+    },
     commentCount: _count.comments,
+    subtaskCount: _count.subtasks,
     key: taskKey(t.project.code, t.number),
     loggedHours: loggedByTask.get(t.id) ?? 0,
   }));
@@ -159,6 +168,32 @@ async function requirePlanning(
   }
 }
 
+/**
+ * Sub-tasks are one level deep, as in JIRA: the parent is on the same project and is not itself
+ * a sub-task, and a task that has sub-tasks cannot become one.
+ */
+async function requireParent(
+  projectId: string,
+  parentId: string | null | undefined,
+  selfId?: string,
+) {
+  if (!parentId) return;
+  const fail = (message: string) => {
+    throw new HttpError(400, message, { fieldErrors: { parentId: [message] } });
+  };
+  if (parentId === selfId) fail('A task cannot be its own parent');
+  const parent = await prisma.task.findUnique({
+    where: { id: parentId },
+    select: { projectId: true, parentId: true },
+  });
+  if (!parent || parent.projectId !== projectId)
+    fail('The parent must be a task on the same project');
+  if (parent!.parentId) fail('A sub-task cannot have sub-tasks of its own');
+  if (selfId && (await prisma.task.count({ where: { parentId: selfId } }))) {
+    fail('This task has sub-tasks, so it cannot become a sub-task');
+  }
+}
+
 /** Completion date follows the status: set on moving to Done, cleared when reopened. */
 function completion(from: TaskStatus | undefined, to: TaskStatus) {
   if (to === 'DONE' && from !== 'DONE') return { completedAt: new Date() };
@@ -191,12 +226,15 @@ export interface TaskInput {
   sprintId?: string | null;
   epicId?: string | null;
   labels?: string[];
+  /** Parent task, making this a sub-task. */
+  parentId?: string | null;
 }
 
 export async function createTask(user: AuthUser, input: TaskInput) {
   await requireManage(user, input.projectId);
   await requireMember(input.projectId, input.assigneeId);
   await requirePlanning(input.projectId, input);
+  await requireParent(input.projectId, input.parentId);
   return prisma.task.create({
     data: {
       ...input,
@@ -207,6 +245,9 @@ export async function createTask(user: AuthUser, input: TaskInput) {
     },
   });
 }
+
+const changesProjectOf = (task: { projectId: string }, projectId: string) =>
+  projectId !== task.projectId;
 
 /** Fields a task's assignee may change without managing the project. */
 const ASSIGNEE_FIELDS = new Set(['status']);
@@ -243,6 +284,22 @@ export async function updateTask(user: AuthUser, id: string, input: Partial<Task
   };
   await requirePlanning(projectId, planning);
 
+  // A sub-task stays on its parent's project: moving project drops the link, and a parent
+  // cannot move away from its sub-tasks.
+  const parentId =
+    input.parentId !== undefined
+      ? input.parentId
+      : changesProjectOf(task, projectId)
+        ? null
+        : undefined;
+  if (changesProjectOf(task, projectId) && (await prisma.task.count({ where: { parentId: id } }))) {
+    throw new HttpError(
+      400,
+      'Move or detach its sub-tasks before moving this task to another project',
+    );
+  }
+  await requireParent(projectId, parentId, id);
+
   // A task changing column (or project) goes to the bottom of its new column; a task moved to
   // another project takes the next key there.
   const status = input.status ?? task.status;
@@ -254,6 +311,7 @@ export async function updateTask(user: AuthUser, id: string, input: Partial<Task
       ...input,
       ...(input.labels ? { labels: [...new Set(input.labels)] } : {}),
       ...planning,
+      parentId,
       ...completion(task.status, status),
       ...(moved ? { order: await nextOrder(status) } : {}),
       ...(changesProject ? { number: await nextTaskNumber(projectId) } : {}),
