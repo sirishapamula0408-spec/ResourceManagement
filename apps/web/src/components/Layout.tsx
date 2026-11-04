@@ -79,7 +79,7 @@ export function Layout() {
           {role && ROLE_LABEL[role]}
         </Link>
         <button
-          className="rounded-md border border-line bg-panel px-3 py-1.5 font-medium hover:bg-panel2"
+          className={buttonClass()}
           onClick={() => {
             auth.clear();
             // Drop everything cached for this user so the next person never sees it.

@@ -1,21 +1,22 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens from the Resource Board prototype. Use them as Tailwind colours
+ * Design tokens, styled after JIRA: white pages, grey borders and a blue accent ("teal" is the
+ * accent token's historical name). From the Resource Board prototype. Use them as Tailwind colours
  * (bg-panel, text-ink, border-line, text-muted, bg-teal-soft, ...) so light and dark
  * mode switch in one place.
  */
 @theme {
   --font-sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
-  --color-bg: #eef1ee;
+  --color-bg: #ffffff;
   --color-panel: #ffffff;
-  --color-panel2: #f6f8f6;
-  --color-ink: #17233b;
-  --color-muted: #5c6878;
-  --color-line: #d6dcd6;
-  --color-teal: #0e8a8c;
-  --color-teal-soft: #cfe9e8;
+  --color-panel2: #f7f8f9;
+  --color-ink: #172b4d;
+  --color-muted: #626f86;
+  --color-line: #dcdfe4;
+  --color-teal: #0c66e4;
+  --color-teal-soft: #e9f2ff;
   --color-amber: #e8962a;
   --color-amber-soft: #fbe6c7;
   --color-plum: #9b3f7a;
@@ -26,6 +27,11 @@
   --color-green-soft: #d6eedb;
   --color-red: #c2413a;
   --color-red-soft: #f7dcd9;
+  /* Buttons, as in JIRA: flat grey by default, blue for the main action. */
+  --color-btn: #f1f2f4;
+  --color-btn-hover: #dcdfe4;
+  --color-btn-ink: #44546f;
+  --color-teal-strong: #0055cc;
 }
 
 @layer base {
@@ -37,8 +43,12 @@
       --color-ink: #e6ebf2;
       --color-muted: #9aa6b6;
       --color-line: #2e3a4a;
-      --color-teal: #3fb8b5;
-      --color-teal-soft: #123c40;
+      --color-teal: #579dff;
+      --color-teal-soft: #1c2b41;
+      --color-teal-strong: #85b8ff;
+      --color-btn: #2c333a;
+      --color-btn-hover: #38414a;
+      --color-btn-ink: #b6c2cf;
       --color-amber: #f2ab4e;
       --color-amber-soft: #4a3517;
       --color-plum: #d67bb4;
@@ -59,8 +69,12 @@
     --color-ink: #e6ebf2;
     --color-muted: #9aa6b6;
     --color-line: #2e3a4a;
-    --color-teal: #3fb8b5;
-    --color-teal-soft: #123c40;
+    --color-teal: #579dff;
+    --color-teal-soft: #1c2b41;
+    --color-teal-strong: #85b8ff;
+    --color-btn: #2c333a;
+    --color-btn-hover: #38414a;
+    --color-btn-ink: #b6c2cf;
     --color-amber: #f2ab4e;
     --color-amber-soft: #4a3517;
     --color-plum: #d67bb4;

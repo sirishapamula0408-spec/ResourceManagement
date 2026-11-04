@@ -1,5 +1,5 @@
 const iconButton =
-  'inline-grid h-7 w-7 place-items-center rounded-md border border-line bg-panel hover:bg-panel2 disabled:opacity-60';
+  'inline-grid h-7 w-7 place-items-center rounded-[3px] border border-transparent bg-btn text-btn-ink hover:bg-btn-hover disabled:opacity-60';
 
 const svgProps = {
   width: 15,

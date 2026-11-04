@@ -1,7 +1,7 @@
 import { PAGE_SIZES, type Paged, pageWindow } from '../lib/pagination';
 
 const navButton =
-  'min-w-8 rounded-md border border-line bg-panel px-2 py-1 text-xs font-medium hover:bg-panel2 disabled:cursor-default disabled:opacity-50 disabled:hover:bg-panel';
+  'min-w-8 rounded-[3px] border border-transparent bg-btn px-2 py-1 text-xs font-medium text-btn-ink hover:bg-btn-hover disabled:cursor-default disabled:opacity-50 disabled:hover:bg-btn';
 
 /** "Showing 1–25 of 64 tasks", rows-per-page picker and page buttons, under a table. */
 export function Pagination<T>({ paged, noun }: { paged: Paged<T>; noun: string }) {

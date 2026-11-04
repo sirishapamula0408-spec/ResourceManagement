@@ -15,15 +15,17 @@ export function errorMessage(e: unknown): string {
   return e instanceof Error ? e.message : 'Something went wrong. Try again.';
 }
 
+/** Buttons as in JIRA: a blue primary action, flat grey for the rest, small corners. */
 export function buttonClass(kind: 'default' | 'primary' = 'default') {
-  const base = 'rounded-md border px-3 py-[7px] font-medium disabled:opacity-60';
+  const base =
+    'rounded-[3px] border border-transparent px-3 py-[6px] font-medium disabled:opacity-60';
   return kind === 'primary'
-    ? `${base} border-teal bg-teal text-white hover:brightness-105`
-    : `${base} border-line bg-panel hover:bg-panel2`;
+    ? `${base} bg-teal text-white hover:bg-teal-strong`
+    : `${base} bg-btn text-btn-ink hover:bg-btn-hover`;
 }
 
 export const inputClass =
-  'rounded-md border border-line bg-panel px-2.5 py-[7px] text-sm text-ink disabled:opacity-60';
+  'rounded-[3px] border border-line bg-panel px-2.5 py-[6px] text-sm text-ink focus:border-teal focus:outline-none disabled:opacity-60';
 
 /** Queries that show project or staffing data and must refresh after a change. */
 export const STAFFING_QUERIES = [
