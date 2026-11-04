@@ -124,6 +124,48 @@ test('sign-in page: no SSO or sign-up link by default, Remember me off', async (
   await expect(page).toHaveTitle('SedHub');
 });
 
+test('the sign-in page fills the window exactly, with nothing stray along the bottom', async ({
+  page,
+}) => {
+  for (const [width, height] of [
+    [1366, 768],
+    [1672, 941],
+    [1920, 1080],
+  ]) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/login');
+    await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+    const layout = await page.evaluate(() => ({
+      scroll: document.documentElement.scrollHeight,
+      root: document.querySelector('[data-sign-in]')!.getBoundingClientRect().height,
+      // Anything drawn below the window's bottom edge.
+      below: [...document.querySelectorAll('body *')].filter(
+        (el) => el.getBoundingClientRect().bottom > innerHeight + 0.5,
+      ).length,
+    }));
+    expect(layout).toEqual({ scroll: height, root: height, below: 0 });
+
+    // No green or yellow pixels (e.g. a leaked logo gradient) in the bottom 40px: everything
+    // there is navy panel or the light page background, where blue >= green.
+    const strip = await page.screenshot({ clip: { x: 0, y: height - 40, width, height: 40 } });
+    const greenish = await page.evaluate(async (png) => {
+      const img = new Image();
+      img.src = `data:image/png;base64,${png}`;
+      await img.decode();
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      const d = ctx.getImageData(0, 0, img.width, img.height).data;
+      let count = 0;
+      for (let i = 0; i < d.length; i += 4) if (d[i + 1] > d[i + 2] + 8) count++;
+      return count;
+    }, strip.toString('base64'));
+    expect(greenish).toBe(0);
+  }
+});
+
 test('"Forgot password?" opens the reset page, which points to the administrator', async ({
   page,
 }) => {
