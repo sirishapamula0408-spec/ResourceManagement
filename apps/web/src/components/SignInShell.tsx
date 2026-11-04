@@ -245,10 +245,10 @@ export function SignInCard({ children }: { children: ReactNode }) {
  * (nginx/HTTPS), roles are enforced by the API, and sign-ins are written to the audit log.
  */
 export function TrustBadges() {
-  const icon = { ...iconProps, width: 20, height: 20, strokeWidth: 1.6 };
+  const icon = { ...iconProps, width: 20, height: 20, strokeWidth: 1.6, className: 'shrink-0' };
   const items: { label: string; icon: ReactNode }[] = [
     {
-      label: 'Encrypted connection (TLS)',
+      label: 'TLS encrypted',
       icon: (
         <svg {...icon}>
           <rect x="5" y="10" width="14" height="10" rx="2" />
@@ -257,7 +257,7 @@ export function TrustBadges() {
       ),
     },
     {
-      label: 'Role-based access control',
+      label: 'Role-based access',
       icon: (
         <svg {...icon}>
           <path d="M12 3 4 6v6c0 4.5 3.4 8 8 9 4.6-1 8-4.5 8-9V6Z" />
@@ -276,11 +276,11 @@ export function TrustBadges() {
     },
   ];
   return (
-    <ul className="mt-[clamp(0.875rem,2.4vh,1.5rem)] grid grid-cols-3 gap-2 border-t border-[#e3e8f2] pt-[clamp(0.625rem,1.8vh,1rem)] [@media(max-height:700px)]:mt-3">
+    <ul className="mt-[clamp(0.875rem,2.4vh,1.5rem)] flex items-center justify-between gap-2 border-t border-[#e3e8f2] pt-[clamp(0.625rem,1.8vh,1rem)] [@media(max-height:700px)]:mt-3">
       {items.map((item) => (
         <li
           key={item.label}
-          className="flex flex-col items-center gap-1 text-center text-[11px] leading-tight text-[#3b4867]"
+          className="flex flex-col items-center justify-center gap-1 text-[11px] leading-4 whitespace-nowrap text-[#4a5468] sm:flex-row sm:gap-1.5"
         >
           {item.icon}
           {item.label}

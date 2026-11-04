@@ -107,11 +107,7 @@ test('sign-in page: no SSO or sign-up link by default, Remember me off', async (
     `mailto:${E2E_ADMIN_EMAIL}`,
   );
   await expect(page.getByLabel('Remember me')).not.toBeChecked();
-  for (const badge of [
-    'Encrypted connection (TLS)',
-    'Role-based access control',
-    'Audit-logged access',
-  ]) {
+  for (const badge of ['TLS encrypted', 'Role-based access', 'Audit-logged access']) {
     await expect(page.getByText(badge)).toBeVisible();
   }
   // Page chrome: tab title, footer with the version, no environment badge in a PROD build.
