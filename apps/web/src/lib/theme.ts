@@ -1,5 +1,5 @@
 /**
- * Shared visual vocabulary, matching the Resource Board prototype.
+ * Shared visual vocabulary, matching the original prototype.
  * Colours reference the CSS tokens in index.css so they follow light/dark mode.
  */
 

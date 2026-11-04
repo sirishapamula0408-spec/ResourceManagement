@@ -1,4 +1,4 @@
-# Resource Board
+# SedHub
 
 Internal resource management app for project managers: utilization dashboard, JIRA-style task board,
 team/project management, and (later) sprints, worklogs, leave, alerts, exports, JIRA sync and Azure AD SSO.
@@ -216,7 +216,7 @@ per address.
 
 ## Claude connector (MCP)
 
-Everyone can use Resource Board from Claude (web, desktop, mobile, Claude Code) with their own account.
+Everyone can use SedHub from Claude (web, desktop, mobile, Claude Code) with their own account.
 The API serves an MCP endpoint at `/mcp` with OAuth sign-in through the normal login and a consent page
 (`/connect`); every tool calls the REST API as that person, so roles and visibility are unchanged. Code:
 `apps/api/src/modules/mcp/`. It's on when `PUBLIC_URL` is set (defaults to `http://localhost:5173`

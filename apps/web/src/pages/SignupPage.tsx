@@ -47,7 +47,7 @@ export function SignupPage() {
   if (!isLoading && !domains.length) {
     return (
       <AuthCard title="Sign-up isn’t available">
-        <p className="mb-4 text-muted">Ask an admin to add you to Resource Board.</p>
+        <p className="mb-4 text-muted">Ask an admin to add you to SedHub.</p>
         <Link to={signInLink} className="text-teal underline">
           Back to sign in
         </Link>

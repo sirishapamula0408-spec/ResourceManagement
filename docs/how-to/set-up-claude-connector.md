@@ -1,16 +1,16 @@
 # How to set up the Claude connector (admins)
 
-**For:** whoever runs the Resource Board server, and your organization's Claude owner.
+**For:** whoever runs the SedHub server, and your organization's Claude owner.
 
-The connector lets everyone use Resource Board from Claude (web, desktop, mobile and Claude Code) with
+The connector lets everyone use SedHub from Claude (web, desktop, mobile and Claude Code) with
 their own account. It's built into the API: an MCP endpoint at `/mcp` and an OAuth sign-in that uses
-the normal Resource Board login. Nothing extra to install.
+the normal SedHub login. Nothing extra to install.
 
 ## How it works
 
 1. Someone adds the connector in Claude with the address `https://<your address>/mcp`.
-2. Claude registers itself with Resource Board automatically (OAuth dynamic client registration).
-3. The person is sent to `https://<your address>/connect`, signs in with their Resource Board account and
+2. Claude registers itself with SedHub automatically (OAuth dynamic client registration).
+3. The person is sent to `https://<your address>/connect`, signs in with their SedHub account and
    selects **Allow**.
 4. Claude gets a token for that person. Each tool call goes through the same API routes, role checks
    and visibility rules as the web app, so Claude can never do more than that person can.
@@ -61,16 +61,16 @@ curl -s https://board.example.com/.well-known/oauth-protected-resource/mcp
 ```
 
 You should see `"resource":"https://board.example.com/mcp"`. Then add the connector to your own Claude
-(see [How to connect Claude](connect-claude.md)) and ask "Who am I in Resource Board?".
+(see [How to connect Claude](connect-claude.md)) and ask "Who am I in SedHub?".
 
 ## 4. Add it for everyone (Claude Team and Enterprise)
 
 A Claude **owner** adds the connector once for the organization:
 
 1. In Claude, open **Admin settings → Connectors** (organization settings).
-2. Select **Add custom connector**, name it `Resource Board` and enter `https://board.example.com/mcp`.
+2. Select **Add custom connector**, name it `SedHub` and enter `https://board.example.com/mcp`.
    Leave the advanced OAuth client fields empty: Claude registers itself.
-3. Save. Members then find Resource Board under **Settings → Connectors** and select **Connect** to
+3. Save. Members then find SedHub under **Settings → Connectors** and select **Connect** to
    sign in as themselves.
 
 Menu names can change between Claude releases; if they differ, look for the custom connector settings
@@ -98,4 +98,4 @@ in your organization's admin area. Then share [How to connect Claude](connect-cl
 | API won't start: issuer URL must be HTTPS                | Use an `https://` `PUBLIC_URL`.                                                                                                                   |
 
 Developers can try the whole flow locally: `npm run dev`, then in Claude Code
-`claude mcp add --transport http resource-board http://localhost:5173/mcp` and `/mcp` → Authenticate.
+`claude mcp add --transport http sedhub http://localhost:5173/mcp` and `/mcp` → Authenticate.

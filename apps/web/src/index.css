@@ -2,7 +2,7 @@
 
 /*
  * Design tokens, styled after JIRA: white pages, grey borders and a blue accent ("teal" is the
- * accent token's historical name). From the Resource Board prototype. Use them as Tailwind colours
+ * accent token's historical name). From the original prototype. Use them as Tailwind colours
  * (bg-panel, text-ink, border-line, text-muted, bg-teal-soft, ...) so light and dark
  * mode switch in one place.
  */

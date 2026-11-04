@@ -103,10 +103,10 @@ const leadFields = {
 /** One MCP server per request, bound to the signed-in person. */
 export function createMcpServer(api: ApiCall) {
   const server = new McpServer(
-    { name: 'resource-board', version: '1.0.0' },
+    { name: 'sedhub', version: '1.0.0' },
     {
       instructions:
-        'Resource Board is the company resource management app: projects, people, teams, tasks, ' +
+        'SedHub is the company work and resource management app: projects, people, teams, tasks, ' +
         'hours, utilization dashboards, status reports and the sales leads pipeline. Every tool acts ' +
         'as the signed-in user, with exactly their role and access; a 403 means their role does not ' +
         'allow it. Look up ids with the list tools before creating or updating anything.',

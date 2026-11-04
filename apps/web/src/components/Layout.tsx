@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { api, auth, canCreateTasks, ROLE_LABEL, type Role } from '../lib/api';
 import { buttonClass } from '../lib/forms';
-import { BrandMark } from './AuthCard';
+import { SedHubMark } from './SignInShell';
 import { useToast } from './tasks/taskHelpers';
 import { TaskDialog } from './tasks/TaskDialog';
 import { Toast } from './tasks/taskUi';
@@ -48,8 +48,8 @@ export function Layout() {
     <div className="min-h-screen">
       <header className="sticky top-0 z-20 flex print:hidden min-h-14 flex-wrap items-center gap-5 border-b border-line bg-panel px-5">
         <div className="flex items-center gap-2.5 text-base font-bold tracking-tight">
-          <BrandMark />
-          Resource Board
+          <SedHubMark size={24} />
+          SedHub
         </div>
         <nav className="flex gap-0.5 self-stretch" aria-label="Views">
           {navFor(role).map((item) => (

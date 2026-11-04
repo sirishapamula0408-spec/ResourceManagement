@@ -163,8 +163,7 @@ function HelpLinks() {
   const [open, setOpen] = useState<'help' | 'support' | null>(null);
   const text = {
     help: 'Sign in with your company email and the password you were given. New accounts may be asked to choose a new password first.',
-    support:
-      'For access, a new account or a password reset, contact your Resource Board administrator.',
+    support: 'For access, a new account or a password reset, contact your SedHub administrator.',
   };
   const btn = 'inline-flex items-center gap-1.5 text-sm text-[#1f2b4d] hover:text-teal';
   return (

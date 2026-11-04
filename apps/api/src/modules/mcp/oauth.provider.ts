@@ -143,7 +143,7 @@ async function issueTokens(
 
 /**
  * OAuth 2.1 authorization server for the Claude connector. People sign in with their normal
- * Resource Board account on the consent page (/connect), so the connector acts as them, with their role.
+ * SedHub account on the consent page (/connect), so the connector acts as them, with their role.
  */
 export const oauthProvider: OAuthServerProvider = {
   get clientsStore() {

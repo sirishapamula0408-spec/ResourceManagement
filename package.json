@@ -2,7 +2,7 @@
   "name": "resource-board",
   "version": "0.1.0",
   "private": true,
-  "description": "Resource Board - internal resource management app for PMs",
+  "description": "SedHub - work and resource management app for PMs and delivery teams",
   "type": "module",
   "workspaces": [
     "apps/*"

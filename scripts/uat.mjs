@@ -92,7 +92,7 @@ async function reset() {
   writeFileSync(
     credentialsFile,
     [
-      `Resource Board UAT accounts (reset ${new Date().toISOString().slice(0, 16).replace('T', ' ')})`,
+      `SedHub UAT accounts (reset ${new Date().toISOString().slice(0, 16).replace('T', ' ')})`,
       'Each person is asked to choose their own password at first sign-in.',
       '',
       ...lines,
@@ -136,7 +136,7 @@ async function start() {
   );
 
   setTimeout(() => {
-    console.log('\n[uat] Resource Board UAT is running:');
+    console.log('\n[uat] SedHub UAT is running:');
     console.log(`[uat]   This computer: http://localhost:${WEB_PORT}`);
     for (const ip of lanAddresses())
       console.log(`[uat]   Office network: http://${ip}:${WEB_PORT}`);

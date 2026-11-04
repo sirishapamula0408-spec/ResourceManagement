@@ -1,4 +1,4 @@
-# Resource Board API. Build from the repo root:
+# SedHub API. Build from the repo root:
 #   docker build -f deploy/api.Dockerfile -t resource-board-api .
 FROM node:24-alpine AS build
 WORKDIR /app

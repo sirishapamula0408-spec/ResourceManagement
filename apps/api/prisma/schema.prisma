@@ -1,4 +1,4 @@
-// Resource Board - initial data model (M1 + forward-compatible M2/M3 fields).
+// SedHub (formerly Resource Board) - data model (M1 + forward-compatible M2/M3 fields).
 // Docs: https://www.prisma.io/docs/orm/prisma-schema
 
 generator client {

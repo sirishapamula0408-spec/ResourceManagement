@@ -1,12 +1,12 @@
-# How to use the Resource Board REST API
+# How to use the SedHub REST API
 
-**For:** anyone who wants to script Resource Board, pull data into a spreadsheet or another tool, or
+**For:** anyone who wants to script SedHub, pull data into a spreadsheet or another tool, or
 let Claude Code call it. For chatting with Claude, the [Claude connector](connect-claude.md) is easier.
 
 The web app itself runs on this API, so everything you can do in the browser you can do here, with
 exactly the same access: you sign in as yourself and your role decides what you can see and change.
 
-In the examples, replace `https://board.example.com` with your Resource Board address. On a developer
+In the examples, replace `https://board.example.com` with your SedHub address. On a developer
 machine running `npm run dev`, use `http://localhost:5173`.
 
 ## 1. Sign in and get a token
@@ -120,7 +120,7 @@ Errors come back as `{ "error": "message", "details": ... }`.
 
 With `RB_URL` and `RB_TOKEN` set in your terminal (step 1), start Claude Code there and ask, for example:
 
-> Using the Resource Board API at $RB_URL with the bearer token in $RB_TOKEN (see
+> Using the SedHub API at $RB_URL with the bearer token in $RB_TOKEN (see
 > docs/how-to/use-the-rest-api.md), export all my open tasks to tasks.csv with project, title, status
 > and due date.
 

@@ -6,7 +6,7 @@ import type { ProjectReport, Rag, ReportTask, StatusReport } from './api';
  * the health rules. Built in the browser with pptxgenjs, which is loaded only when exporting.
  */
 
-// Resource Board palette (hex without #, as pptxgenjs expects).
+// SedHub palette (hex without #, as pptxgenjs expects).
 const C = {
   ink: '17233B',
   muted: '5C6878',
@@ -154,7 +154,7 @@ function titleSlide(pptx: PptxGenJS, report: StatusReport) {
       fill: { color: color as string },
     }),
   );
-  s.addText('Resource Board', {
+  s.addText('SedHub', {
     x: 1.65,
     y: 1.55,
     w: 6,
@@ -517,7 +517,7 @@ export async function buildReportPptx(report: StatusReport): Promise<PptxGenJS> 
   const { default: Pptx } = await import('pptxgenjs');
   const pptx = new Pptx();
   pptx.layout = 'LAYOUT_WIDE'; // 13.33 x 7.5 in
-  pptx.author = 'Resource Board';
+  pptx.author = 'SedHub';
   pptx.title = `Project status report · ${report.period.label}`;
   pptx.defineSlideMaster({
     title: 'REPORT',
@@ -526,7 +526,7 @@ export async function buildReportPptx(report: StatusReport): Promise<PptxGenJS> 
       { rect: { x: 0, y: 7.1, w: 13.33, h: 0.4, fill: { color: C.bg } } },
       {
         text: {
-          text: `Resource Board · ${report.period.label}`,
+          text: `SedHub · ${report.period.label}`,
           options: { x: 0.5, y: 7.13, w: 8, h: 0.32, fontSize: 9, color: C.muted, fontFace: FONT },
         },
       },

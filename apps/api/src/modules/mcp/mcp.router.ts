@@ -23,7 +23,7 @@ export function mcpRouter(app: Express, publicUrl: string) {
       provider: oauthProvider,
       issuerUrl: new URL(publicUrl),
       resourceServerUrl: mcpUrl,
-      resourceName: 'Resource Board',
+      resourceName: 'SedHub',
       // Everyone's Claude traffic comes from the same few addresses, so the per-IP limits
       // must allow a whole company signing in at once.
       clientRegistrationOptions: { rateLimit: { windowMs: 60 * 60 * 1000, limit: 500 } },

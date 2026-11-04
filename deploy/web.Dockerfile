@@ -1,4 +1,4 @@
-# Resource Board web app (static build served by nginx, which proxies /api to the API).
+# SedHub web app (static build served by nginx, which proxies /api to the API).
 #   docker build -f deploy/web.Dockerfile -t resource-board-web .
 FROM node:24-alpine AS build
 WORKDIR /app
