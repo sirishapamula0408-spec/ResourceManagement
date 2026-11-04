@@ -119,6 +119,57 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body as T;
 }
 
+/**
+ * Download a file the API serves to signed-in users (e.g. an attachment): fetched with the
+ * session token, then saved through a short-lived object URL under its own name.
+ */
+export async function downloadFile(path: string, name: string) {
+  const token = auth.getToken();
+  const res = await fetch(`/api${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => undefined);
+    throw new ApiError(res.status, body?.error ?? res.statusText, body?.details);
+  }
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = name;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+/**
+ * Send a file as the raw request body (the API's upload format), reporting progress from 0 to 1.
+ * XMLHttpRequest rather than fetch, because fetch can't report upload progress.
+ */
+export function uploadFile<T>(path: string, file: File, onProgress?: (share: number) => void) {
+  return new Promise<T>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `/api${path}`);
+    const token = auth.getToken();
+    if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total);
+    xhr.onload = () => {
+      let body: { error?: string; details?: unknown } | undefined;
+      try {
+        body = JSON.parse(xhr.responseText);
+      } catch {
+        body = undefined;
+      }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(body as T);
+      else reject(new ApiError(xhr.status, body?.error ?? xhr.statusText, body?.details));
+    };
+    xhr.onerror = () =>
+      reject(new Error('The upload failed. Check your connection and try again.'));
+    xhr.send(file);
+  });
+}
+
 // ---------- Shared response types (keep in sync with the API) ----------
 
 export type TaskStatus = 'BACKLOG' | 'TODO' | 'IN_PROGRESS' | 'IN_REVIEW' | 'BLOCKED' | 'DONE';
@@ -227,11 +278,31 @@ export interface Task {
 /** One entry in a task's history: who did what, when, and the fields that changed. */
 export interface TaskHistoryEntry {
   id: string;
-  action: 'create' | 'update' | 'delete' | 'worklog';
+  action: 'create' | 'update' | 'delete' | 'worklog' | 'attach' | 'detach';
   at: string;
   actor: { id: string; name: string } | null;
   changes: { field: string; from: unknown; to: unknown }[];
   hours: number | null;
+  /** File name, for attachments added or removed. */
+  attachment: string | null;
+}
+
+/** A file attached to a task. */
+export interface Attachment {
+  id: string;
+  taskId: string;
+  name: string;
+  mimeType: string;
+  /** Bytes. */
+  size: number;
+  createdAt: string;
+  uploader: { id: string; name: string } | null;
+}
+
+/** GET /tasks/:id/attachments: newest first, with the largest upload the API accepts. */
+export interface AttachmentList {
+  attachments: Attachment[];
+  maxBytes: number;
 }
 
 export type LinkKind = 'BLOCKS' | 'BLOCKED_BY' | 'RELATES';

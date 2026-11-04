@@ -944,3 +944,51 @@ test('board filters live in the address and can be saved by name', async ({ page
   await expect(page.getByLabel('Search tasks')).toHaveValue('Invoice');
   await expect(page).toHaveURL(/q=Invoice/);
 });
+
+test('a PM attaches a file to a task, downloads it and deletes it', async ({ page }) => {
+  await signIn(page, PM, '/browse/ATLAS-5');
+  const files = page.getByRole('region', { name: 'Attachments' });
+  await expect(files).toContainText('No files yet');
+
+  await files.getByLabel('Choose files to attach').setInputFiles({
+    name: 'invoice-layout.txt',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('A4, logo top left, totals bottom right.'),
+  });
+  await expect(files.getByRole('heading', { name: 'Attachments · 1' })).toBeVisible();
+  const row = files
+    .getByRole('list', { name: 'Files' })
+    .getByRole('listitem')
+    .filter({ hasText: 'invoice-layout.txt' });
+  await expect(row).toContainText('39 B');
+  await expect(row).toContainText('Priya Sharma');
+
+  // Programs are refused with a reason.
+  await files.getByLabel('Choose files to attach').setInputFiles({
+    name: 'setup.exe',
+    mimeType: 'application/octet-stream',
+    buffer: Buffer.from('MZ'),
+  });
+  await expect(files.getByRole('alert')).toContainText('setup.exe');
+  await expect(files.getByRole('alert')).toContainText('can’t be attached');
+
+  // Download: the file as uploaded, under its own name.
+  const downloading = page.waitForEvent('download');
+  await row.getByRole('button', { name: 'Download invoice-layout.txt' }).click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toBe('invoice-layout.txt');
+  const { readFile } = await import('node:fs/promises');
+  expect(await readFile(await download.path(), 'utf8')).toBe(
+    'A4, logo top left, totals bottom right.',
+  );
+
+  await page.getByRole('tab', { name: 'History' }).click();
+  await expect(page.getByRole('list', { name: 'History' })).toContainText(
+    'Priya Sharma attached invoice-layout.txt',
+  );
+
+  page.once('dialog', (d) => d.accept());
+  await row.getByRole('button', { name: 'Delete invoice-layout.txt' }).click();
+  await expect(files.getByRole('list', { name: 'Files' })).toHaveCount(0);
+  await expect(files).toContainText('No files yet');
+});

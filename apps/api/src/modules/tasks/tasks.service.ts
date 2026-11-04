@@ -2,6 +2,8 @@ import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../lib/http.js';
 import type { AuthUser } from '../../middleware/auth.js';
 import type { TaskPriority, TaskStatus, TaskType } from '../../generated/prisma/enums.js';
+import { removeFiles } from '../../lib/storage.js';
+import { storageKeysOf } from './attachments.service.js';
 import { record, trackedSelect } from './history.service.js';
 
 export interface TaskFilter {
@@ -339,7 +341,10 @@ export async function updateTask(user: AuthUser, id: string, input: Partial<Task
 export async function deleteTask(user: AuthUser, id: string) {
   const task = await getTask(id);
   await requireManage(user, task.projectId);
+  // Attachment rows go with the task (cascade); their files are removed from disk after.
+  const files = await storageKeysOf([id]);
   const gone = await prisma.task.delete({ where: { id } });
+  await removeFiles(files);
   await record(user.id, id, 'task.delete', { title: gone.title, status: gone.status }, null);
 }
 
@@ -377,7 +382,9 @@ export async function deleteTasks(user: AuthUser, ids: string[]) {
     where: { id: { in: unique } },
     select: { id: true, title: true, status: true },
   });
+  const files = await storageKeysOf(unique);
   const { count } = await prisma.task.deleteMany({ where: { id: { in: unique } } });
+  await removeFiles(files);
   for (const t of snapshots) {
     await record(user.id, t.id, 'task.delete', { title: t.title, status: t.status }, null);
   }

@@ -147,6 +147,10 @@ Prisma 7 does not regenerate the client automatically in every case; run `npm ru
 | DELETE | `/api/tasks/:id`                         | ADMIN, PM             | PMs only on their projects                  |
 | PATCH  | `/api/tasks/:id/move`                    | Bearer                | `{ status, order }` - board; assignee or PM |
 | POST   | `/api/tasks/:id/worklogs`                | Bearer                | `{ hours, date?, note? }` as signed-in user |
+| GET    | `/api/tasks/:id/attachments`             | Bearer                | `{ attachments, maxBytes }`, newest first   |
+| POST   | `/api/tasks/:id/attachments?name=`       | Bearer                | raw file body; PM on project or assignee    |
+| GET    | `/api/attachments/:id`                   | Bearer                | download (always `attachment`, nosniff)     |
+| DELETE | `/api/attachments/:id`                   | Bearer                | uploader, admin or PM on the project        |
 
 Dashboard endpoints take `?from=YYYY-MM-DD&weeks=8&projectId=` (default window: two weeks before the
 current week, eight weeks long). Utilization follows the scope plan: each non-backlog task's estimate is
@@ -173,6 +177,23 @@ API enforces this on every read (`apps/api/src/lib/visibility.ts`).
 | PM               | view                                        | create/edit/move on projects they own or staff | -              |
 | MEMBER           | view own projects only                      | status + hours on tasks assigned to them       | -              |
 | SALES            | project list only (no team, tasks or hours) | none; works the Leads pipeline (all leads)     | -              |
+
+## Task attachments
+
+Files on a task (task page and task dialog: button or drag-and-drop). They are stored on the API's local
+disk under `UPLOAD_DIR` (default `apps/api/uploads`, gitignored), each under a generated id; the original
+name, type, size and uploader are kept in the `Attachment` table. `deploy/docker-compose.server.yml` mounts
+the `uploads` volume there so files survive restarts and rebuilds (back it up with the database).
+
+- Upload: `POST /api/tasks/:id/attachments?name=<file name>` with the file as the raw request body and its
+  type as `Content-Type`. Up to `MAX_UPLOAD_MB` (default 10; nginx in `deploy/` allows 12 MB).
+  Programs, scripts and web pages (`.exe`, `.bat`, `.sh`, `.js`, `.html`, `.svg`, ...) are refused (415).
+- Downloads are always sent with `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff`
+  and a sandboxing CSP, so nothing renders from our origin. The web app downloads with its bearer token
+  (fetch, then a temporary object URL).
+- Anyone who can see the task lists and downloads its files; an admin, a PM on the project or the
+  assignee uploads; the uploader or an admin / PM on the project deletes. Adding and removing files
+  shows in the task history. Deleting a task deletes its files.
 
 ## Reports
 

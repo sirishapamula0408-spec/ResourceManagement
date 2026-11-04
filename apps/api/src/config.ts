@@ -28,6 +28,13 @@ const schema = z.object({
    * on the Team page.
    */
   SIGNUP_DOMAINS: z.string().optional(),
+  /**
+   * Folder for task attachments (M4 JIRA-lite), absolute or relative to the working directory.
+   * Defaults to apps/api/uploads. In Docker, mount a volume here so files survive restarts.
+   */
+  UPLOAD_DIR: z.preprocess((v) => v || undefined, z.string().optional()),
+  /** Largest attachment accepted, in megabytes. */
+  MAX_UPLOAD_MB: z.coerce.number().positive().max(1024).default(10),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -47,6 +54,7 @@ export const config = {
     .split(',')
     .map((d) => d.trim().toLowerCase().replace(/^@/, ''))
     .filter(Boolean),
+  UPLOAD_DIR: path.resolve(parsed.data.UPLOAD_DIR ?? path.resolve(here, '../uploads')),
 };
 
 if (config.NODE_ENV === 'production' && config.JWT_SECRET === 'dev-only-insecure-secret') {

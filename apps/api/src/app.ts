@@ -15,6 +15,7 @@ import { consentRouter } from './modules/mcp/consent.router.js';
 import { mcpRouter } from './modules/mcp/mcp.router.js';
 import { projectsRouter } from './modules/projects/projects.router.js';
 import { reportsRouter } from './modules/reports/reports.router.js';
+import { attachmentsRouter } from './modules/tasks/attachments.router.js';
 import { tasksRouter } from './modules/tasks/tasks.router.js';
 import { teamsRouter } from './modules/teams/teams.router.js';
 
@@ -26,7 +27,12 @@ export function createApp() {
   app.set('trust proxy', 'loopback, uniquelocal');
   app.use(helmet());
   app.use(cors({ origin: config.CORS_ORIGIN, credentials: true }));
-  app.use(express.json({ limit: '1mb' }));
+  // Attachment uploads are the raw file (see tasks.router.ts), whatever its type: even a .json
+  // file must not be parsed here.
+  const json = express.json({ limit: '1mb' });
+  const isUpload = (req: express.Request) =>
+    req.method === 'POST' && /^\/api\/tasks\/[^/]+\/attachments\/?$/.test(req.path);
+  app.use((req, res, next) => (isUpload(req) ? next() : json(req, res, next)));
   if (config.NODE_ENV !== 'test') app.use(morgan('dev'));
 
   app.get('/api/health', (_req, res) => {
@@ -44,6 +50,7 @@ export function createApp() {
   app.use('/api/teams', teamsRouter);
   app.use('/api/projects', projectsRouter);
   app.use('/api/tasks', tasksRouter);
+  app.use('/api/attachments', attachmentsRouter);
   app.use('/api', planningRouter);
   app.use('/api/filters', filtersRouter);
   app.use('/api/dashboard', dashboardRouter);

@@ -1,9 +1,10 @@
-import { Router } from 'express';
+import express, { Router, type RequestHandler } from 'express';
 import { z } from 'zod';
 import { TaskPriority, TaskStatus, TaskType } from '../../generated/prisma/enums.js';
-import { parse } from '../../lib/http.js';
+import { HttpError, parse } from '../../lib/http.js';
 import { visibleProjectIds } from '../../lib/visibility.js';
 import { requireAuth, type AuthUser } from '../../middleware/auth.js';
+import * as attachments from './attachments.service.js';
 import * as comments from './comments.service.js';
 import * as history from './history.service.js';
 import * as links from './links.service.js';
@@ -80,6 +81,24 @@ const linkBody = z.object({
   kind: z.enum(['BLOCKS', 'BLOCKED_BY', 'RELATES']),
   targetKey: z.string().trim().min(1, 'Enter a task key like ATLAS-12').max(40),
 });
+
+const uploadQuery = z.object({
+  name: z.string().trim().min(1, 'Name the file: ?name=report.pdf').max(255),
+});
+
+/**
+ * An attachment arrives as the raw request body (any content type), with its name in ?name=.
+ * app.ts keeps the JSON parser away from this route.
+ */
+const parseRaw = express.raw({ type: () => true, limit: attachments.maxUploadBytes() });
+const rawUpload: RequestHandler = (req, res, next) =>
+  parseRaw(req, res, (err?: unknown) => {
+    if ((err as { type?: string } | undefined)?.type === 'entity.too.large') {
+      const mb = Number((attachments.maxUploadBytes() / 1024 / 1024).toFixed(1));
+      return next(new HttpError(413, `The file is too big: files can be up to ${mb} MB`));
+    }
+    next(err);
+  });
 
 export const tasksRouter = Router();
 
@@ -169,4 +188,16 @@ tasksRouter.delete('/:id/links/:linkId', async (req, res) => {
 // Task history (M4 JIRA-lite): who changed what and when, newest first.
 tasksRouter.get('/:id/history', async (req, res) => {
   res.json(await history.listHistory(req.user!, String(req.params.id)));
+});
+
+// Attachments (M4 JIRA-lite): list and upload here; download and delete at /api/attachments/:id.
+tasksRouter.get('/:id/attachments', async (req, res) => {
+  res.json(await attachments.listAttachments(req.user!, String(req.params.id)));
+});
+
+tasksRouter.post('/:id/attachments', rawUpload, async (req, res) => {
+  const { name } = parse(uploadQuery, req.query);
+  const bytes = Buffer.isBuffer(req.body) ? req.body : Buffer.alloc(0);
+  const file = { name, mimeType: req.get('content-type'), bytes };
+  res.status(201).json(await attachments.addAttachment(req.user!, String(req.params.id), file));
 });

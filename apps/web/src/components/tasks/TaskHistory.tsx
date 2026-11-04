@@ -66,7 +66,11 @@ export function TaskHistory({ taskId, personNames }: { taskId: string; personNam
                     ? `logged ${fmt(e.hours ?? 0, 1)}h`
                     : e.action === 'delete'
                       ? 'deleted the task'
-                      : `changed ${e.changes.map((c) => FIELD_LABEL[c.field] ?? c.field).join(', ')}`}
+                      : e.action === 'attach'
+                        ? `attached ${e.attachment ?? 'a file'}`
+                        : e.action === 'detach'
+                          ? `removed the attachment ${e.attachment ?? ''}`.trimEnd()
+                          : `changed ${e.changes.map((c) => FIELD_LABEL[c.field] ?? c.field).join(', ')}`}
                 <span className="ml-2 text-xs text-muted">{when(e.at)}</span>
               </p>
               {e.changes.length > 0 && (

@@ -6,6 +6,8 @@ dist/
 *.log
 coverage/
 apps/api/src/generated/
+# Task attachments stored by the API in development (UPLOAD_DIR)
+apps/api/uploads/
 .vite/
 *.tsbuildinfo
 playwright-report/

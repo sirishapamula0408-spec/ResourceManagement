@@ -143,6 +143,7 @@ model Person {
   worklogs           Worklog[]
   comments           Comment[]
   savedFilters       SavedFilter[]
+  attachments        Attachment[]
   leaves             Leave[]
   auditLogs          AuditLog[]
   ownedLeads         Lead[]              @relation("LeadOwner")
@@ -308,6 +309,7 @@ model Task {
   comments      Comment[]
   linksOut      TaskLink[]   @relation("LinkFrom")
   linksIn       TaskLink[]   @relation("LinkTo")
+  attachments   Attachment[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
@@ -362,6 +364,26 @@ model TaskLink {
 
   @@unique([fromId, toId, type])
   @@index([toId])
+}
+
+/// A file attached to a task (M4 JIRA-lite). The bytes live on disk under UPLOAD_DIR, named by
+/// storageKey (a generated id); the original file name is only kept here.
+model Attachment {
+  id         String   @id @default(cuid())
+  taskId     String
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  /// Null once the uploader's account is deleted (the file stays with the task).
+  uploaderId String?
+  uploader   Person?  @relation(fields: [uploaderId], references: [id], onDelete: SetNull)
+  name       String
+  mimeType   String
+  /// Size in bytes.
+  size       Int
+  storageKey String   @unique
+  createdAt  DateTime @default(now())
+
+  @@index([taskId, createdAt])
+  @@index([uploaderId])
 }
 
 model Worklog {

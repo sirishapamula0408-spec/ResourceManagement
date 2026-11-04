@@ -45,6 +45,8 @@ export default defineConfig({
         PORT: API_PORT,
         NODE_ENV: 'production',
         JWT_SECRET: 'e2e-only-secret',
+        // Attachments uploaded by the tests stay out of the development uploads folder.
+        UPLOAD_DIR: 'apps/api/node_modules/.e2e-uploads',
       },
       reuseExistingServer: false,
     },

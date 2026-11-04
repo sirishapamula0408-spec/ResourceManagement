@@ -61,7 +61,8 @@ export function diff(before: Snapshot, after: Snapshot) {
 export async function record(
   actorId: string,
   taskId: string,
-  action: 'task.create' | 'task.update' | 'task.delete' | 'task.worklog',
+  action:
+    'task.create' | 'task.update' | 'task.delete' | 'task.worklog' | 'task.attach' | 'task.detach',
   before: Record<string, unknown> | null,
   after: Record<string, unknown> | null,
 ) {
@@ -172,6 +173,12 @@ export async function listHistory(user: AuthUser, taskId: string) {
       })),
       // Worklogs: the hours logged.
       hours: r.action === 'task.worklog' ? ((after as { hours?: number }).hours ?? null) : null,
+      // Attachments added or removed: the file name.
+      attachment:
+        r.action === 'task.attach' || r.action === 'task.detach'
+          ? (((r.action === 'task.attach' ? after : before) as { attachment?: string })
+              .attachment ?? null)
+          : null,
     };
   });
 }

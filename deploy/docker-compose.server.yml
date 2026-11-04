@@ -29,6 +29,11 @@ services:
       PUBLIC_URL: ${PUBLIC_URL:-}
       # Email domains allowed to sign up on the login page, e.g. example.com (empty: sign-up off).
       SIGNUP_DOMAINS: ${SIGNUP_DOMAINS:-}
+      # Task attachments, kept on the uploads volume so they survive restarts and rebuilds.
+      UPLOAD_DIR: /data/uploads
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-10}
+    volumes:
+      - uploads:/data/uploads
     depends_on:
       db: { condition: service_healthy }
 
@@ -41,3 +46,4 @@ services:
 
 volumes:
   dbdata:
+  uploads:

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
+import { TaskAttachments } from '../components/tasks/TaskAttachments';
 import { TaskComments } from '../components/tasks/TaskComments';
 import { TaskHistory } from '../components/tasks/TaskHistory';
 import { TaskLinks } from '../components/tasks/TaskLinks';
@@ -332,6 +333,7 @@ export function TaskPage() {
           />
           {!task.parent && <TaskSubtasks task={task} canAdd={manages} onOpen={openTask} />}
           <TaskLinks task={task} canEdit={manages || works} onOpen={openTask} />
+          <TaskAttachments taskId={task.id} canUpload={manages || works} manages={manages} />
           <section aria-labelledby="activity-heading">
             <div className="mb-2 flex items-center gap-3">
               <h2 id="activity-heading" className="text-sm font-semibold">
@@ -588,7 +590,7 @@ export function TaskPage() {
           {!manages && (
             <p className="px-1 text-xs text-muted">
               {works
-                ? 'You can change the status of, log hours on and link tasks assigned to you.'
+                ? 'You can change the status of, log hours on, link and attach files to tasks assigned to you.'
                 : 'View only: an admin or a PM on this project edits this task.'}
             </p>
           )}
