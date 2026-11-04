@@ -209,6 +209,7 @@ export function TaskFilters({
   epics = [],
   labels = [],
   showAssignee = true,
+  showProject = true,
 }: {
   filter: TaskFilter;
   onChange: (f: TaskFilter) => void;
@@ -219,6 +220,8 @@ export function TaskFilters({
   labels?: LabelCount[];
   /** Off where the list is already one person's tasks. */
   showAssignee?: boolean;
+  /** Off inside a project space. */
+  showProject?: boolean;
 }) {
   // The chosen project's sprints and epics; complete sprints only while selected.
   const inProject = <T extends { projectId: string }>(rows: T[]) =>
@@ -234,6 +237,7 @@ export function TaskFilters({
       <select
         className={control}
         aria-label="Project"
+        hidden={!showProject}
         value={filter.projectId}
         onChange={(e) => {
           const projectId = e.target.value;

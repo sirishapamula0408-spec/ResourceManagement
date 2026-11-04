@@ -15,6 +15,7 @@ import { TaskComments } from './TaskComments';
 import { ParentLink, TaskSubtasks } from './TaskSubtasks';
 import { LabelInput } from './taskUi';
 import {
+  currentProjectContext,
   currentTaskFilter,
   hours,
   PRIORITY_LABEL,
@@ -57,7 +58,9 @@ export function TaskDialog({
   const { canManageProject, canWork, manageableProjects } = useTaskPermissions();
 
   const filter = currentTaskFilter();
+  const inProject = currentProjectContext();
   const defaultProject =
+    (inProject && canManageProject(inProject) && inProject) ||
     (filter.projectId && canManageProject(filter.projectId) && filter.projectId) ||
     manageableProjects[0]?.id ||
     '';

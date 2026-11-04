@@ -118,7 +118,7 @@ export interface TaskFilter {
   q: string;
 }
 
-const EMPTY_FILTER: TaskFilter = {
+export const EMPTY_FILTER: TaskFilter = {
   projectId: '',
   assigneeId: '',
   sprintId: '',
@@ -129,6 +129,26 @@ const EMPTY_FILTER: TaskFilter = {
 
 // Shared between the Board and Tasks pages, like the prototype, so switching views keeps them.
 let lastFilter: TaskFilter = EMPTY_FILTER;
+
+// The project space open on screen, if any: new tasks default to it.
+let projectContext: string | null = null;
+export const setProjectContext = (projectId: string | null) => {
+  projectContext = projectId;
+};
+export const currentProjectContext = () => projectContext;
+
+/**
+ * Filters for the Board and Tasks pages. Inside a project space the page keeps its own filters,
+ * fixed to that project and starting on its active sprint (as a JIRA board does); elsewhere they
+ * are shared between the two pages.
+ */
+export function useScopedTaskFilter(projectId: string | undefined, activeSprintId?: string) {
+  const [shared, setShared] = useTaskFilter();
+  const [own, setOwn] = useState<TaskFilter | null>(null);
+  if (!projectId) return [shared, setShared] as const;
+  const filter = own ?? { ...EMPTY_FILTER, projectId, sprintId: activeSprintId ?? '' };
+  return [{ ...filter, projectId }, setOwn] as const;
+}
 
 /** Open the Board or Tasks page on one sprint or epic (used by the Sprints page). */
 export function presetTaskFilter(patch: Partial<TaskFilter>) {

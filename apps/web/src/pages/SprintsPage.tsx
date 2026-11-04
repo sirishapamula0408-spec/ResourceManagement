@@ -16,17 +16,12 @@ import {
 } from '../components/tasks/taskHelpers';
 import { api, type Epic, type Sprint, type SprintStatus } from '../lib/api';
 import { buttonClass, errorMessage, inputClass } from '../lib/forms';
+import { SPRINT_STATUS_CLASS } from '../lib/statusStyles';
 
 const PLANNING_QUERIES = [['sprints'], ['epics'], ['tasks']];
 
-const SPRINT_STATUS_CLASS: Record<SprintStatus, string> = {
-  PLANNED: 'bg-blue-soft',
-  ACTIVE: 'bg-amber-soft',
-  CLOSED: 'bg-green-soft',
-};
-
 /** "3 of 8 done" with a thin bar. */
-function Progress({ done, tasks }: { done: number; tasks: number }) {
+export function Progress({ done, tasks }: { done: number; tasks: number }) {
   return (
     <span className="inline-flex items-center gap-2 whitespace-nowrap tabular-nums">
       <span className="h-1.5 w-16 overflow-hidden rounded-sm bg-line">
@@ -45,7 +40,7 @@ const dates = (s: Sprint) =>
     ? `${s.startDate ? dueLabel(s.startDate) : '…'} – ${s.endDate ? dueLabel(s.endDate) : '…'}`
     : '';
 
-function SprintDialog({
+export function SprintDialog({
   sprint,
   projectId,
   onClose,
@@ -147,7 +142,7 @@ function SprintDialog({
 
 const EPIC_COLORS = ['#2f7d6d', '#3b6fb6', '#8a4fa3', '#c2571a', '#b8860b', '#b03a48'];
 
-function EpicDialog({
+export function EpicDialog({
   epic,
   projectId,
   onClose,

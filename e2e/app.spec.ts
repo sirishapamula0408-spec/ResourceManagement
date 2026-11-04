@@ -437,3 +437,41 @@ test('a PM plans a sprint, then labels a task and comments on it', async ({ page
   await expect(dialog(page).getByRole('heading', { name: 'Comments · 1' })).toBeVisible();
   await expect(dialog(page)).toContainText('Priya Sharma');
 });
+
+test('a PM opens a project space: summary, backlog, board, list and settings', async ({ page }) => {
+  await signIn(page, PM, '/projects');
+  await page.getByRole('row', { name: /Atlas Customer Portal/ }).click();
+  await expect(page).toHaveURL(/\/projects\/ATLAS$/);
+  const views = page.getByRole('navigation', { name: 'Project views' });
+  await expect(page.getByRole('heading', { name: 'Summary' })).toBeVisible();
+  await expect(page.getByText('ATLAS Sprint 7').first()).toBeVisible();
+
+  // Backlog: plan a backlog task into the active sprint.
+  await views.getByRole('link', { name: 'Backlog', exact: true }).click();
+  const sprint = page.getByRole('region', { name: 'ATLAS Sprint 7' });
+  const backlog = page.getByRole('region', { name: 'Backlog' });
+  await backlog.getByLabel('Create a task in the backlog').fill('Cookie banner');
+  await backlog.getByLabel('Create a task in the backlog').press('Enter');
+  await expect(backlog).toContainText('Cookie banner');
+  await backlog
+    .getByRole('listitem')
+    .filter({ hasText: 'Cookie banner' })
+    .getByRole('combobox')
+    .selectOption({ label: 'ATLAS Sprint 7' });
+  await expect(sprint).toContainText('Cookie banner');
+
+  // Board opens on the active sprint, with the new task ready to do.
+  await views.getByRole('link', { name: 'Board', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'ATLAS Sprint 7' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'To do' })).toContainText('Cookie banner');
+
+  // List: only ATLAS tasks.
+  await views.getByRole('link', { name: 'List', exact: true }).click();
+  const keys = await page.locator('tbody tr td:nth-child(2)').allTextContents();
+  expect(keys.length).toBeGreaterThan(0);
+  expect(keys.every((k) => k.startsWith('ATLAS-'))).toBe(true);
+
+  await views.getByRole('link', { name: 'Settings', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Epics' })).toBeVisible();
+  await expect(page.getByText('Account self-service')).toBeVisible();
+});

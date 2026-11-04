@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Checklist, Dialog, Field } from '../components/Dialog';
 import { PageHeader } from '../components/PageHeader';
 import { Pagination } from '../components/Pagination';
@@ -19,26 +20,11 @@ import {
 import { buttonClass, errorMessage, inputClass, STAFFING_QUERIES } from '../lib/forms';
 import { usePagination } from '../lib/pagination';
 import { fmt, identityColor } from '../lib/theme';
-
-const STATUSES: [ProjectStatus, string][] = [
-  ['PLANNED', 'Planned'],
-  ['ACTIVE', 'Active'],
-  ['ON_HOLD', 'On hold'],
-  ['COMPLETED', 'Completed'],
-  ['CANCELLED', 'Cancelled'],
-];
-const STATUS_LABEL = Object.fromEntries(STATUSES) as Record<ProjectStatus, string>;
-const STATUS_CLASS: Record<ProjectStatus, string> = {
-  PLANNED: 'bg-blue-soft',
-  ACTIVE: 'bg-green-soft',
-  ON_HOLD: 'bg-amber-soft',
-  COMPLETED: 'bg-panel2 border border-line',
-  CANCELLED: 'bg-panel2 border border-line text-muted',
-};
+import { PROJECT_STATUS_CLASS, PROJECT_STATUS_LABEL, PROJECT_STATUSES } from '../lib/statusStyles';
 
 const dateInput = (iso: string | null) => (iso ? iso.slice(0, 10) : '');
 
-function ProjectDialog({
+export function ProjectDialog({
   project,
   people,
   onClose,
@@ -132,7 +118,7 @@ function ProjectDialog({
           value={form.status}
           onChange={(e) => set({ status: e.target.value as ProjectStatus })}
         >
-          {STATUSES.map(([v, l]) => (
+          {PROJECT_STATUSES.map(([v, l]) => (
             <option key={v} value={v}>
               {l}
             </option>
@@ -201,7 +187,13 @@ function ProjectDialog({
   );
 }
 
-function MemberStack({ members, allNames }: { members: Project['members']; allNames: string[] }) {
+export function MemberStack({
+  members,
+  allNames,
+}: {
+  members: Project['members'];
+  allNames: string[];
+}) {
   const shown = members.slice(0, 5);
   return (
     <div className="flex items-center" title={members.map((m) => m.name).join(', ')}>
@@ -231,6 +223,7 @@ export function ProjectsPage() {
   const paged = usePagination(projects, 10, '');
   const qc = useQueryClient();
   const [toastMessage, showToast] = useToast();
+  const navigate = useNavigate();
   const remove = useMutation({
     mutationFn: (p: Project) => api(`/projects/${p.id}`, { method: 'DELETE' }),
     onSuccess: (_r, p) => {
@@ -295,8 +288,9 @@ export function ProjectsPage() {
               {paged.items.map((p) => (
                 <tr
                   key={p.id}
-                  className={editable ? 'cursor-pointer hover:[&>td]:bg-panel2' : ''}
-                  onClick={editable ? () => setEditing(p) : undefined}
+                  // Opens the project space (summary, backlog, board, list, settings).
+                  className={sales ? '' : 'cursor-pointer hover:[&>td]:bg-panel2'}
+                  onClick={sales ? undefined : () => navigate(`/projects/${p.code}`)}
                 >
                   <td className={td}>
                     <i
@@ -305,14 +299,20 @@ export function ProjectsPage() {
                     />
                     <b>{p.code}</b>
                   </td>
-                  <td className={td}>{p.name}</td>
+                  <td className={td}>
+                    {sales ? (
+                      p.name
+                    ) : (
+                      <span className="font-medium text-teal hover:underline">{p.name}</span>
+                    )}
+                  </td>
                   <td className={td}>{p.client ?? <span className="text-muted">—</span>}</td>
                   <td className={td}>{p.billable ? 'Billable' : 'Non-billable'}</td>
                   <td className={td}>
                     <span
-                      className={`rounded-[3px] px-[7px] py-0.5 text-[11px] font-semibold whitespace-nowrap ${STATUS_CLASS[p.status]}`}
+                      className={`rounded-[3px] px-[7px] py-0.5 text-[11px] font-semibold whitespace-nowrap ${PROJECT_STATUS_CLASS[p.status]}`}
                     >
-                      {STATUS_LABEL[p.status]}
+                      {PROJECT_STATUS_LABEL[p.status]}
                     </span>
                   </td>
                   <td className={td}>{p.owner?.name ?? <span className="text-muted">—</span>}</td>

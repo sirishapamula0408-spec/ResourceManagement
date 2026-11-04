@@ -35,12 +35,12 @@ import {
   TYPE_LABEL,
   useLabels,
   usePlanningLookups,
-  useTaskFilter,
+  useScopedTaskFilter,
   useTaskLookups,
   useToast,
 } from '../components/tasks/taskHelpers';
 import { PageHeader } from '../components/PageHeader';
-import { api, ApiError, TASK_STATUSES, type Task, type TaskStatus } from '../lib/api';
+import { api, ApiError, TASK_STATUSES, type Project, type Task, type TaskStatus } from '../lib/api';
 import { fmt, identityColor } from '../lib/theme';
 
 interface CardProps {
@@ -181,15 +181,18 @@ interface Move {
  * Drag a card to another column to change its status, or up and down to reorder it.
  * Click a card to open it.
  */
-export function BoardPage() {
+export function BoardPage({ project }: { project?: Project } = {}) {
   const qc = useQueryClient();
-  const [filter, setFilter] = useTaskFilter();
+  const { sprints, epics } = usePlanningLookups();
+  const activeSprint = project
+    ? sprints.find((s) => s.projectId === project.id && s.status === 'ACTIVE')
+    : undefined;
+  const [filter, setFilter] = useScopedTaskFilter(project?.id, activeSprint?.id);
   const [toastMessage, showToast] = useToast();
   const [open, setOpen] = useState<Task | null>(null);
   // A short drag threshold lets a plain click open the card instead of starting a drag.
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const { people, projects, personNames, projectCodes } = useTaskLookups();
-  const { sprints, epics } = usePlanningLookups();
   const labels = useLabels();
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ['tasks'],
@@ -276,8 +279,22 @@ export function BoardPage() {
 
   return (
     <>
-      <PageHeader title="Board">
+      <PageHeader
+        title={
+          project
+            ? activeSprint && filter.sprintId === activeSprint.id
+              ? activeSprint.name
+              : 'Board'
+            : 'Board'
+        }
+        subtitle={
+          project && activeSprint && filter.sprintId === activeSprint.id
+            ? (activeSprint.goal ?? undefined)
+            : undefined
+        }
+      >
         <TaskFilters
+          showProject={!project}
           filter={filter}
           onChange={setFilter}
           people={people}

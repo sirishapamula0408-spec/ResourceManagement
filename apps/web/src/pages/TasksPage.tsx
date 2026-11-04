@@ -19,13 +19,13 @@ import {
   PRIORITY_RANK,
   useLabels,
   usePlanningLookups,
-  useTaskFilter,
+  useScopedTaskFilter,
   useTaskLookups,
   useTaskPermissions,
   useToast,
 } from '../components/tasks/taskHelpers';
 import { PageHeader } from '../components/PageHeader';
-import { api, auth, isTeamMember, TASK_STATUSES, type Task } from '../lib/api';
+import { api, auth, isTeamMember, TASK_STATUSES, type Project, type Task } from '../lib/api';
 import { buttonClass, errorMessage } from '../lib/forms';
 import { usePagination } from '../lib/pagination';
 import { fmt } from '../lib/theme';
@@ -98,8 +98,8 @@ function SelectAll({
 }
 
 /** Sortable, paged list of every task; click a row to open it, tick rows to delete several. */
-export function TasksPage() {
-  const [filter, setFilter] = useTaskFilter();
+export function TasksPage({ project }: { project?: Project } = {}) {
+  const [filter, setFilter] = useScopedTaskFilter(project?.id);
   const [open, setOpen] = useState<Task | null>(null);
   const [toastMessage, showToast] = useToast();
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'due', dir: 1 });
@@ -210,8 +210,12 @@ export function TasksPage() {
 
   return (
     <>
-      <PageHeader title="Tasks" subtitle={member ? 'Tasks assigned to you' : undefined}>
+      <PageHeader
+        title={project ? 'List' : 'Tasks'}
+        subtitle={member ? 'Tasks assigned to you' : undefined}
+      >
         <TaskFilters
+          showProject={!project}
           filter={filter}
           onChange={setFilter}
           people={people}
