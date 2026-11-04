@@ -23,7 +23,10 @@ export function LegacyTaskRedirect({ view }: { view: 'board' | 'list' | 'sprints
   );
   if (!project) return <Navigate to="/projects" replace />;
   // Inside a project the project is implied, so it leaves the address; sprints take no filters.
-  params.delete('project');
-  const query = view === 'sprints' ? '' : params.toString();
+  // Work on a copy: deleting from the router's own params would drop the project on a re-render
+  // and send the redirect to /projects instead.
+  const rest = new URLSearchParams(params);
+  rest.delete('project');
+  const query = view === 'sprints' ? '' : rest.toString();
   return <Navigate to={`/projects/${project.code}/${view}${query ? `?${query}` : ''}`} replace />;
 }
