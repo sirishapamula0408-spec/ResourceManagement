@@ -7,6 +7,7 @@ import { RequireAuth } from './components/RequireAuth';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { ConnectPage } from './pages/ConnectPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { LoginPage } from './pages/LoginPage';
 import { MfaVerifyPage } from './pages/MfaVerifyPage';
 import { ProjectsPage } from './pages/ProjectsPage';
@@ -23,6 +24,7 @@ import { TeamsPage } from './pages/TeamsPage';
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/login/mfa', element: <MfaVerifyPage /> },
+  { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/signup', element: <SignupPage /> },
   {
     path: '/connect',

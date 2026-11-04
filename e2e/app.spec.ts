@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
+import { E2E_ADMIN_EMAIL } from '../playwright.config';
 
 // Sample-data logins (see README); the e2e database is reset before every run.
 const ADMIN = { email: 'admin@resourceboard.local', password: 'Admin@12345' };
@@ -119,6 +120,31 @@ test('sign-in page: no SSO or sign-up link by default, Remember me off', async (
   await expect(page).toHaveTitle('SedHub');
 });
 
+test('"Forgot password?" opens the reset page, which points to the administrator', async ({
+  page,
+}) => {
+  await page.goto('/login');
+  await page.getByRole('link', { name: 'Forgot password?' }).click();
+  await expect(page).toHaveURL(/\/forgot-password$/);
+  await expect(page).toHaveTitle('Reset password · SedHub');
+  await expect(page.getByRole('heading', { name: 'Reset your password' })).toBeVisible();
+  await expect(
+    page.getByText(
+      'Ask your administrator to reset it. You will choose a new password the next time you sign in.',
+    ),
+  ).toBeVisible();
+  // The e2e build sets VITE_ADMIN_EMAIL (playwright.config.ts).
+  await expect(page.getByRole('link', { name: 'Email administrator' })).toHaveAttribute(
+    'href',
+    new RegExp(`^mailto:${E2E_ADMIN_EMAIL.replace(/\./g, '\\.')}\\?`),
+  );
+  await page.getByRole('link', { name: 'Back to sign in' }).click();
+  await expect(page).toHaveURL(/\/login$/);
+  await expect(page).toHaveTitle('Sign in · SedHub');
+  // No inline reset box on the sign-in page any more.
+  await expect(page.getByText('Ask your administrator to reset it.')).toHaveCount(0);
+});
+
 test('Enter signs in once, with a loading state, and the session ends with the browser', async ({
   page,
 }) => {
@@ -204,7 +230,7 @@ test('the sign-in form works from the keyboard with visible focus', async ({ pag
     page.getByLabel('Password', { exact: true }),
     page.getByRole('button', { name: 'Show password' }),
     page.getByLabel('Remember me'),
-    page.getByRole('button', { name: 'Forgot Password?' }),
+    page.getByRole('link', { name: 'Forgot password?' }),
     page.getByRole('button', { name: 'Sign in', exact: true }),
   ]) {
     await page.keyboard.press('Tab');

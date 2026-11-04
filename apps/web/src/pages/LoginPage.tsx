@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { focusRing, SignInCard, SignInShell, TrustBadges } from '../components/SignInShell';
 import { api, auth, type LoginResponse, safeNext } from '../lib/api';
 import { appConfig } from '../lib/appConfig';
@@ -106,7 +106,6 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [capsLock, setCapsLock] = useState(false);
   const [remember, setRemember] = useState(false);
-  const [forgot, setForgot] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const bannerRef = useRef<HTMLDivElement>(null);
@@ -298,21 +297,13 @@ export function LoginPage() {
               />
               Remember me
             </label>
-            <button
-              type="button"
+            <Link
+              to={next ? `/forgot-password?next=${encodeURIComponent(next)}` : '/forgot-password'}
               className={`rounded font-medium text-[#1546d6] hover:underline ${focusRing}`}
-              aria-expanded={forgot}
-              onClick={() => setForgot((f) => !f)}
             >
-              Forgot Password?
-            </button>
+              Forgot password?
+            </Link>
           </div>
-          {forgot && (
-            <p role="status" className="rounded-md bg-[#eef3ff] px-3 py-2 text-sm text-[#1f2b4d]">
-              Ask your administrator to reset it. You will choose a new password the next time you
-              sign in.
-            </p>
-          )}
 
           <button
             type="submit"

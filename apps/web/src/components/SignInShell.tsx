@@ -327,8 +327,15 @@ function SignInFooter() {
  * lg the panel becomes a slim header (logo and tagline) and the card takes the full width with
  * 16px gutters (up to 768px).
  */
-export function SignInShell({ children }: { children: ReactNode }) {
-  useDocumentTitle('Sign in · SedHub');
+export function SignInShell({
+  children,
+  title = 'Sign in · SedHub',
+}: {
+  children: ReactNode;
+  /** Browser tab title while the page is shown. */
+  title?: string;
+}) {
+  useDocumentTitle(title);
   return (
     <div className="grid min-h-dvh bg-[#f4f6fb] [--support-w:4.5rem] lg:grid-cols-[minmax(0,1fr)_calc(clamp(37rem,36vw,40rem)_+_var(--support-w)_+_2rem_+_1px)]">
       <aside className="relative hidden overflow-hidden bg-[radial-gradient(120%_90%_at_10%_0%,#123a9c_0%,#0a2a7a_45%,#061c55_100%)] text-white lg:block [clip-path:ellipse(100%_120%_at_0%_50%)]">

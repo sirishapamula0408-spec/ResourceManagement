@@ -1,8 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * End-to-end tests: the built app against its own database (`resource_board_e2e`), reset with
- * the sample data before every run (see e2e/global-setup.ts). Run with `npm run e2e`.
+ * End-to-end tests: the built API and an e2e build of the web app against their own database
+ * (`resource_board_e2e`), reset with the sample data before every run (see e2e/global-setup.ts). Run with `npm run e2e`.
  * Locally they use the installed Microsoft Edge; CI uses Playwright's Chromium.
  */
 const CI = !!process.env.CI;
@@ -11,6 +11,10 @@ export const E2E_DATABASE_URL =
   'postgresql://postgres:postgres@localhost:5433/resource_board_e2e?schema=public';
 const API_PORT = '4300';
 const WEB_PORT = 4174;
+/** Where the e2e build of the web app goes (relative to apps/web). */
+const E2E_WEB_DIR = 'node_modules/.e2e-build';
+/** VITE_ADMIN_EMAIL for the e2e build ("Contact your administrator", "Email administrator"). */
+export const E2E_ADMIN_EMAIL = 'it-support@resourceboard.local';
 
 export default defineConfig({
   testDir: 'e2e',
@@ -45,9 +49,12 @@ export default defineConfig({
       reuseExistingServer: false,
     },
     {
-      command: `npm run preview -w @rb/web -- --port ${WEB_PORT} --strictPort`,
+      // Its own build of the web app (VITE_* settings are fixed at build time), so the e2e
+      // settings, e.g. an administrator address, don't end up in apps/web/dist.
+      command: `npm exec -w @rb/web -- vite build --outDir ${E2E_WEB_DIR} --emptyOutDir && npm run preview -w @rb/web -- --outDir ${E2E_WEB_DIR} --port ${WEB_PORT} --strictPort`,
       url: `http://localhost:${WEB_PORT}`,
-      env: { API_PORT },
+      env: { API_PORT, VITE_ADMIN_EMAIL: E2E_ADMIN_EMAIL },
+      timeout: 180_000,
       reuseExistingServer: false,
     },
   ],
