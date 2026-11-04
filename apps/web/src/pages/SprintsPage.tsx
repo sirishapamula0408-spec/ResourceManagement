@@ -1,20 +1,18 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Dialog, Field } from '../components/Dialog';
 import { PageHeader } from '../components/PageHeader';
 import { RowActions } from '../components/RowActions';
-import { EpicChip, Toast } from '../components/tasks/taskUi';
+import { Toast } from '../components/tasks/taskUi';
 import {
   dueLabel,
-  presetTaskFilter,
   SPRINT_STATUS_LABEL,
   usePlanningLookups,
-  useTaskLookups,
   useTaskPermissions,
   useToast,
 } from '../components/tasks/taskHelpers';
-import { api, type Epic, type Sprint, type SprintStatus } from '../lib/api';
+import { api, type Epic, type Project, type Sprint, type SprintStatus } from '../lib/api';
 import { buttonClass, errorMessage, inputClass } from '../lib/forms';
 import { SPRINT_STATUS_CLASS } from '../lib/statusStyles';
 
@@ -234,17 +232,18 @@ export function EpicDialog({
   );
 }
 
-/** Sprints and epics per project (M2): plan, start and complete sprints; group tasks in epics. */
-export function SprintsPage() {
+/**
+ * A project's Sprints view: every sprint it has had, completed ones included (the Backlog shows
+ * only open sprints). Each sprint opens on the project board; managers start, complete and edit
+ * them here too.
+ */
+export function SprintsPage({ project }: { project: Project }) {
   const qc = useQueryClient();
-  const navigate = useNavigate();
   const [toastMessage, showToast] = useToast();
-  const [projectId, setProjectId] = useState('');
   const [editingSprint, setEditingSprint] = useState<Sprint | 'new' | null>(null);
-  const [editingEpic, setEditingEpic] = useState<Epic | 'new' | null>(null);
-  const { projects } = useTaskLookups();
-  const { sprints, epics } = usePlanningLookups();
-  const { canManageProject, manageableProjects } = useTaskPermissions();
+  const { sprints } = usePlanningLookups();
+  const { canManageProject } = useTaskPermissions();
+  const manages = canManageProject(project.id);
 
   const refresh = () => PLANNING_QUERIES.forEach((queryKey) => qc.invalidateQueries({ queryKey }));
   const setStatus = useMutation({
@@ -261,7 +260,7 @@ export function SprintsPage() {
     onError: (e) => showToast(errorMessage(e)),
   });
   const remove = useMutation({
-    mutationFn: (path: string) => api(path, { method: 'DELETE' }),
+    mutationFn: (sprint: Sprint) => api(`/sprints/${sprint.id}`, { method: 'DELETE' }),
     onSuccess: () => {
       refresh();
       showToast('Deleted. Its tasks are kept.');
@@ -269,69 +268,43 @@ export function SprintsPage() {
     onError: (e) => showToast(errorMessage(e)),
   });
 
-  const inProject = <T extends { projectId: string }>(rows: T[]) =>
-    projectId ? rows.filter((r) => r.projectId === projectId) : rows;
   // Active first, then planned, then complete.
   const rank: Record<SprintStatus, number> = { ACTIVE: 0, PLANNED: 1, CLOSED: 2 };
-  const shownSprints = inProject(sprints).sort((a, b) => rank[a.status] - rank[b.status]);
-  const shownEpics = inProject(epics);
-  const canCreate = manageableProjects.length > 0;
-
-  const openTasks = (patch: { sprintId?: string; epicId?: string }, onProject: string) => {
-    presetTaskFilter({ ...patch, projectId: onProject });
-    navigate('/board');
-  };
+  const shownSprints = sprints
+    .filter((s) => s.projectId === project.id)
+    .sort((a, b) => rank[a.status] - rank[b.status]);
 
   const th =
     'border-b border-line px-2.5 py-2 text-left font-semibold whitespace-nowrap text-muted';
   const td = 'border-b border-line px-2.5 py-[9px] align-middle';
-  const card =
-    'min-w-0 rounded-lg border border-line bg-panel shadow-[0_1px_0_rgba(23,35,59,0.06)]';
-  const link = 'font-medium text-left hover:text-teal hover:underline';
 
   return (
     <>
-      <PageHeader title="Sprints and epics">
-        <select
-          className="rounded-md border border-line bg-panel px-2.5 py-1.5"
-          aria-label="Project"
-          value={projectId}
-          onChange={(e) => setProjectId(e.target.value)}
-        >
-          <option value="">All projects</option>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+      <PageHeader title="Sprints">
+        {manages && (
+          <button
+            type="button"
+            className={buttonClass('primary')}
+            onClick={() => setEditingSprint('new')}
+          >
+            New sprint
+          </button>
+        )}
       </PageHeader>
 
-      <section className={`${card} mb-4`} aria-labelledby="sprints-heading">
-        <header className="flex items-center gap-3 border-b border-line px-3 py-2.5">
-          <h2 id="sprints-heading" className="font-semibold">
-            Sprints
-          </h2>
-          <p className="flex-1 text-xs text-muted">
-            One active sprint per project. Completing a sprint sends its unfinished tasks back to
-            the backlog.
-          </p>
-          {canCreate && (
-            <button
-              type="button"
-              className={buttonClass('primary')}
-              onClick={() => setEditingSprint('new')}
-            >
-              New sprint
-            </button>
-          )}
-        </header>
+      <section
+        className="min-w-0 rounded-lg border border-line bg-panel shadow-[0_1px_0_rgba(23,35,59,0.06)]"
+        aria-label="Sprints"
+      >
+        <p className="border-b border-line px-3 py-2.5 text-xs text-muted">
+          One active sprint at a time. Completing a sprint sends its unfinished tasks back to the
+          backlog.
+        </p>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[13px]">
             <thead>
               <tr>
                 <th className={th}>Sprint</th>
-                <th className={th}>Project</th>
                 <th className={th}>Dates</th>
                 <th className={th}>Status</th>
                 <th className={th}>Progress</th>
@@ -339,35 +312,33 @@ export function SprintsPage() {
               </tr>
             </thead>
             <tbody>
-              {shownSprints.map((s) => {
-                const manages = canManageProject(s.projectId);
-                return (
-                  <tr key={s.id}>
-                    <td className={td}>
-                      <button
-                        type="button"
-                        className={link}
-                        onClick={() => openTasks({ sprintId: s.id }, s.projectId)}
-                      >
-                        {s.name}
-                      </button>
-                      {s.goal && <p className="text-xs text-muted">{s.goal}</p>}
-                    </td>
-                    <td className={td}>{s.project.name}</td>
-                    <td className={`${td} whitespace-nowrap`}>{dates(s)}</td>
-                    <td className={td}>
-                      <span
-                        className={`rounded-[3px] px-[7px] py-0.5 text-[11px] font-semibold ${SPRINT_STATUS_CLASS[s.status]}`}
-                      >
-                        {SPRINT_STATUS_LABEL[s.status]}
-                      </span>
-                    </td>
-                    <td className={td}>
-                      <Progress done={s.done} tasks={s.tasks} />
-                    </td>
-                    <td className={`${td} whitespace-nowrap`}>
+              {shownSprints.map((s) => (
+                <tr key={s.id}>
+                  <td className={td}>
+                    <Link
+                      to={`/projects/${project.code}/board?sprint=${s.id}`}
+                      className="font-medium hover:text-teal hover:underline"
+                      title="Show this sprint on the board"
+                    >
+                      {s.name}
+                    </Link>
+                    {s.goal && <p className="text-xs text-muted">{s.goal}</p>}
+                  </td>
+                  <td className={`${td} whitespace-nowrap`}>{dates(s)}</td>
+                  <td className={td}>
+                    <span
+                      className={`rounded-[3px] px-[7px] py-0.5 text-[11px] font-semibold ${SPRINT_STATUS_CLASS[s.status]}`}
+                    >
+                      {SPRINT_STATUS_LABEL[s.status]}
+                    </span>
+                  </td>
+                  <td className={td}>
+                    <Progress done={s.done} tasks={s.tasks} />
+                  </td>
+                  <td className={`${td} whitespace-nowrap`}>
+                    {manages && (
                       <span className="flex items-center justify-end gap-1.5">
-                        {manages && s.status === 'PLANNED' && (
+                        {s.status === 'PLANNED' && (
                           <button
                             type="button"
                             className={buttonClass()}
@@ -377,7 +348,7 @@ export function SprintsPage() {
                             Start
                           </button>
                         )}
-                        {manages && s.status === 'ACTIVE' && (
+                        {s.status === 'ACTIVE' && (
                           <button
                             type="button"
                             className={buttonClass()}
@@ -391,94 +362,21 @@ export function SprintsPage() {
                             Complete
                           </button>
                         )}
-                        {manages && (
-                          <RowActions
-                            onEdit={() => setEditingSprint(s)}
-                            onDelete={() => remove.mutate(`/sprints/${s.id}`)}
-                            deleteConfirm={`Delete ${s.name}? Its tasks are kept, out of any sprint.`}
-                            busy={remove.isPending}
-                          />
-                        )}
+                        <RowActions
+                          onEdit={() => setEditingSprint(s)}
+                          onDelete={() => remove.mutate(s)}
+                          deleteConfirm={`Delete ${s.name}? Its tasks are kept, out of any sprint.`}
+                          busy={remove.isPending}
+                        />
                       </span>
-                    </td>
-                  </tr>
-                );
-              })}
-              {!shownSprints.length && (
-                <tr>
-                  <td colSpan={6} className="p-2.5 text-center text-xs text-muted">
-                    No sprints yet.{canCreate ? ' Use New sprint to plan one.' : ''}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className={card} aria-labelledby="epics-heading">
-        <header className="flex items-center gap-3 border-b border-line px-3 py-2.5">
-          <h2 id="epics-heading" className="font-semibold">
-            Epics
-          </h2>
-          <p className="flex-1 text-xs text-muted">
-            Group related tasks across sprints. Set a task’s epic in the task dialog.
-          </p>
-          {canCreate && (
-            <button
-              type="button"
-              className={buttonClass('primary')}
-              onClick={() => setEditingEpic('new')}
-            >
-              New epic
-            </button>
-          )}
-        </header>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[13px]">
-            <thead>
-              <tr>
-                <th className={th}>Epic</th>
-                <th className={th}>Project</th>
-                <th className={th}>Description</th>
-                <th className={th}>Progress</th>
-                <th className="border-b border-line" aria-label="Actions" />
-              </tr>
-            </thead>
-            <tbody>
-              {shownEpics.map((ep) => (
-                <tr key={ep.id}>
-                  <td className={td}>
-                    <button
-                      type="button"
-                      className="hover:opacity-80"
-                      title="Show this epic’s tasks on the board"
-                      onClick={() => openTasks({ epicId: ep.id }, ep.projectId)}
-                    >
-                      <EpicChip epic={ep} />
-                    </button>
-                  </td>
-                  <td className={td}>{ep.project.name}</td>
-                  <td className={`${td} text-muted`}>{ep.description}</td>
-                  <td className={td}>
-                    <Progress done={ep.done} tasks={ep.tasks} />
-                  </td>
-                  <td className={td}>
-                    {canManageProject(ep.projectId) && (
-                      <RowActions
-                        onEdit={() => setEditingEpic(ep)}
-                        onDelete={() => remove.mutate(`/epics/${ep.id}`)}
-                        deleteConfirm={`Delete ${ep.name}? Its tasks are kept, without an epic.`}
-                        busy={remove.isPending}
-                      />
                     )}
                   </td>
                 </tr>
               ))}
-              {!shownEpics.length && (
+              {!shownSprints.length && (
                 <tr>
                   <td colSpan={5} className="p-2.5 text-center text-xs text-muted">
-                    No epics yet.{canCreate ? ' Use New epic to add one.' : ''}
+                    No sprints yet.{manages ? ' Use New sprint to plan one.' : ''}
                   </td>
                 </tr>
               )}
@@ -490,15 +388,8 @@ export function SprintsPage() {
       {editingSprint && (
         <SprintDialog
           sprint={editingSprint === 'new' ? null : editingSprint}
-          projectId={projectId && canManageProject(projectId) ? projectId : ''}
+          projectId={project.id}
           onClose={() => setEditingSprint(null)}
-        />
-      )}
-      {editingEpic && (
-        <EpicDialog
-          epic={editingEpic === 'new' ? null : editingEpic}
-          projectId={projectId && canManageProject(projectId) ? projectId : ''}
-          onClose={() => setEditingEpic(null)}
         />
       )}
       <Toast message={toastMessage} />

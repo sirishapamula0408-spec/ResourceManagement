@@ -6,8 +6,8 @@ import { api, isSales, type Project } from '../../lib/api';
 import { ProjectSidebar } from './ProjectSidebar';
 
 /**
- * A project's own space, like a JIRA project: a sidebar with Summary, Backlog, Board, List and
- * Settings, opened from the Projects page at /projects/<KEY>.
+ * A project's own space, like a JIRA project: a sidebar with Summary, Backlog, Board, List,
+ * Sprints and Settings, opened from the Projects page at /projects/<KEY>.
  */
 export function ProjectLayout() {
   const { code = '' } = useParams();

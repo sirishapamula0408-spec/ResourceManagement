@@ -250,8 +250,8 @@ export function TaskPage() {
     return (
       <p className="text-muted">
         Task {key.toUpperCase()} was not found, or you cannot see it.{' '}
-        <Link to="/tasks" className="text-teal hover:underline">
-          Back to tasks
+        <Link to="/projects" className="text-teal hover:underline">
+          Back to projects
         </Link>
       </p>
     );

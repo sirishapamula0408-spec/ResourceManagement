@@ -64,7 +64,7 @@ test('a PM creates a task in the dialog, then edits it on its task page', async 
   await d.getByRole('button', { name: 'Save' }).click();
   await expect(toast(page)).toHaveText('Task created');
 
-  await page.getByRole('link', { name: 'Tasks', exact: true }).click();
+  await page.goto('/projects/ATLAS/list');
   await page.getByLabel('Search tasks').fill('E2E: export');
   const row = page.getByRole('row', { name: /E2E: export utilization report/ });
   await expect(row).toContainText('To do');
@@ -91,7 +91,7 @@ test('a due date before the start date is not accepted', async ({ page }) => {
 });
 
 test('a team member can only change the status of their own tasks', async ({ page }) => {
-  await signIn(page, MEMBER, '/tasks');
+  await signIn(page, MEMBER, '/projects/ATLAS/list');
   await expect(page.getByRole('button', { name: 'Create task' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Delete' })).toHaveCount(0);
 
@@ -112,7 +112,8 @@ test('a team member can only change the status of their own tasks', async ({ pag
 });
 
 test('a PM moves a card on the board by dragging it', async ({ page }) => {
-  await signIn(page, PM, '/board');
+  // ORION has no sprints, so its board shows every task.
+  await signIn(page, PM, '/projects/ORION/board');
   const card = page.getByRole('button', { name: /Project kickoff deck/ });
   const target = page.getByRole('region', { name: 'In progress' });
   // Cards can sit below the fold; drag within the visible part of the board.
@@ -191,9 +192,7 @@ test('staffing is read-only for a PM', async ({ page }) => {
 });
 
 test('a PM deletes several tasks at once, only on their own projects', async ({ page }) => {
-  await signIn(page, PM, '/tasks');
-  // NOVA belongs to the other PM, so its tasks can't be selected.
-  await expect(page.getByLabel('Select NOVA-1')).toHaveCount(0);
+  await signIn(page, PM, '/projects/ATLAS/list');
 
   const first = page.getByRole('row', { name: /ATLAS-6\b/ });
   const second = page.getByRole('row', { name: /ATLAS-11\b/ });
@@ -213,42 +212,53 @@ test('a PM deletes several tasks at once, only on their own projects', async ({ 
 test('the task list pages through results and returns to page 1 when filtering', async ({
   page,
 }) => {
-  await signIn(page, ADMIN, '/tasks');
+  await signIn(page, ADMIN, '/projects/ATLAS/list');
   const pager = page.getByRole('navigation', { name: 'tasks pages' });
   await pager.getByLabel('Rows per page').selectOption('10');
   await expect(pager).toContainText(/Showing 1–10 of \d+ tasks/);
   await expect(page.locator('tbody tr')).toHaveCount(10);
 
   await pager.getByRole('button', { name: 'Next →' }).click();
-  await expect(pager).toContainText(/Showing 11–20 of/);
+  await expect(pager).toContainText(/Showing 11–\d+ of/);
   await expect(pager.getByRole('button', { name: 'Page 2' })).toHaveAttribute(
     'aria-current',
     'page',
   );
 
-  await page.getByLabel('Project').selectOption({ label: 'Orion Mobile Refresh' });
+  await page.getByLabel('Search tasks').fill('Invoice');
   await expect(pager).toContainText(/Showing 1–\d of \d tasks/);
 });
 
 test('a team member sees only their own projects, board, tasks and figures', async ({ page }) => {
-  // Liam is on ATLAS only and has two tasks assigned to him there.
-  await signIn(page, MEMBER, '/projects');
-  await expect(page.getByText('Projects you are on')).toBeVisible();
-  await expect(page.locator('tbody tr')).toHaveCount(1);
-  await expect(page.getByRole('row', { name: /Atlas Customer Portal/ })).toBeVisible();
-
-  await page.getByRole('link', { name: 'Board', exact: true }).click();
-  await expect(page.getByRole('button', { name: /Invoice PDF download/ })).toBeVisible();
-  await expect(page.getByRole('button', { name: /Payments webhook handler/ })).toBeVisible(); // teammate, ATLAS
-  await expect(page.getByRole('button', { name: /CRM ingestion job/ })).toHaveCount(0); // NOVA
-  await expect(page.getByRole('button', { name: /Mobile UX research/ })).toHaveCount(0); // ORION
-
-  await page.getByRole('link', { name: 'Tasks', exact: true }).click();
+  // Liam is on ATLAS only and has two tasks assigned to him there, so he lands on its list.
+  await signIn(page, MEMBER, '/');
+  await expect(page).toHaveURL(/\/projects\/ATLAS\/list$/);
+  await expect(
+    page.getByRole('navigation', { name: 'Views', exact: true }).getByRole('link'),
+  ).toHaveText(['Dashboard', 'Projects', 'Team', 'Reports']);
   await expect(page.getByText('Tasks assigned to you')).toBeVisible();
   await expect(page.getByLabel('Assignee')).toHaveCount(0);
   const rows = page.locator('tbody tr');
   await expect(rows.first()).toBeVisible();
   for (const row of await rows.all()) await expect(row).toContainText('Liam Chen');
+
+  await page
+    .getByRole('navigation', { name: 'Views', exact: true })
+    .getByRole('link', { name: 'Projects' })
+    .click();
+  await expect(page.getByText('Projects you are on')).toBeVisible();
+  await expect(page.locator('tbody tr')).toHaveCount(1);
+  await page.getByRole('row', { name: /Atlas Customer Portal/ }).click();
+
+  await page
+    .getByRole('navigation', { name: 'Project views' })
+    .getByRole('link', { name: 'Board', exact: true })
+    .click();
+  await expect(page.getByRole('button', { name: /Invoice PDF download/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: /Payments webhook handler/ })).toBeVisible(); // teammate, ATLAS
+  // Other projects' spaces stay closed to him.
+  await page.goto('/projects/NOVA/board');
+  await expect(page.getByText('Project NOVA was not found, or you are not on it.')).toBeVisible();
 
   await page.getByRole('link', { name: 'Dashboard', exact: true }).click();
   await expect(page.getByText(/Your own workload/)).toBeVisible();
@@ -385,7 +395,7 @@ test('PMs can read the pipeline; team members have no Leads page', async ({ page
 });
 
 test('a PM reorders cards within a column', async ({ page }) => {
-  await signIn(page, PM, '/board');
+  await signIn(page, PM, '/projects/ATLAS/board');
   await page.locator('div.font-medium').first().waitFor(); // board loaded
   // Earlier tests move and delete cards, so use whichever column has two or more.
   let column = page.getByRole('region', { name: 'To do' });
@@ -413,7 +423,7 @@ test('a PM reorders cards within a column', async ({ page }) => {
 });
 
 test('a PM plans a sprint, then labels a task and comments on it', async ({ page }) => {
-  await signIn(page, PM, '/sprints');
+  await signIn(page, PM, '/projects/ATLAS/sprints');
   await page.getByRole('button', { name: 'New sprint' }).click();
   await dialog(page).getByLabel('Project').selectOption({ label: 'ATLAS · Atlas Customer Portal' });
   await dialog(page).getByLabel('Name').fill('ATLAS Sprint 8');
@@ -426,7 +436,10 @@ test('a PM plans a sprint, then labels a task and comments on it', async ({ page
   await expect(toast(page)).toContainText('Complete ATLAS Sprint 7 before starting another sprint');
 
   // A new ATLAS task, put in the new sprint with a label.
-  await page.getByRole('link', { name: 'Tasks', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Project views' })
+    .getByRole('link', { name: 'List', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Create task' }).click();
   await dialog(page).getByLabel('Summary').fill('Keyboard navigation fixes');
   await dialog(page).getByLabel('Project').selectOption({ label: 'ATLAS · Atlas Customer Portal' });
@@ -488,6 +501,30 @@ test('a PM opens a project space: summary, backlog, board, list and settings', a
   await views.getByRole('link', { name: 'Settings', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Epics' })).toBeVisible();
   await expect(page.getByText('Account self-service')).toBeVisible();
+});
+
+test('board, tasks and sprints live in the project; old links still land there', async ({
+  page,
+}) => {
+  await signIn(page, PM, '/dashboard');
+  await expect(
+    page.getByRole('navigation', { name: 'Views', exact: true }).getByRole('link'),
+  ).toHaveText(['Dashboard', 'Projects', 'Team', 'Reports', 'Leads']);
+
+  // An old link without a project goes to the project list; one with a project opens its view.
+  await page.goto('/board');
+  await expect(page).toHaveURL(/\/projects$/);
+  await page.goto('/tasks?project=ATLAS&q=Invoice');
+  await expect(page).toHaveURL(/\/projects\/ATLAS\/list\?q=Invoice$/);
+  await expect(page.getByLabel('Search tasks')).toHaveValue('Invoice');
+  await page.goto('/sprints?project=ATLAS');
+  await expect(page).toHaveURL(/\/projects\/ATLAS\/sprints$/);
+
+  // The Sprints view lists the project's sprints, and each opens on the board.
+  await expect(page.getByRole('heading', { name: 'Sprints', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'ATLAS Sprint 7', exact: true }).click();
+  await expect(page).toHaveURL(/\/projects\/ATLAS\/board\?sprint=/);
+  await expect(page.getByRole('heading', { name: 'ATLAS Sprint 7' })).toBeVisible();
 });
 
 test('a PM links tasks and the board shows what is blocked', async ({ page }) => {
@@ -572,12 +609,9 @@ test('a task page records who changed what in its history', async ({ page }) => 
 });
 
 test('board filters live in the address and can be saved by name', async ({ page }) => {
-  await signIn(page, PM, '/board');
-  await page
-    .getByLabel('Project', { exact: true })
-    .selectOption({ label: 'Atlas Customer Portal' });
+  await signIn(page, PM, '/projects/ATLAS/board');
   await page.getByLabel('Search tasks').fill('Invoice');
-  await expect(page).toHaveURL(/project=.+&q=Invoice/);
+  await expect(page).toHaveURL(/sprint=.+&q=Invoice/);
   await page.reload();
   await expect(page.getByLabel('Search tasks')).toHaveValue('Invoice');
   await expect(page.getByRole('region', { name: 'In progress' })).toContainText('Invoice PDF');
@@ -588,7 +622,7 @@ test('board filters live in the address and can be saved by name', async ({ page
   await expect(page.getByRole('button', { name: /Filter: Atlas invoices/ })).toBeVisible();
 
   // Clear the filters, then bring the saved one back.
-  await page.goto('/board?q=');
+  await page.goto('/projects/ATLAS/board?q=');
   await page.getByLabel('Search tasks').fill('');
   await page.getByRole('button', { name: /Saved filters/ }).click();
   await page

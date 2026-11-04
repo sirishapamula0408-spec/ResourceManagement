@@ -1,24 +1,22 @@
 import { createBrowserRouter } from 'react-router-dom';
 import { HomeRedirect } from './components/HomeRedirect';
 import { Layout } from './components/Layout';
+import { LegacyTaskRedirect } from './components/LegacyTaskRedirect';
 import { LeadsPage } from './pages/LeadsPage';
 import { RequireAuth } from './components/RequireAuth';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
 import { ConnectPage } from './pages/ConnectPage';
-import { BoardPage } from './pages/BoardPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectBacklog } from './pages/project/ProjectBacklog';
 import { ProjectLayout } from './pages/project/ProjectLayout';
-import { ProjectBoard, ProjectList } from './pages/project/ProjectViews';
+import { ProjectBoard, ProjectList, ProjectSprints } from './pages/project/ProjectViews';
 import { ProjectSettings } from './pages/project/ProjectSettings';
 import { ProjectSummary } from './pages/project/ProjectSummary';
 import { ReportsPage } from './pages/ReportsPage';
 import { SignupPage } from './pages/SignupPage';
-import { SprintsPage } from './pages/SprintsPage';
 import { TaskPage } from './pages/TaskPage';
-import { TasksPage } from './pages/TasksPage';
 import { TeamsPage } from './pages/TeamsPage';
 
 export const router = createBrowserRouter([
@@ -50,10 +48,11 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomeRedirect /> },
       { path: 'dashboard', element: <DashboardPage /> },
-      { path: 'board', element: <BoardPage /> },
-      { path: 'tasks', element: <TasksPage /> },
+      // The old top-level pages, kept so bookmarks land in the matching project view.
+      { path: 'board', element: <LegacyTaskRedirect view="board" /> },
+      { path: 'tasks', element: <LegacyTaskRedirect view="list" /> },
+      { path: 'sprints', element: <LegacyTaskRedirect view="sprints" /> },
       { path: 'browse/:key', element: <TaskPage /> },
-      { path: 'sprints', element: <SprintsPage /> },
       { path: 'teams', element: <TeamsPage /> },
       { path: 'projects', element: <ProjectsPage /> },
       {
@@ -64,6 +63,7 @@ export const router = createBrowserRouter([
           { path: 'backlog', element: <ProjectBacklog /> },
           { path: 'board', element: <ProjectBoard /> },
           { path: 'list', element: <ProjectList /> },
+          { path: 'sprints', element: <ProjectSprints /> },
           { path: 'settings', element: <ProjectSettings /> },
         ],
       },

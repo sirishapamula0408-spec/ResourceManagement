@@ -2,19 +2,20 @@ import { Link, NavLink } from 'react-router-dom';
 import type { Project } from '../../lib/api';
 import { identityColor } from '../../lib/theme';
 
-export type ProjectView = 'summary' | 'backlog' | 'board' | 'list' | 'settings';
+export type ProjectView = 'summary' | 'backlog' | 'board' | 'list' | 'sprints' | 'settings';
 
 const VIEWS: { view: ProjectView; path: string; label: string }[] = [
   { view: 'summary', path: '', label: 'Summary' },
   { view: 'backlog', path: '/backlog', label: 'Backlog' },
   { view: 'board', path: '/board', label: 'Board' },
   { view: 'list', path: '/list', label: 'List' },
+  { view: 'sprints', path: '/sprints', label: 'Sprints' },
   { view: 'settings', path: '/settings', label: 'Settings' },
 ];
 
 /**
- * A project's sidebar, as in JIRA: its badge and name, then Summary, Backlog, Board, List and
- * Settings. Shown in the project space and beside a task page, so the project stays in reach.
+ * A project's sidebar, as in JIRA: its badge and name, then Summary, Backlog, Board, List,
+ * Sprints and Settings. The project's tasks, board and sprints live only here, not in the top bar. Shown in the project space and beside a task page, so the project stays in reach.
  */
 export function ProjectSidebar({
   project,

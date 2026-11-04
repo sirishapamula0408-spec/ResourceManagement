@@ -8,11 +8,10 @@ import { useToast } from './tasks/taskHelpers';
 import { TaskDialog } from './tasks/TaskDialog';
 import { Toast } from './tasks/taskUi';
 
+// Board, tasks and sprints are not here: they belong to a project, in its own space
+// (/projects/<KEY>), as in JIRA.
 const NAV = [
   { to: '/dashboard', label: 'Dashboard' },
-  { to: '/board', label: 'Board' },
-  { to: '/tasks', label: 'Tasks' },
-  { to: '/sprints', label: 'Sprints' },
   { to: '/projects', label: 'Projects' },
   { to: '/teams', label: 'Team' },
   { to: '/reports', label: 'Reports' },

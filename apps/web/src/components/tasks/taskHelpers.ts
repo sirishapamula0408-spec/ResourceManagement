@@ -206,11 +206,6 @@ export function useScopedTaskFilter(projectId: string | undefined, activeSprintI
   return [filter, setFilter] as const;
 }
 
-/** Open the Board or Tasks page on one sprint or epic (used by the Sprints page). */
-export function presetTaskFilter(patch: Partial<TaskFilter>) {
-  lastFilter = { ...EMPTY_FILTER, ...patch };
-}
-
 export function applyTaskFilter(tasks: Task[], f: TaskFilter) {
   const q = f.q.trim().toLowerCase();
   return tasks.filter(
