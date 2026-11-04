@@ -553,3 +553,20 @@ test('a task page shows the task and saves each field as it changes', async ({ p
   await expect(page.getByRole('heading', { name: 'Invoice PDF download (A4)' })).toBeVisible();
   await expect(page.getByLabel('Priority')).toHaveValue('CRITICAL');
 });
+
+test('a task page records who changed what in its history', async ({ page }) => {
+  await signIn(page, PM, '/browse/ATLAS-13');
+  await expect(page.getByRole('heading', { name: 'Customer feedback widget' })).toBeVisible();
+  await page.getByLabel('Priority').selectOption({ label: 'High' });
+  await expect(toast(page)).toContainText('ATLAS-13 saved');
+  await page.getByLabel('Status').selectOption({ label: 'In review' });
+  await expect(toast(page)).toContainText('ATLAS-13 saved');
+
+  await page.getByRole('tab', { name: 'History' }).click();
+  const history = page.getByRole('list', { name: 'History' });
+  const entries = history.locator(':scope > li');
+  await expect(entries.first()).toContainText('Priya Sharma changed Status');
+  await expect(entries.first()).toContainText('In review');
+  await expect(entries.nth(1)).toContainText('changed Priority');
+  await expect(entries.nth(1)).toContainText('High');
+});

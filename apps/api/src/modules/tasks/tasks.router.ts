@@ -5,6 +5,7 @@ import { parse } from '../../lib/http.js';
 import { visibleProjectIds } from '../../lib/visibility.js';
 import { requireAuth, type AuthUser } from '../../middleware/auth.js';
 import * as comments from './comments.service.js';
+import * as history from './history.service.js';
 import * as links from './links.service.js';
 import * as service from './tasks.service.js';
 
@@ -163,4 +164,9 @@ tasksRouter.delete('/:id/links/:linkId', async (req, res) => {
   const { id, linkId } = req.params;
   await links.removeLink(req.user!, String(id), String(linkId));
   res.status(204).end();
+});
+
+// Task history (M4 JIRA-lite): who changed what and when, newest first.
+tasksRouter.get('/:id/history', async (req, res) => {
+  res.json(await history.listHistory(req.user!, String(req.params.id)));
 });

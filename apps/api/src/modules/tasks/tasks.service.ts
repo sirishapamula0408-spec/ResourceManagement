@@ -2,6 +2,7 @@ import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../lib/http.js';
 import type { AuthUser } from '../../middleware/auth.js';
 import type { TaskPriority, TaskStatus, TaskType } from '../../generated/prisma/enums.js';
+import { record, trackedSelect } from './history.service.js';
 
 export interface TaskFilter {
   projectId?: string;
@@ -243,7 +244,7 @@ export async function createTask(user: AuthUser, input: TaskInput) {
   await requireMember(input.projectId, input.assigneeId);
   await requirePlanning(input.projectId, input);
   await requireParent(input.projectId, input.parentId);
-  return prisma.task.create({
+  const created = await prisma.task.create({
     data: {
       ...input,
       ...(input.labels ? { labels: [...new Set(input.labels)] } : {}),
@@ -252,6 +253,11 @@ export async function createTask(user: AuthUser, input: TaskInput) {
       number: await nextTaskNumber(input.projectId),
     },
   });
+  await record(user.id, created.id, 'task.create', null, {
+    title: created.title,
+    status: created.status,
+  });
+  return created;
 }
 
 const changesProjectOf = (task: { projectId: string }, projectId: string) =>
@@ -313,7 +319,8 @@ export async function updateTask(user: AuthUser, id: string, input: Partial<Task
   const status = input.status ?? task.status;
   const changesProject = projectId !== task.projectId;
   const moved = status !== task.status || changesProject;
-  return prisma.task.update({
+  const before = await prisma.task.findUniqueOrThrow({ where: { id }, select: trackedSelect });
+  const updated = await prisma.task.update({
     where: { id },
     data: {
       ...input,
@@ -325,12 +332,15 @@ export async function updateTask(user: AuthUser, id: string, input: Partial<Task
       ...(changesProject ? { number: await nextTaskNumber(projectId) } : {}),
     },
   });
+  await record(user.id, id, 'task.update', before, updated);
+  return updated;
 }
 
 export async function deleteTask(user: AuthUser, id: string) {
   const task = await getTask(id);
   await requireManage(user, task.projectId);
-  await prisma.task.delete({ where: { id } });
+  const gone = await prisma.task.delete({ where: { id } });
+  await record(user.id, id, 'task.delete', { title: gone.title, status: gone.status }, null);
 }
 
 /**
@@ -363,7 +373,14 @@ export async function deleteTasks(user: AuthUser, ids: string[]) {
     );
   }
 
+  const snapshots = await prisma.task.findMany({
+    where: { id: { in: unique } },
+    select: { id: true, title: true, status: true },
+  });
   const { count } = await prisma.task.deleteMany({ where: { id: { in: unique } } });
+  for (const t of snapshots) {
+    await record(user.id, t.id, 'task.delete', { title: t.title, status: t.status }, null);
+  }
   return { deleted: count };
 }
 
@@ -436,10 +453,12 @@ export async function moveTask(user: AuthUser, id: string, status: TaskStatus, p
   await requireWork(user, task);
   const order =
     place.order ?? (await orderBetween(status, id, place.afterId ?? null, place.beforeId ?? null));
-  return prisma.task.update({
+  const moved = await prisma.task.update({
     where: { id },
     data: { status, order, ...completion(task.status, status) },
   });
+  await record(user.id, id, 'task.update', { status: task.status }, { status });
+  return moved;
 }
 
 /** Log hours on a task as the signed-in person. */
@@ -449,5 +468,7 @@ export async function logWork(
   input: { hours: number; date: Date; note?: string | null },
 ) {
   await requireWork(user, await getTask(taskId));
-  return prisma.worklog.create({ data: { ...input, taskId, personId: user.id } });
+  const worklog = await prisma.worklog.create({ data: { ...input, taskId, personId: user.id } });
+  await record(user.id, taskId, 'task.worklog', null, { hours: input.hours });
+  return worklog;
 }

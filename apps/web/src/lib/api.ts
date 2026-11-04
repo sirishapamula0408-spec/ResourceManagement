@@ -215,6 +215,16 @@ export interface Task {
   openBlockers: number;
 }
 
+/** One entry in a task's history: who did what, when, and the fields that changed. */
+export interface TaskHistoryEntry {
+  id: string;
+  action: 'create' | 'update' | 'delete' | 'worklog';
+  at: string;
+  actor: { id: string; name: string } | null;
+  changes: { field: string; from: unknown; to: unknown }[];
+  hours: number | null;
+}
+
 export type LinkKind = 'BLOCKS' | 'BLOCKED_BY' | 'RELATES';
 
 /** A link as seen from one task: "this task <kind> <task>". */

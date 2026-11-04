@@ -118,6 +118,7 @@ export function TaskDialog({
       ['sprints'],
       ['epics'],
       ['labels'],
+      ['history'],
     ]) {
       qc.invalidateQueries({ queryKey });
     }

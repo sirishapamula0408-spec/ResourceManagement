@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { TaskComments } from '../components/tasks/TaskComments';
+import { TaskHistory } from '../components/tasks/TaskHistory';
 import { TaskLinks } from '../components/tasks/TaskLinks';
 import { TaskSubtasks } from '../components/tasks/TaskSubtasks';
 import {
@@ -51,7 +52,15 @@ const STATUS_SELECT: Record<TaskStatus, string> = {
   DONE: 'bg-green-soft',
 };
 
-const QUERIES = [['tasks'], ['dashboard'], ['projects'], ['sprints'], ['epics'], ['labels']];
+const QUERIES = [
+  ['tasks'],
+  ['dashboard'],
+  ['projects'],
+  ['sprints'],
+  ['epics'],
+  ['labels'],
+  ['history'],
+];
 
 const when = (iso: string) =>
   new Date(iso).toLocaleString('en-GB', {
@@ -185,6 +194,7 @@ export function TaskPage() {
   const qc = useQueryClient();
   const [toastMessage, showToast] = useToast();
   const [logHours, setLogHours] = useState('');
+  const [activity, setActivity] = useState<'comments' | 'history'>('comments');
   const { projects, personNames } = useTaskLookups();
   const { sprints, epics } = usePlanningLookups();
   const labelSuggestions = useLabels();
@@ -322,10 +332,34 @@ export function TaskPage() {
           />
           {!task.parent && <TaskSubtasks task={task} canAdd={manages} onOpen={openTask} />}
           <TaskLinks task={task} canEdit={manages || works} onOpen={openTask} />
-          <div>
-            <h2 className="mb-1.5 text-sm font-semibold">Activity</h2>
-            <TaskComments taskId={task.id} personNames={personNames} />
-          </div>
+          <section aria-labelledby="activity-heading">
+            <div className="mb-2 flex items-center gap-3">
+              <h2 id="activity-heading" className="text-sm font-semibold">
+                Activity
+              </h2>
+              <div className="flex gap-1" role="tablist" aria-label="Activity">
+                {(['comments', 'history'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    type="button"
+                    role="tab"
+                    aria-selected={activity === tab}
+                    className={`rounded-[3px] px-2 py-0.5 text-xs font-medium ${
+                      activity === tab ? 'bg-teal-soft text-teal' : 'text-muted hover:bg-btn'
+                    }`}
+                    onClick={() => setActivity(tab)}
+                  >
+                    {tab === 'comments' ? 'Comments' : 'History'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {activity === 'comments' ? (
+              <TaskComments taskId={task.id} personNames={personNames} />
+            ) : (
+              <TaskHistory taskId={task.id} personNames={personNames} />
+            )}
+          </section>
         </div>
 
         <aside className="flex flex-col gap-4 xl:sticky xl:top-5 xl:self-start">
