@@ -121,7 +121,7 @@ export function MfaVerifyPage() {
             ref={bannerRef}
             role="alert"
             tabIndex={-1}
-            className="mb-3 rounded-md border border-[#f1b8b4] bg-[#fdeceb] px-3 py-2 text-sm text-[#9f1c14]"
+            className="mb-3 rounded-md border border-error/30 bg-error-bg px-3 py-2 text-sm text-error"
           >
             {mfaErrorMessage(error)}
           </div>

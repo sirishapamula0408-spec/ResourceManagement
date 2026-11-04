@@ -17,7 +17,7 @@ import { type MfaChallenge, type MfaState, needsMfa } from '../lib/mfa';
 const fieldBox = (invalid: boolean) =>
   `flex h-[clamp(2.5rem,5.2vh,3rem)] items-center gap-3 rounded-md border bg-white px-3.5 text-[#1f2b4d] focus-within:ring-2 ${
     invalid
-      ? 'border-[#b42318] focus-within:border-[#b42318] focus-within:ring-[#b42318]/20'
+      ? 'border-error focus-within:border-error focus-within:ring-error/20'
       : 'border-[#cfd6e4] focus-within:border-[#1546d6] focus-within:ring-[#1546d6]/15'
   }`;
 const svg = {
@@ -70,12 +70,12 @@ function Field({
         {label}
       </label>
       <div className={fieldBox(!!error)}>
-        <span className="text-[#5b6785]">{icon}</span>
+        <span className={error ? 'text-error' : 'text-[#5b6785]'}>{icon}</span>
         {children}
       </div>
       <p
         id={error ? `${id}-error` : hint ? `${id}-hint` : undefined}
-        className={`mt-1 min-h-4 text-xs leading-4 ${error ? 'text-[#b42318]' : 'font-medium text-[#8a4b00]'}`}
+        className={`mt-1 min-h-4 text-xs leading-4 ${error ? 'text-error' : 'font-medium text-[#8a4b00]'}`}
       >
         {error ?? hint}
       </p>
@@ -174,7 +174,7 @@ export function LoginPage() {
             ref={bannerRef}
             role="alert"
             tabIndex={-1}
-            className="mb-3 rounded-md border border-[#f1b8b4] bg-[#fdeceb] px-3 py-2 text-sm text-[#9f1c14]"
+            className="mb-3 rounded-md border border-error/30 bg-error-bg px-3 py-2 text-sm text-error"
           >
             {serverError}
           </div>

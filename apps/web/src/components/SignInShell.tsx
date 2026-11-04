@@ -337,7 +337,10 @@ export function SignInShell({
 }) {
   useDocumentTitle(title);
   return (
-    <div className="grid min-h-dvh bg-[#f4f6fb] [--support-w:4.5rem] lg:grid-cols-[minmax(0,1fr)_calc(clamp(37rem,36vw,40rem)_+_var(--support-w)_+_2rem_+_1px)]">
+    <div
+      data-sign-in
+      className="grid min-h-dvh bg-[#f4f6fb] [--support-w:4.5rem] lg:grid-cols-[minmax(0,1fr)_calc(clamp(37rem,36vw,40rem)_+_var(--support-w)_+_2rem_+_1px)]"
+    >
       <aside className="relative hidden overflow-hidden bg-[radial-gradient(120%_90%_at_10%_0%,#123a9c_0%,#0a2a7a_45%,#061c55_100%)] text-white lg:block [clip-path:ellipse(100%_120%_at_0%_50%)]">
         {/* Faint flowing lines, as in the design. */}
         <svg
