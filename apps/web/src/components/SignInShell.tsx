@@ -1,12 +1,12 @@
 import { type ReactNode, useId, useState } from 'react';
 
 /** The SedHub mark: an "S" made of two hexagon ribbons, blue above and green below. */
-export function SedHubMark({ size = 44 }: { size?: number }) {
+export function SedHubMark({ size = 44, className }: { size?: number; className?: string }) {
   const ribbon = 'M24 4 42 14.4V21L24 10.6 12.6 17.2 24 23.8 18.3 27.1 6 20V14.4Z';
   // Own gradient ids per logo: another copy may sit in a hidden panel, where its gradients don't paint.
   const id = useId();
   return (
-    <svg width={size} height={size} viewBox="0 0 48 52" aria-hidden="true">
+    <svg width={size} height={size} viewBox="0 0 48 52" className={className} aria-hidden="true">
       <defs>
         <linearGradient id={`${id}-blue`} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#38a0ff" />
@@ -107,7 +107,7 @@ function Building() {
   return (
     <svg
       viewBox="0 0 400 260"
-      className="pointer-events-none absolute bottom-0 left-0 w-[88%] max-w-[560px] opacity-80"
+      className="pointer-events-none absolute bottom-0 left-0 w-[min(88%,560px,55vh)] opacity-80"
       aria-hidden="true"
     >
       <defs>
@@ -165,9 +165,9 @@ function HelpLinks() {
     help: 'Sign in with your company email and the password you were given. New accounts may be asked to choose a new password first.',
     support: 'For access, a new account or a password reset, contact your SedHub administrator.',
   };
-  const btn = 'inline-flex items-center gap-1.5 text-sm text-[#1f2b4d] hover:text-teal';
+  const btn = 'inline-flex items-center gap-1.5 text-[13px] text-[#1f2b4d] hover:text-teal';
   return (
-    <div className="relative flex items-center justify-end gap-4 px-6 pt-5 text-sm sm:px-10">
+    <div className="relative flex items-center justify-end gap-4 px-6 pt-[clamp(0.75rem,2.2vh,1.25rem)] text-sm sm:px-10">
       <button
         type="button"
         className={btn}
@@ -208,7 +208,7 @@ function HelpLinks() {
 /** Small trust badges under the card; each states something the app really does. */
 function Badges() {
   const badge = (icon: ReactNode, label: ReactNode) => (
-    <span className="flex items-center gap-2.5 text-[13px] leading-tight text-[#3b4867]">
+    <span className="flex items-center gap-2.5 text-xs leading-tight text-[#3b4867]">
       <span className="text-[#3b4867]">{icon}</span>
       <span>{label}</span>
     </span>
@@ -252,9 +252,9 @@ function Badges() {
     ),
   ];
   return (
-    <ul className="mx-auto mt-8 flex max-w-[560px] flex-wrap items-center justify-center gap-x-7 gap-y-3">
+    <ul className="mx-auto mt-[clamp(1rem,3vh,2rem)] flex [@media(max-height:700px)]:mt-3 max-w-[460px] flex-wrap items-center justify-center gap-x-5 gap-y-3">
       {items.map((item, i) => (
-        <li key={i} className="flex items-center gap-7">
+        <li key={i} className="flex items-center gap-5">
           {i > 0 && <span className="hidden h-9 w-px bg-[#cfd6e4] sm:block" aria-hidden />}
           {item}
         </li>
@@ -269,7 +269,7 @@ function Badges() {
  */
 export function SignInShell({ children }: { children: ReactNode }) {
   return (
-    <div className="grid min-h-screen bg-[#f4f6fb] lg:grid-cols-[minmax(0,44fr)_minmax(0,56fr)]">
+    <div className="grid min-h-dvh bg-[#f4f6fb] lg:grid-cols-[minmax(0,44fr)_minmax(0,56fr)]">
       <aside className="relative hidden overflow-hidden bg-[radial-gradient(120%_90%_at_10%_0%,#123a9c_0%,#0a2a7a_45%,#061c55_100%)] text-white lg:block [clip-path:ellipse(100%_120%_at_0%_50%)]">
         {/* Faint flowing lines, as in the design. */}
         <svg
@@ -290,17 +290,17 @@ export function SignInShell({ children }: { children: ReactNode }) {
         </svg>
         <div className="relative z-10 flex flex-col gap-10 px-14 pt-16">
           <div className="flex items-center gap-5">
-            <SedHubMark size={74} />
+            <SedHubMark size={60} />
             <div>
-              <p className="text-5xl font-bold tracking-tight">SedHub</p>
-              <p className="mt-1 text-lg text-white/90">Work · Resources · Delivery</p>
+              <p className="text-4xl font-bold tracking-tight">SedHub</p>
+              <p className="mt-1 text-base text-white/90">Work · Resources · Delivery</p>
             </div>
           </div>
           <span className="h-[3px] w-11 bg-white/90" aria-hidden />
-          <h2 className="max-w-md text-3xl leading-tight font-semibold">
+          <h2 className="max-w-md text-2xl leading-tight font-semibold">
             Enterprise Work &amp; Resource Management Platform
           </h2>
-          <ul className="grid max-w-xl grid-cols-4 gap-2 text-center text-sm leading-snug">
+          <ul className="grid max-w-lg grid-cols-4 gap-2 text-center text-[13px] leading-snug">
             {FEATURES.map((f, i) => (
               <li
                 key={i}
@@ -314,11 +314,13 @@ export function SignInShell({ children }: { children: ReactNode }) {
         </div>
         <Building />
       </aside>
-      <main className="flex min-h-screen flex-col">
+      <main className="flex min-h-dvh flex-col">
         <HelpLinks />
-        <div className="flex flex-1 flex-col justify-center px-4 py-8 sm:px-10">
-          {children}
-          <Badges />
+        <div className="flex flex-1 flex-col justify-center px-4 py-[clamp(0.75rem,3vh,2rem)] sm:px-10 [@media(max-height:700px)]:py-2">
+          <div className="mx-auto w-full max-w-[460px] lg:mr-auto lg:ml-[clamp(0.5rem,3vw,3rem)]">
+            {children}
+            <Badges />
+          </div>
         </div>
       </main>
     </div>

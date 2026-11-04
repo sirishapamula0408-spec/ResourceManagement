@@ -5,7 +5,7 @@ import { SedHubMark, SignInShell } from '../components/SignInShell';
 import { api, ApiError, auth, type LoginResponse, safeNext } from '../lib/api';
 
 const field =
-  'flex h-12 items-center gap-3 rounded-md border border-[#cfd6e4] bg-white px-3.5 text-[#1f2b4d] focus-within:border-[#1546d6] focus-within:ring-2 focus-within:ring-[#1546d6]/15';
+  'flex h-[clamp(2.5rem,5.2vh,3rem)] items-center gap-3 rounded-md border border-[#cfd6e4] bg-white px-3.5 text-[#1f2b4d] focus-within:border-[#1546d6] focus-within:ring-2 focus-within:ring-[#1546d6]/15';
 const svg = {
   width: 20,
   height: 20,
@@ -79,25 +79,25 @@ export function LoginPage() {
 
   return (
     <SignInShell>
-      <section className="mx-auto w-full max-w-[520px] rounded-2xl bg-white px-8 py-9 shadow-[0_12px_40px_rgba(16,34,94,0.10)] sm:px-14">
-        <div className="mb-8 text-center">
+      <section className="mx-auto w-full max-w-[460px] rounded-2xl bg-white px-8 py-[clamp(1.25rem,3.4vh,2.25rem)] shadow-[0_12px_40px_rgba(16,34,94,0.10)] sm:px-11">
+        <div className="mb-[clamp(1rem,3vh,2rem)] text-center [@media(max-height:700px)]:mb-3">
           <div className="flex items-center justify-center gap-3">
-            <SedHubMark size={56} />
-            <span className="text-[2.6rem] leading-none font-bold tracking-tight text-[#0b1f5c]">
+            <SedHubMark size={46} className="[@media(max-height:700px)]:size-10" />
+            <span className="text-[2.15rem] leading-none font-bold [@media(max-height:700px)]:text-[1.9rem] tracking-tight text-[#0b1f5c]">
               SedHub
             </span>
           </div>
-          <p className="mt-2 text-[15px] font-medium text-[#1f2b4d]">
+          <p className="mt-2 text-[13px] font-medium text-[#1f2b4d]">
             Enterprise Project &amp; Resource Management
           </p>
         </div>
 
-        <h1 className="text-[1.9rem] font-bold text-[#0b1f5c]">Sign In</h1>
-        <p className="mb-5 text-[#3b4867]">
+        <h1 className="text-[1.55rem] font-bold text-[#0b1f5c]">Sign In</h1>
+        <p className="mb-[clamp(0.75rem,2vh,1.25rem)] text-[13px] text-[#3b4867]">
           {next ? 'Sign in to continue to that page.' : 'Access your workspace'}
         </p>
 
-        <form onSubmit={onSubmit} className="flex flex-col gap-4">
+        <form onSubmit={onSubmit} className="flex flex-col gap-[clamp(0.625rem,1.6vh,1rem)]">
           <label className={field}>
             <span className="text-[#5b6785]">
               <svg {...svg}>
@@ -110,7 +110,7 @@ export function LoginPage() {
               type="email"
               autoComplete="username"
               placeholder="Email"
-              className="h-full flex-1 bg-transparent text-[15px] outline-none placeholder:text-[#5b6785]"
+              className="h-full flex-1 bg-transparent text-sm outline-none placeholder:text-[#5b6785]"
               value={email}
               required
               autoFocus
@@ -130,7 +130,7 @@ export function LoginPage() {
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 placeholder="Password"
-                className="h-full flex-1 bg-transparent text-[15px] outline-none placeholder:text-[#5b6785]"
+                className="h-full flex-1 bg-transparent text-sm outline-none placeholder:text-[#5b6785]"
                 value={password}
                 required
                 onChange={(e) => setPassword(e.target.value)}
@@ -158,7 +158,7 @@ export function LoginPage() {
             </button>
           </div>
 
-          <div className="flex items-center justify-between text-[15px]">
+          <div className="flex items-center justify-between text-[13px]">
             <label className="flex items-center gap-2.5 text-[#1f2b4d]">
               <input
                 type="checkbox"
@@ -192,13 +192,16 @@ export function LoginPage() {
           <button
             type="submit"
             disabled={login.isPending}
-            className="mt-1 h-12 rounded-md bg-[#0f3bcf] text-[17px] font-semibold text-white shadow-sm hover:bg-[#0b31b0] disabled:opacity-70"
+            className="mt-1 h-[clamp(2.5rem,5.2vh,3rem)] rounded-md bg-[#0f3bcf] text-[15px] font-semibold text-white shadow-sm hover:bg-[#0b31b0] disabled:opacity-70"
           >
             {login.isPending ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
 
-        <div className="my-5 flex items-center gap-4 text-[#5b6785]" aria-hidden="true">
+        <div
+          className="my-[clamp(0.625rem,2vh,1.25rem)] flex items-center gap-4 text-[13px] text-[#5b6785]"
+          aria-hidden="true"
+        >
           <span className="h-px flex-1 bg-[#d8deea]" />
           or
           <span className="h-px flex-1 bg-[#d8deea]" />
@@ -207,15 +210,17 @@ export function LoginPage() {
           type="button"
           disabled
           title="Microsoft sign-in is coming soon"
-          className="flex h-12 w-full cursor-not-allowed items-center justify-center gap-3 rounded-md border border-[#b9c2d6] bg-white text-[17px] font-medium text-[#1f2b4d] opacity-70"
+          className="flex h-[clamp(2.5rem,5.2vh,3rem)] w-full cursor-not-allowed items-center justify-center gap-3 rounded-md border border-[#b9c2d6] bg-white text-[15px] font-medium text-[#1f2b4d] opacity-70"
         >
           <MicrosoftLogo />
           Sign in with Microsoft (SSO)
         </button>
-        <p className="mt-2 text-center text-xs text-[#5b6785]">Microsoft sign-in is coming soon.</p>
+        <p className="mt-2 text-center text-[11px] text-[#5b6785]">
+          Microsoft sign-in is coming soon.
+        </p>
 
         {!!signup?.domains.length && (
-          <p className="mt-5 text-center text-[15px] text-[#3b4867]">
+          <p className="mt-[clamp(0.75rem,2vh,1.25rem)] text-center text-[13px] text-[#3b4867]">
             New here?{' '}
             <Link
               to={next ? `/signup?next=${encodeURIComponent(next)}` : '/signup'}
