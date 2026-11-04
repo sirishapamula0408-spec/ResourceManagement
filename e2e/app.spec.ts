@@ -102,6 +102,10 @@ test('sign-in page: no SSO or sign-up link by default, Remember me off', async (
   await expect(page.getByText('or', { exact: true })).toHaveCount(0);
   await expect(page.getByText('Create an account')).toHaveCount(0);
   await expect(page.getByText('Need access?')).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Contact your administrator' })).toHaveAttribute(
+    'href',
+    `mailto:${E2E_ADMIN_EMAIL}`,
+  );
   await expect(page.getByLabel('Remember me')).not.toBeChecked();
   for (const badge of [
     'Encrypted connection (TLS)',

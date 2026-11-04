@@ -358,12 +358,13 @@ export function LoginPage() {
           </>
         )}
 
-        <p className="mt-[clamp(0.75rem,2vh,1.25rem)] text-center text-[13px] text-[#3b4867]">
-          Need access?{' '}
+        {/* With no VITE_ADMIN_EMAIL there is no address to link to: the text stays plain. */}
+        <p className="mt-[clamp(0.75rem,2vh,1.25rem)] text-center text-[13px] text-[#1f2b4d]">
+          <span className="text-[#5b6785]">Need access?</span>{' '}
           {appConfig.adminEmail ? (
             <a
               href={`mailto:${appConfig.adminEmail}`}
-              className={`rounded font-medium text-[#1546d6] hover:underline ${focusRing}`}
+              className={`rounded font-medium text-[#1546d6] hover:underline focus-visible:underline ${focusRing}`}
             >
               Contact your administrator
             </a>
