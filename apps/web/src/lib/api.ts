@@ -185,7 +185,7 @@ export type TaskType = 'STORY' | 'TASK' | 'BUG' | 'SUPPORT';
 
 export interface Task {
   id: string;
-  /** Display key, e.g. "RB-12". */
+  /** Display key: project code and the task's number on that project, e.g. "ATLAS-12". */
   key: string;
   title: string;
   description: string | null;

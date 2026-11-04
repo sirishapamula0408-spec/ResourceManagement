@@ -172,19 +172,21 @@ model TeamMember {
 // ---------- Projects & capacity ----------
 
 model Project {
-  id          String        @id @default(cuid())
-  code        String        @unique
-  name        String
-  description String?
-  client      String?
+  id             String        @id @default(cuid())
+  code           String        @unique
+  name           String
+  description    String?
+  client         String?
   /// Splits dashboard demand into billable vs non-billable.
-  billable    Boolean       @default(true)
-  status      ProjectStatus @default(PLANNED)
-  startDate   DateTime?     @db.Date
-  endDate     DateTime?     @db.Date
-  ownerId     String?
-  owner       Person?       @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: SetNull)
-  jiraKey     String?       @unique // M3: JIRA project key
+  billable       Boolean       @default(true)
+  status         ProjectStatus @default(PLANNED)
+  startDate      DateTime?     @db.Date
+  endDate        DateTime?     @db.Date
+  ownerId        String?
+  owner          Person?       @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  jiraKey        String?       @unique // M3: JIRA project key
+  /// Last task number given out on this project; task keys are "<code>-<number>".
+  lastTaskNumber Int           @default(0)
 
   members     ProjectMember[]
   allocations Allocation[]
@@ -263,8 +265,8 @@ model Sprint {
 
 model Task {
   id            String       @id @default(cuid())
-  /// Human-readable sequence shown as the key "RB-<number>".
-  number        Int          @unique @default(autoincrement())
+  /// Numbered per project; shown with the project code as the key, e.g. "ATLAS-12".
+  number        Int
   projectId     String
   project       Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   title         String
@@ -291,6 +293,7 @@ model Task {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
+  @@unique([projectId, number])
   @@index([projectId, status, order])
   @@index([assigneeId])
   @@index([sprintId])

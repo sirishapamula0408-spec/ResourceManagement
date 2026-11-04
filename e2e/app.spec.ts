@@ -178,12 +178,12 @@ test('staffing is read-only for a PM', async ({ page }) => {
 test('a PM deletes several tasks at once, only on their own projects', async ({ page }) => {
   await signIn(page, PM, '/tasks');
   // NOVA belongs to the other PM, so its tasks can't be selected.
-  await expect(page.getByLabel('Select RB-14')).toHaveCount(0);
+  await expect(page.getByLabel('Select NOVA-1')).toHaveCount(0);
 
-  const first = page.getByRole('row', { name: /RB-6\b/ });
-  const second = page.getByRole('row', { name: /RB-11\b/ });
-  await page.getByLabel('Select RB-6').check();
-  await page.getByLabel('Select RB-11').check();
+  const first = page.getByRole('row', { name: /ATLAS-6\b/ });
+  const second = page.getByRole('row', { name: /ATLAS-11\b/ });
+  await page.getByLabel('Select ATLAS-6').check();
+  await page.getByLabel('Select ATLAS-11').check();
   const bar = page.getByRole('region', { name: 'Selected tasks' });
   await expect(bar).toContainText('2 tasks selected');
 

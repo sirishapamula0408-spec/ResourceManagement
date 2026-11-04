@@ -9,8 +9,18 @@ export interface TaskFilter {
   status?: TaskStatus;
 }
 
-/** Display key for a task, e.g. "RB-12". */
-export const taskKey = (number: number) => `RB-${number}`;
+/** Display key for a task: its project's code and its number on that project, e.g. "ATLAS-12". */
+export const taskKey = (projectCode: string, number: number) => `${projectCode}-${number}`;
+
+/** Reserve the next task number on a project (one atomic update, so concurrent creates differ). */
+export async function nextTaskNumber(projectId: string) {
+  const { lastTaskNumber } = await prisma.project.update({
+    where: { id: projectId },
+    data: { lastTaskNumber: { increment: 1 } },
+    select: { lastTaskNumber: true },
+  });
+  return lastTaskNumber;
+}
 
 /** A team member sees the tasks on their projects (their board) plus any assigned to them. */
 export interface TaskScope {
@@ -43,7 +53,7 @@ export async function listTasks(filter: TaskFilter, scope: TaskScope | null = nu
 
   return tasks.map((t) => ({
     ...t,
-    key: taskKey(t.number),
+    key: taskKey(t.project.code, t.number),
     loggedHours: loggedByTask.get(t.id) ?? 0,
   }));
 }
@@ -140,6 +150,7 @@ export async function createTask(user: AuthUser, input: TaskInput) {
       ...input,
       ...completion(undefined, input.status ?? 'TODO'),
       order: await nextOrder(input.projectId, input.status ?? 'TODO'),
+      number: await nextTaskNumber(input.projectId),
     },
   });
 }
@@ -165,15 +176,18 @@ export async function updateTask(user: AuthUser, id: string, input: Partial<Task
     await requireMember(projectId, assigneeId);
   }
 
-  // A task changing column (or project) goes to the bottom of its new column.
+  // A task changing column (or project) goes to the bottom of its new column; a task moved to
+  // another project takes the next key there.
   const status = input.status ?? task.status;
-  const moved = status !== task.status || projectId !== task.projectId;
+  const changesProject = projectId !== task.projectId;
+  const moved = status !== task.status || changesProject;
   return prisma.task.update({
     where: { id },
     data: {
       ...input,
       ...completion(task.status, status),
       ...(moved ? { order: await nextOrder(projectId, status) } : {}),
+      ...(changesProject ? { number: await nextTaskNumber(projectId) } : {}),
     },
   });
 }
@@ -192,7 +206,7 @@ export async function deleteTasks(user: AuthUser, ids: string[]) {
   const unique = [...new Set(ids)];
   const tasks = await prisma.task.findMany({
     where: { id: { in: unique } },
-    select: { id: true, number: true, projectId: true },
+    select: { id: true, number: true, projectId: true, project: { select: { code: true } } },
   });
   if (tasks.length !== unique.length) {
     throw new HttpError(404, 'Some of the selected tasks no longer exist. Refresh and try again.');
@@ -203,7 +217,9 @@ export async function deleteTasks(user: AuthUser, ids: string[]) {
   for (const projectId of new Set(tasks.map((t) => t.projectId))) {
     allowed.set(projectId, await canManageProject(user, projectId));
   }
-  const refused = tasks.filter((t) => !allowed.get(t.projectId)).map((t) => taskKey(t.number));
+  const refused = tasks
+    .filter((t) => !allowed.get(t.projectId))
+    .map((t) => taskKey(t.project.code, t.number));
   if (refused.length) {
     throw new HttpError(
       403,

@@ -53,6 +53,7 @@ export async function statusReport(q: ReportQuery, projectIds: string[] | null, 
       select: {
         id: true,
         number: true,
+        project: { select: { code: true } },
         title: true,
         status: true,
         priority: true,
@@ -81,7 +82,7 @@ export async function statusReport(q: ReportQuery, projectIds: string[] | null, 
   const loggedByTask = new Map(loggedToDate.map((l) => [l.taskId, Number(l._sum.hours ?? 0)]));
 
   const item = (t: (typeof tasks)[number]) => ({
-    key: taskKey(t.number),
+    key: taskKey(t.project.code, t.number),
     title: t.title,
     status: t.status,
     priority: t.priority,

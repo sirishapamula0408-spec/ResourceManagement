@@ -13,6 +13,7 @@
  */
 import { prisma } from '../src/lib/prisma.js';
 import { addDays, weekStartOf } from '../src/modules/dashboard/utilization.js';
+import { nextTaskNumber } from '../src/modules/tasks/tasks.service.js';
 import type { TaskPriority, TaskStatus } from '../src/generated/prisma/enums.js';
 
 const PREFIX = 'DEMO-';
@@ -166,6 +167,7 @@ async function add() {
       const task = await prisma.task.create({
         data: {
           projectId: project.id,
+          number: await nextTaskNumber(project.id),
           title,
           status,
           priority,

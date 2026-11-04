@@ -10,6 +10,7 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '../src/lib/prisma.js';
 import { addSalesDemo, SALES_PASSWORD } from './sales-demo.js';
 import { weekStartOf } from '../src/modules/dashboard/dashboard.service.js';
+import { nextTaskNumber } from '../src/modules/tasks/tasks.service.js';
 import type { Person } from '../src/generated/prisma/client.js';
 import type { Role, TaskPriority, TaskStatus } from '../src/generated/prisma/enums.js';
 
@@ -40,9 +41,6 @@ async function main() {
     prisma.person.deleteMany(),
     prisma.department.deleteMany(),
   ]);
-
-  // Task keys (RB-n) start again from RB-1.
-  await prisma.$executeRaw`ALTER SEQUENCE "Task_number_seq" RESTART WITH 1`;
 
   const [adminHash, userHash] = await Promise.all([
     bcrypt.hash(ADMIN_PASSWORD, 10),
@@ -320,6 +318,7 @@ async function main() {
       await prisma.task.create({
         data: {
           projectId: project.id,
+          number: await nextTaskNumber(project.id),
           title,
           status,
           priority,
