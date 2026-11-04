@@ -15,8 +15,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
-import { TaskDialog } from '../components/tasks/TaskDialog';
+import { useNavigate } from 'react-router-dom';
 import {
   Avatar,
   BlockedBadge,
@@ -191,7 +190,8 @@ export function BoardPage({ project }: { project?: Project } = {}) {
     : undefined;
   const [filter, setFilter] = useScopedTaskFilter(project?.id, activeSprint?.id);
   const [toastMessage, showToast] = useToast();
-  const [open, setOpen] = useState<Task | null>(null);
+  const navigate = useNavigate();
+  const openTask = (t: Task) => navigate(`/browse/${t.key}`);
   // A short drag threshold lets a plain click open the card instead of starting a drag.
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const { people, projects, personNames, projectCodes } = useTaskLookups();
@@ -318,22 +318,13 @@ export function BoardPage({ project }: { project?: Project } = {}) {
                 tasks={columnOf(s)}
                 personNames={personNames}
                 projectCodes={projectCodes}
-                onOpen={setOpen}
+                onOpen={openTask}
               />
             ))}
           </div>
         </DndContext>
       )}
       <Toast message={toastMessage} />
-      {open && (
-        <TaskDialog
-          key={open.id}
-          task={open}
-          onClose={() => setOpen(null)}
-          onSaved={showToast}
-          onOpenTask={setOpen}
-        />
-      )}
     </>
   );
 }

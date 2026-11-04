@@ -209,6 +209,8 @@ export interface Task {
   /** Set when this is a sub-task. */
   parent: { id: string; key: string; title: string } | null;
   subtaskCount: number;
+  createdAt: string;
+  updatedAt: string;
   /** Tasks that block this one and are not done yet. */
   openBlockers: number;
 }

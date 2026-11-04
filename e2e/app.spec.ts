@@ -53,7 +53,7 @@ test('dashboard shows the KPIs and the project filter applies to them', async ({
   await expect(kpi(page, 'Billable demand')).toContainText('0.0');
 });
 
-test('a PM creates a task in the dialog, then edits it from the task list', async ({ page }) => {
+test('a PM creates a task in the dialog, then edits it on its task page', async ({ page }) => {
   await signIn(page, PM);
   await page.getByRole('button', { name: 'Create task' }).click();
   const d = dialog(page);
@@ -70,8 +70,11 @@ test('a PM creates a task in the dialog, then edits it from the task list', asyn
   await expect(row).toContainText('To do');
 
   await row.click();
-  await dialog(page).getByLabel('Status').selectOption({ label: 'In progress' });
-  await dialog(page).getByRole('button', { name: 'Save' }).click();
+  await expect(page).toHaveURL(/\/browse\/ATLAS-\d+$/);
+  await expect(page.getByRole('heading', { name: 'E2E: export utilization report' })).toBeVisible();
+  await page.getByLabel('Status').selectOption({ label: 'In progress' });
+  await expect(toast(page).filter({ hasText: 'saved' })).toBeVisible();
+  await page.goBack();
   await expect(row).toContainText('In progress');
 });
 
@@ -93,10 +96,19 @@ test('a team member can only change the status of their own tasks', async ({ pag
   await expect(page.getByRole('button', { name: 'Delete' })).toHaveCount(0);
 
   await page.getByRole('row', { name: /Invoice PDF download/ }).click();
-  const d = dialog(page);
-  await expect(d.getByLabel('Summary')).toBeDisabled();
-  await expect(d.getByLabel('Status')).toBeEnabled();
-  await expect(d).toContainText('tasks assigned to you');
+  await expect(page.getByRole('heading', { name: 'Invoice PDF download' })).toBeVisible();
+  await expect(page.getByLabel('Assignee')).toBeDisabled();
+  await expect(page.getByLabel('Priority')).toBeDisabled();
+  await expect(page.getByLabel('Status')).toBeEnabled();
+  await expect(page.getByText('tasks assigned to you')).toBeVisible();
+  // The quick-edit dialog (pencil) has the same rule.
+  await page.goBack();
+  await page
+    .getByRole('row', { name: /Invoice PDF download/ })
+    .getByRole('button', { name: 'Edit' })
+    .click();
+  await expect(dialog(page).getByLabel('Summary')).toBeDisabled();
+  await expect(dialog(page).getByLabel('Status')).toBeEnabled();
 });
 
 test('a PM moves a card on the board by dragging it', async ({ page }) => {
@@ -432,10 +444,10 @@ test('a PM plans a sprint, then labels a task and comments on it', async ({ page
   await expect(page.getByRole('row')).toHaveCount(2); // header + the one labelled task
 
   await task.click();
-  await dialog(page).getByLabel('Add a comment').fill('Checked with the client: WCAG AA.');
-  await dialog(page).getByRole('button', { name: 'Comment', exact: true }).click();
-  await expect(dialog(page).getByRole('heading', { name: 'Comments · 1' })).toBeVisible();
-  await expect(dialog(page)).toContainText('Priya Sharma');
+  await page.getByLabel('Add a comment').fill('Checked with the client: WCAG AA.');
+  await page.getByRole('button', { name: 'Comment', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Comments · 1' })).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Comments' })).toContainText('Priya Sharma');
 });
 
 test('a PM opens a project space: summary, backlog, board, list and settings', async ({ page }) => {
@@ -482,21 +494,62 @@ test('a PM links tasks and the board shows what is blocked', async ({ page }) =>
   await signIn(page, PM, '/projects/ATLAS/list');
   await page.getByLabel('Search tasks').fill('Customer feedback widget');
   await page.getByRole('row', { name: /Customer feedback widget/ }).click();
-  const links = dialog(page).getByRole('region', { name: 'Links' });
+  const links = page.getByRole('region', { name: 'Links' });
   await links.getByLabel('Link type').selectOption('BLOCKED_BY');
   await links.getByLabel('Task to link').fill('ATLAS-4');
   await links.getByRole('button', { name: 'Link', exact: true }).click();
   await expect(links.getByRole('listitem')).toContainText(['Payments webhook handler']);
-  await dialog(page).getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByText('Blocked by 1').first()).toBeVisible();
 
+  // The other side of the link.
+  await links.getByRole('button', { name: 'Payments webhook handler' }).click();
+  await expect(page).toHaveURL(/\/browse\/ATLAS-4$/);
+  await expect(page.getByRole('region', { name: 'Links' })).toContainText('blocks');
+  await expect(page.getByRole('region', { name: 'Links' })).toContainText(
+    'Customer feedback widget',
+  );
+
+  await page.goto('/projects/ATLAS/list');
+  await page.getByLabel('Search tasks').fill('Customer feedback widget');
   await expect(page.getByRole('row', { name: /Customer feedback widget/ })).toContainText(
     'Blocked by 1',
   );
-  // The other side of the link.
-  await page.getByLabel('Search tasks').fill('Payments webhook');
-  await page.getByRole('row', { name: /Payments webhook handler/ }).click();
-  await expect(dialog(page).getByRole('region', { name: 'Links' })).toContainText('blocks');
-  await expect(dialog(page).getByRole('region', { name: 'Links' })).toContainText(
-    'Customer feedback widget',
-  );
+});
+
+test('a task page shows the task and saves each field as it changes', async ({ page }) => {
+  await signIn(page, PM, '/projects/ATLAS/board');
+  await page.getByRole('button', { name: /Invoice PDF download/ }).click();
+  await expect(page).toHaveURL(/\/browse\/ATLAS-5$/);
+  const crumbs = page.getByRole('navigation', { name: 'Breadcrumb' });
+  await expect(crumbs).toContainText('Atlas Customer Portal');
+  await expect(crumbs).toContainText('ATLAS-5');
+
+  // Inline summary edit.
+  await page.getByRole('heading', { name: 'Invoice PDF download' }).click();
+  await page.getByLabel('Summary').fill('Invoice PDF download (A4)');
+  await page.getByLabel('Summary').press('Enter');
+  await expect(page.getByRole('heading', { name: 'Invoice PDF download (A4)' })).toBeVisible();
+
+  // Details save on change.
+  await page.getByLabel('Priority').selectOption({ label: 'Critical' });
+  await expect(toast(page)).toContainText('ATLAS-5 saved');
+  await page
+    .getByText('Add a description…')
+    .or(page.locator('#description-heading + div'))
+    .first()
+    .click();
+  await page
+    .getByRole('textbox', { name: 'Description' })
+    .fill('Use the A4 template from finance.');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByText('Use the A4 template from finance.')).toBeVisible();
+
+  await page.getByLabel('Hours worked today').fill('2');
+  await page.getByRole('button', { name: 'Log', exact: true }).click();
+  await expect(toast(page)).toContainText('Logged 2.0h on ATLAS-5');
+
+  // Saved for real.
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Invoice PDF download (A4)' })).toBeVisible();
+  await expect(page.getByLabel('Priority')).toHaveValue('CRITICAL');
 });

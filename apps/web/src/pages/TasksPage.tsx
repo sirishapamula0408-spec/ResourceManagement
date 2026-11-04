@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Pagination } from '../components/Pagination';
 import { RowActions } from '../components/RowActions';
 import { TaskDialog } from '../components/tasks/TaskDialog';
@@ -102,6 +103,7 @@ function SelectAll({
 export function TasksPage({ project }: { project?: Project } = {}) {
   const [filter, setFilter] = useScopedTaskFilter(project?.id);
   const [open, setOpen] = useState<Task | null>(null);
+  const navigate = useNavigate();
   const [toastMessage, showToast] = useToast();
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'due', dir: 1 });
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -308,7 +310,7 @@ export function TasksPage({ project }: { project?: Project } = {}) {
                 <tr
                   key={t.id}
                   className={`cursor-pointer hover:[&>td]:bg-panel2 ${selected.has(t.id) ? '[&>td]:bg-teal-soft/40' : ''}`}
-                  onClick={() => setOpen(t)}
+                  onClick={() => navigate(`/browse/${t.key}`)}
                 >
                   {selecting && (
                     <td className={td} onClick={(e) => e.stopPropagation()}>

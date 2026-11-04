@@ -138,7 +138,12 @@ export function ProjectSummary() {
               {dueSoon.map((t) => (
                 <li key={t.id} className="flex items-center gap-2 py-1.5 text-sm">
                   <span className="text-xs font-semibold text-muted">{t.key}</span>
-                  <span className="flex-1 truncate">{t.title}</span>
+                  <Link
+                    to={`/browse/${t.key}`}
+                    className="flex-1 truncate hover:text-teal hover:underline"
+                  >
+                    {t.title}
+                  </Link>
                   <span className={isOverdue(t) ? 'font-semibold text-red' : 'text-muted'}>
                     {dueLabel(t.dueDate!)}
                   </span>

@@ -9,8 +9,8 @@ import {
 } from '@dnd-kit/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../../components/PageHeader';
-import { TaskDialog } from '../../components/tasks/TaskDialog';
 import {
   Avatar,
   EpicChip,
@@ -223,7 +223,7 @@ export function ProjectBacklog() {
   const project = useProject();
   const qc = useQueryClient();
   const [toastMessage, showToast] = useToast();
-  const [open, setOpen] = useState<Task | null>(null);
+  const navigate = useNavigate();
   const [editingSprint, setEditingSprint] = useState<Sprint | 'new' | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const { personNames } = useTaskLookups();
@@ -290,7 +290,13 @@ export function ProjectBacklog() {
     if (task && e.over) onMove(task, String(e.over.id));
   }
 
-  const rowProps = { canMove: manages, targets, personNames, onOpen: setOpen, onMove };
+  const rowProps = {
+    canMove: manages,
+    targets,
+    personNames,
+    onOpen: (t: Task) => navigate(`/browse/${t.key}`),
+    onMove,
+  };
   const created = (title: string) => showToast(`Created “${title}”`);
 
   return (
@@ -397,15 +403,6 @@ export function ProjectBacklog() {
           sprint={editingSprint === 'new' ? null : editingSprint}
           projectId={project.id}
           onClose={() => setEditingSprint(null)}
-        />
-      )}
-      {open && (
-        <TaskDialog
-          key={open.id}
-          task={open}
-          onClose={() => setOpen(null)}
-          onSaved={showToast}
-          onOpenTask={setOpen}
         />
       )}
       <Toast message={toastMessage} />

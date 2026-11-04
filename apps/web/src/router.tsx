@@ -17,6 +17,7 @@ import { ProjectSummary } from './pages/project/ProjectSummary';
 import { ReportsPage } from './pages/ReportsPage';
 import { SignupPage } from './pages/SignupPage';
 import { SprintsPage } from './pages/SprintsPage';
+import { TaskPage } from './pages/TaskPage';
 import { TasksPage } from './pages/TasksPage';
 import { TeamsPage } from './pages/TeamsPage';
 
@@ -51,6 +52,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'board', element: <BoardPage /> },
       { path: 'tasks', element: <TasksPage /> },
+      { path: 'browse/:key', element: <TaskPage /> },
       { path: 'sprints', element: <SprintsPage /> },
       { path: 'teams', element: <TeamsPage /> },
       { path: 'projects', element: <ProjectsPage /> },
