@@ -209,7 +209,7 @@ function HelpLinks() {
       <span className="h-5 w-px bg-line" aria-hidden />
       <button
         type="button"
-        className={btn}
+        className={`${btn} w-(--support-w) justify-end`}
         aria-expanded={open === 'support'}
         onClick={() => setOpen(open === 'support' ? null : 'support')}
       >
@@ -320,15 +320,17 @@ function SignInFooter() {
 
 /**
  * Sign-in layout from the SedHub design: a blue brand panel with the product's areas on the left,
- * and the sign-in card on a light background on the right, its right edge under Support. The
- * right column is just wide enough for the card and a modest gap to the panel's curve. Below
+ * and the sign-in card on a light background on the right, its right edge under Help: the
+ * Support link has a fixed width (--support-w), and the card keeps that width plus the two gaps
+ * and the divider (2rem + 1px) free on its right. The right column is just wide enough for that
+ * and a modest gap to the panel's curve. Below
  * lg the panel becomes a slim header (logo and tagline) and the card takes the full width with
  * 16px gutters (up to 768px).
  */
 export function SignInShell({ children }: { children: ReactNode }) {
   useDocumentTitle('Sign in · SedHub');
   return (
-    <div className="grid min-h-dvh bg-[#f4f6fb] lg:grid-cols-[minmax(0,1fr)_clamp(37rem,36vw,40rem)]">
+    <div className="grid min-h-dvh bg-[#f4f6fb] [--support-w:4.5rem] lg:grid-cols-[minmax(0,1fr)_calc(clamp(37rem,36vw,40rem)_+_var(--support-w)_+_2rem_+_1px)]">
       <aside className="relative hidden overflow-hidden bg-[radial-gradient(120%_90%_at_10%_0%,#123a9c_0%,#0a2a7a_45%,#061c55_100%)] text-white lg:block [clip-path:ellipse(100%_120%_at_0%_50%)]">
         {/* Faint flowing lines, as in the design. */}
         <svg
@@ -386,7 +388,7 @@ export function SignInShell({ children }: { children: ReactNode }) {
         </header>
         <HelpLinks />
         <div className="flex flex-1 flex-col justify-center px-4 py-[clamp(0.75rem,3vh,2rem)] min-[769px]:px-10 [@media(max-height:700px)]:py-2">
-          <div className="mx-auto w-full max-w-[480px] lg:mr-0 lg:ml-auto">
+          <div className="mx-auto w-full max-w-[480px] lg:mr-[calc(var(--support-w)_+_2rem_+_1px)] lg:ml-auto">
             {children}
             <SignInFooter />
           </div>
