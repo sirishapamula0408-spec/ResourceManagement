@@ -475,3 +475,26 @@ test('a PM opens a project space: summary, backlog, board, list and settings', a
   await expect(page.getByRole('heading', { name: 'Epics' })).toBeVisible();
   await expect(page.getByText('Account self-service')).toBeVisible();
 });
+
+test('a PM links tasks and the board shows what is blocked', async ({ page }) => {
+  await signIn(page, PM, '/projects/ATLAS/list');
+  await page.getByLabel('Search tasks').fill('Customer feedback widget');
+  await page.getByRole('row', { name: /Customer feedback widget/ }).click();
+  const links = dialog(page).getByRole('region', { name: 'Links' });
+  await links.getByLabel('Link type').selectOption('BLOCKED_BY');
+  await links.getByLabel('Task to link').fill('ATLAS-4');
+  await links.getByRole('button', { name: 'Link', exact: true }).click();
+  await expect(links.getByRole('listitem')).toContainText(['Payments webhook handler']);
+  await dialog(page).getByRole('button', { name: 'Cancel' }).click();
+
+  await expect(page.getByRole('row', { name: /Customer feedback widget/ })).toContainText(
+    'Blocked by 1',
+  );
+  // The other side of the link.
+  await page.getByLabel('Search tasks').fill('Payments webhook');
+  await page.getByRole('row', { name: /Payments webhook handler/ }).click();
+  await expect(dialog(page).getByRole('region', { name: 'Links' })).toContainText('blocks');
+  await expect(dialog(page).getByRole('region', { name: 'Links' })).toContainText(
+    'Customer feedback widget',
+  );
+});

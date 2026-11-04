@@ -5,6 +5,7 @@ import { parse } from '../../lib/http.js';
 import { visibleProjectIds } from '../../lib/visibility.js';
 import { requireAuth, type AuthUser } from '../../middleware/auth.js';
 import * as comments from './comments.service.js';
+import * as links from './links.service.js';
 import * as service from './tasks.service.js';
 
 const listQuery = z.object({
@@ -74,6 +75,11 @@ const commentBody = z.object({
   body: z.string().trim().min(1, 'Write a comment').max(5000),
 });
 
+const linkBody = z.object({
+  kind: z.enum(['BLOCKS', 'BLOCKED_BY', 'RELATES']),
+  targetKey: z.string().trim().min(1, 'Enter a task key like ATLAS-12').max(40),
+});
+
 export const tasksRouter = Router();
 
 /** A team member's view: their projects' tasks and their own (null = everything). */
@@ -140,5 +146,21 @@ tasksRouter.patch('/:id/comments/:commentId', async (req, res) => {
 tasksRouter.delete('/:id/comments/:commentId', async (req, res) => {
   const { id, commentId } = req.params;
   await comments.deleteComment(req.user!, String(id), String(commentId));
+  res.status(204).end();
+});
+
+// Issue links (M4 JIRA-lite): blocks / is blocked by / relates to.
+tasksRouter.get('/:id/links', async (req, res) => {
+  res.json(await links.listLinks(req.user!, String(req.params.id)));
+});
+
+tasksRouter.post('/:id/links', async (req, res) => {
+  const input = parse(linkBody, req.body);
+  res.status(201).json(await links.addLink(req.user!, String(req.params.id), input));
+});
+
+tasksRouter.delete('/:id/links/:linkId', async (req, res) => {
+  const { id, linkId } = req.params;
+  await links.removeLink(req.user!, String(id), String(linkId));
   res.status(204).end();
 });

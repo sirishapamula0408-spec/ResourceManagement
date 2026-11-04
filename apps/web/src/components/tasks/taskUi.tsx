@@ -61,6 +61,19 @@ export function EpicChip({ epic }: { epic: { name: string; color: string | null 
   );
 }
 
+/** Red "Blocked by 2" badge while a task has unfinished blockers. */
+export function BlockedBadge({ count }: { count: number }) {
+  if (!count) return null;
+  return (
+    <span
+      className="rounded-[3px] bg-red-soft px-1.5 py-px text-[11px] font-semibold whitespace-nowrap text-red"
+      title={`Blocked by ${count} unfinished ${count === 1 ? 'task' : 'tasks'}`}
+    >
+      Blocked by {count}
+    </span>
+  );
+}
+
 /** A label on a card or row. */
 export function LabelChip({ name }: { name: string }) {
   return (

@@ -4,6 +4,7 @@ import { Pagination } from '../components/Pagination';
 import { RowActions } from '../components/RowActions';
 import { TaskDialog } from '../components/tasks/TaskDialog';
 import {
+  BlockedBadge,
   EpicChip,
   LabelChips,
   PriorityBadge,
@@ -337,8 +338,9 @@ export function TasksPage({ project }: { project?: Project } = {}) {
                         · {t.subtaskCount} {t.subtaskCount === 1 ? 'sub-task' : 'sub-tasks'}
                       </span>
                     )}
-                    {(t.epic || t.labels.length > 0) && (
+                    {(t.epic || t.labels.length > 0 || t.openBlockers > 0) && (
                       <span className="ml-2 inline-flex flex-wrap items-center gap-1 align-middle">
+                        <BlockedBadge count={t.openBlockers} />
                         {t.epic && <EpicChip epic={t.epic} />}
                         <LabelChips labels={t.labels} />
                       </span>

@@ -209,6 +209,17 @@ export interface Task {
   /** Set when this is a sub-task. */
   parent: { id: string; key: string; title: string } | null;
   subtaskCount: number;
+  /** Tasks that block this one and are not done yet. */
+  openBlockers: number;
+}
+
+export type LinkKind = 'BLOCKS' | 'BLOCKED_BY' | 'RELATES';
+
+/** A link as seen from one task: "this task <kind> <task>". */
+export interface TaskLink {
+  id: string;
+  kind: LinkKind;
+  task: { id: string; key: string; title: string; status: TaskStatus };
 }
 
 /** A label in use and how many tasks carry it. */

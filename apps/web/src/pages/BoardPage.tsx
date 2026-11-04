@@ -19,6 +19,7 @@ import { useState } from 'react';
 import { TaskDialog } from '../components/tasks/TaskDialog';
 import {
   Avatar,
+  BlockedBadge,
   EpicChip,
   LabelChips,
   PriorityBadge,
@@ -81,8 +82,9 @@ function TaskCard({ task, personNames, projectCodes, onOpen }: CardProps & { tas
         <PriorityBadge priority={task.priority} />
       </div>
       <div className="mt-1 mb-2 font-medium">{task.title}</div>
-      {(task.epic || task.labels.length > 0) && (
+      {(task.epic || task.labels.length > 0 || task.openBlockers > 0) && (
         <div className="mb-2 flex flex-wrap items-center gap-1">
+          <BlockedBadge count={task.openBlockers} />
           {task.epic && <EpicChip epic={task.epic} />}
           <LabelChips labels={task.labels} />
         </div>

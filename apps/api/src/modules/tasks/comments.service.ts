@@ -8,7 +8,7 @@ import type { AuthUser } from '../../middleware/auth.js';
  * a team member sees the tasks on their projects and those assigned to them. Only the author
  * edits a comment; the author or an admin deletes it.
  */
-async function requireSeeTask(user: AuthUser, taskId: string) {
+export async function requireSeeTask(user: AuthUser, taskId: string) {
   const task = await prisma.task.findUnique({
     where: { id: taskId },
     select: { projectId: true, assigneeId: true },

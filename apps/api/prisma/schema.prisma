@@ -55,6 +55,12 @@ enum TaskPriority {
   CRITICAL
 }
 
+/// How two tasks are linked (M4 JIRA-lite). Stored one way: "from blocks to", "from relates to to".
+enum TaskLinkType {
+  BLOCKS
+  RELATES
+}
+
 enum SprintStatus {
   PLANNED
   ACTIVE
@@ -298,6 +304,8 @@ model Task {
   jiraKey       String?      @unique // M3: two-way sync
   worklogs      Worklog[]
   comments      Comment[]
+  linksOut      TaskLink[]   @relation("LinkFrom")
+  linksIn       TaskLink[]   @relation("LinkTo")
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
@@ -321,6 +329,20 @@ model Comment {
   updatedAt DateTime @updatedAt
 
   @@index([taskId, createdAt])
+}
+
+/// A link between two tasks, possibly on different projects (M4 JIRA-lite).
+model TaskLink {
+  id        String       @id @default(cuid())
+  type      TaskLinkType
+  fromId    String
+  from      Task         @relation("LinkFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  toId      String
+  to        Task         @relation("LinkTo", fields: [toId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+
+  @@unique([fromId, toId, type])
+  @@index([toId])
 }
 
 model Worklog {

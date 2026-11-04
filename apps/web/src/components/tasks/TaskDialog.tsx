@@ -12,6 +12,7 @@ import { errorMessage, inputClass } from '../../lib/forms';
 import { fmt } from '../../lib/theme';
 import { Dialog, Field } from '../Dialog';
 import { TaskComments } from './TaskComments';
+import { TaskLinks } from './TaskLinks';
 import { ParentLink, TaskSubtasks } from './TaskSubtasks';
 import { LabelInput } from './taskUi';
 import {
@@ -412,6 +413,7 @@ export function TaskDialog({
         />
       </Field>
       {task && !task.parent && <TaskSubtasks task={task} canAdd={manages} onOpen={onOpenTask} />}
+      {task && <TaskLinks task={task} canEdit={manages || works} onOpen={onOpenTask} />}
       {task && <TaskComments taskId={task.id} personNames={personNames} />}
     </Dialog>
   );

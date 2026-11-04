@@ -48,7 +48,14 @@ export async function listTasks({ label, ...filter }: TaskFilter, scope: TaskSco
       parent: {
         select: { id: true, number: true, title: true, project: { select: { code: true } } },
       },
-      _count: { select: { comments: true, subtasks: true } },
+      _count: {
+        select: {
+          comments: true,
+          subtasks: true,
+          // Open blockers: tasks that block this one and are not done.
+          linksIn: { where: { type: 'BLOCKS', from: { status: { not: 'DONE' } } } },
+        },
+      },
     },
   });
 
@@ -69,6 +76,7 @@ export async function listTasks({ label, ...filter }: TaskFilter, scope: TaskSco
     },
     commentCount: _count.comments,
     subtaskCount: _count.subtasks,
+    openBlockers: _count.linksIn,
     key: taskKey(t.project.code, t.number),
     loggedHours: loggedByTask.get(t.id) ?? 0,
   }));
