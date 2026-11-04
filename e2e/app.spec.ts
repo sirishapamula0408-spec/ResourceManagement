@@ -467,6 +467,8 @@ test('a PM opens a project space: summary, backlog, board, list and settings', a
 
   // List: only ATLAS tasks.
   await views.getByRole('link', { name: 'List', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'List' })).toBeVisible();
+  await expect(page.locator('tbody tr td:nth-child(2)').first()).toContainText('ATLAS-');
   const keys = await page.locator('tbody tr td:nth-child(2)').allTextContents();
   expect(keys.length).toBeGreaterThan(0);
   expect(keys.every((k) => k.startsWith('ATLAS-'))).toBe(true);
