@@ -106,7 +106,8 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     if (res.status === 401 && path !== '/auth/login') {
       auth.clear();
       const here = window.location.pathname + window.location.search;
-      leaveTo(`/login?next=${encodeURIComponent(here)}`);
+      const reason = token ? 'reason=expired&' : '';
+      leaveTo(`/login?${reason}next=${encodeURIComponent(here)}`);
     }
     // A password set by someone else must be changed before anything else.
     if (res.status === 403 && body?.details?.code === 'PASSWORD_CHANGE_REQUIRED') {

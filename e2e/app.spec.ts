@@ -7,8 +7,8 @@ const MEMBER = { email: 'liam.chen@resourceboard.local', password: 'Password@123
 
 async function signIn(page: Page, who: { email: string; password: string }, path = '/dashboard') {
   await page.goto(path);
-  await page.getByLabel('Email').fill(who.email);
-  await page.getByLabel('Password').fill(who.password);
+  await page.getByLabel('Work email').fill(who.email);
+  await page.getByLabel('Password', { exact: true }).fill(who.password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).not.toHaveURL(/\/login/);
 }
@@ -27,8 +27,8 @@ test('signed-out visitors go to sign-in and come back to the page they asked for
 }) => {
   await page.goto('/projects');
   await expect(page).toHaveURL(/\/login\?next=%2Fprojects/);
-  await page.getByLabel('Email').fill(ADMIN.email);
-  await page.getByLabel('Password').fill(ADMIN.password);
+  await page.getByLabel('Work email').fill(ADMIN.email);
+  await page.getByLabel('Password', { exact: true }).fill(ADMIN.password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/projects$/);
   await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
@@ -36,10 +36,154 @@ test('signed-out visitors go to sign-in and come back to the page they asked for
 
 test('wrong password shows an error', async ({ page }) => {
   await page.goto('/login');
-  await page.getByLabel('Email').fill(ADMIN.email);
-  await page.getByLabel('Password').fill('not-the-password');
+  await page.getByLabel('Work email').fill(ADMIN.email);
+  await page.getByLabel('Password', { exact: true }).fill('not-the-password');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Email or password is incorrect.');
+});
+
+test('sign-in checks the fields when they lose focus and on submit', async ({ page }) => {
+  await page.goto('/login');
+  const email = page.getByLabel('Work email');
+  const password = page.getByLabel('Password', { exact: true });
+  await expect(email).toBeFocused();
+  await expect(email).toHaveAttribute('autocomplete', 'username');
+  await expect(password).toHaveAttribute('autocomplete', 'current-password');
+
+  await email.fill('not-an-email');
+  await email.press('Tab');
+  await expect(page.getByText('Enter a valid email address')).toBeVisible();
+  await expect(email).toHaveAttribute('aria-invalid', 'true');
+  await expect(email).toHaveAttribute('aria-describedby', 'login-email-error');
+
+  // Submitting shows every problem and puts the cursor on the first one; nothing is sent.
+  let sent = 0;
+  await page.route('**/api/auth/login', (route) => {
+    sent++;
+    return route.continue();
+  });
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page.getByText('Enter your password.')).toBeVisible();
+  await expect(email).toBeFocused();
+  expect(sent).toBe(0);
+
+  await email.fill(ADMIN.email);
+  await expect(page.getByText('Enter a valid email address')).toHaveCount(0);
+  await expect(email).toHaveAttribute('aria-invalid', 'false');
+});
+
+test('sign-in page: no SSO or sign-up link by default, Remember me off', async ({ page }) => {
+  await page.goto('/login');
+  await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+  await expect(page.getByText('Access your workspace')).toBeVisible();
+  // VITE_SSO_ENABLED is not set for the e2e build: no Microsoft button and no "or" divider.
+  await expect(page.getByText(/Microsoft/)).toHaveCount(0);
+  await expect(page.getByText('or', { exact: true })).toHaveCount(0);
+  await expect(page.getByText('Create an account')).toHaveCount(0);
+  await expect(page.getByText('Need access?')).toBeVisible();
+  await expect(page.getByLabel('Remember me')).not.toBeChecked();
+  for (const badge of [
+    'Encrypted connection (TLS)',
+    'Role-based access control',
+    'Audit-logged access',
+  ]) {
+    await expect(page.getByText(badge)).toBeVisible();
+  }
+});
+
+test('Enter signs in once, with a loading state, and the session ends with the browser', async ({
+  page,
+}) => {
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => (release = resolve));
+  let sent = 0;
+  await page.route('**/api/auth/login', async (route) => {
+    sent++;
+    await gate;
+    await route.continue();
+  });
+  await page.goto('/login');
+  await page.getByLabel('Work email').fill(PM.email);
+  const password = page.getByLabel('Password', { exact: true });
+  await password.fill(PM.password);
+  await password.press('Enter');
+
+  const busy = page.getByRole('button', { name: 'Signing in…' });
+  await expect(busy).toBeDisabled();
+  await password.press('Enter'); // a second Enter while waiting sends nothing
+  expect(sent).toBe(1);
+  release();
+  await expect(page).toHaveURL(/\/dashboard$/);
+  expect(sent).toBe(1);
+  // "Remember me" was off: the token is kept for this tab only.
+  const stored = await page.evaluate(() => ({
+    local: localStorage.getItem('rb.token'),
+    session: sessionStorage.getItem('rb.token'),
+  }));
+  expect(stored.local).toBeNull();
+  expect(stored.session).toBeTruthy();
+});
+
+test('sign-in explains server errors in a banner that takes focus', async ({ page }) => {
+  await page.goto('/login');
+  await page.getByLabel('Work email').fill(PM.email);
+  await page.getByLabel('Password', { exact: true }).fill('whatever');
+
+  await page.route('**/api/auth/login', (route) =>
+    route.fulfill({ status: 500, json: { error: 'Internal server error' } }),
+  );
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  const banner = page.getByRole('alert');
+  await expect(banner).toHaveText(
+    'We couldn’t reach the server. Check your connection and try again.',
+  );
+  await expect(banner).toBeFocused();
+
+  await page.unroute('**/api/auth/login');
+  await page.route('**/api/auth/login', (route) =>
+    route.fulfill({
+      status: 423,
+      headers: { 'Retry-After': '540' },
+      json: { error: 'Locked', details: { code: 'ACCOUNT_LOCKED', retryAfterSeconds: 540 } },
+    }),
+  );
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(banner).toHaveText(
+    'Your account is locked after too many attempts. Try again in 9 minutes or contact your administrator.',
+  );
+});
+
+test('the password field warns about Caps Lock and can show its characters', async ({ page }) => {
+  await page.goto('/login');
+  const password = page.getByLabel('Password', { exact: true });
+  await password.fill('secret');
+  await password.dispatchEvent('keydown', { key: 'A', modifierCapsLock: true });
+  await expect(page.getByText('Caps Lock is on')).toBeVisible();
+  await password.dispatchEvent('keydown', { key: 'a', modifierCapsLock: false });
+  await expect(page.getByText('Caps Lock is on')).toHaveCount(0);
+
+  await expect(password).toHaveAttribute('type', 'password');
+  await page.getByRole('button', { name: 'Show password' }).click();
+  await expect(password).toHaveAttribute('type', 'text');
+  await page.getByRole('button', { name: 'Hide password' }).click();
+  await expect(password).toHaveAttribute('type', 'password');
+});
+
+test('an expired session returns to sign-in with a notice, then to the page', async ({ page }) => {
+  await signIn(page, PM);
+  // Replace the token with one whose expiry has passed (the payload is all the app reads).
+  await page.evaluate(() => {
+    const b64 = (o: object) => btoa(JSON.stringify(o)).replace(/=+$/, '');
+    const payload = { sub: 'x', email: 'x@y.z', role: 'PM', exp: 1 };
+    sessionStorage.setItem('rb.token', `${b64({ alg: 'HS256' })}.${b64(payload)}.sig`);
+  });
+  await page.goto('/projects');
+  await expect(page).toHaveURL(/\/login\?reason=expired&next=%2Fprojects/);
+  await expect(page.getByRole('status')).toHaveText('Your session expired. Please sign in again.');
+  await page.getByLabel('Work email').fill(PM.email);
+  await page.getByLabel('Password', { exact: true }).fill(PM.password);
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click();
+  await expect(page).toHaveURL(/\/projects$/);
 });
 
 test('dashboard shows the KPIs and the project filter applies to them', async ({ page }) => {
@@ -169,8 +313,8 @@ test('a new person signs in with a temporary password and must choose their own'
   await expect(page.getByRole('row', { name: /Nisha Verma/ })).toBeVisible();
 
   await page.getByRole('button', { name: 'Sign out' }).click();
-  await page.getByLabel('Email').fill('nisha.verma@resourceboard.local');
-  await page.getByLabel('Password').fill('Welcome2026');
+  await page.getByLabel('Work email').fill('nisha.verma@resourceboard.local');
+  await page.getByLabel('Password', { exact: true }).fill('Welcome2026');
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/account\/password$/);
   await expect(page.getByRole('heading', { name: 'Choose your password' })).toBeVisible();

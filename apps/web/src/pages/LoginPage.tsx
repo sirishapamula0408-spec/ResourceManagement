@@ -1,12 +1,23 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { type FormEvent, useState } from 'react';
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { SignInShell, TrustBadges } from '../components/SignInShell';
-import { api, ApiError, auth, type LoginResponse, safeNext } from '../lib/api';
+import { api, auth, type LoginResponse, safeNext } from '../lib/api';
 import { appConfig } from '../lib/appConfig';
+import {
+  isCapsLockOn,
+  type LoginField,
+  loginErrorMessage,
+  signInNotice,
+  validateLoginForm,
+} from '../lib/loginForm';
 
-const field =
-  'flex h-[clamp(2.5rem,5.2vh,3rem)] items-center gap-3 rounded-md border border-[#cfd6e4] bg-white px-3.5 text-[#1f2b4d] focus-within:border-[#1546d6] focus-within:ring-2 focus-within:ring-[#1546d6]/15';
+const fieldBox = (invalid: boolean) =>
+  `flex h-[clamp(2.5rem,5.2vh,3rem)] items-center gap-3 rounded-md border bg-white px-3.5 text-[#1f2b4d] focus-within:ring-2 ${
+    invalid
+      ? 'border-[#b42318] focus-within:border-[#b42318] focus-within:ring-[#b42318]/20'
+      : 'border-[#cfd6e4] focus-within:border-[#1546d6] focus-within:ring-[#1546d6]/15'
+  }`;
 const svg = {
   width: 20,
   height: 20,
@@ -31,29 +42,76 @@ function MicrosoftLogo() {
   );
 }
 
+/** A visible label, the input box with its leading icon, and the field's error and hint lines. */
+function Field({
+  id,
+  label,
+  icon,
+  error,
+  hint,
+  children,
+}: {
+  id: string;
+  label: string;
+  icon: ReactNode;
+  error?: string;
+  hint?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div>
+      <label htmlFor={id} className="mb-1 block text-[13px] font-medium text-[#1f2b4d]">
+        {label}
+      </label>
+      <div className={fieldBox(!!error)}>
+        <span className="text-[#5b6785]">{icon}</span>
+        {children}
+      </div>
+      {error && (
+        <p id={`${id}-error`} className="mt-1 text-xs text-[#b42318]">
+          {error}
+        </p>
+      )}
+      {hint}
+    </div>
+  );
+}
+
+const describedBy = (...ids: (string | false | undefined)[]) =>
+  ids.filter(Boolean).join(' ') || undefined;
+
 /**
  * Sign in with email and password, in the SedHub design. "Remember me" keeps the session in this
- * browser; without it (the default) the session ends when the browser closes. Microsoft sign-in
- * shows only when VITE_SSO_ENABLED is on. There is no self-registration link: people ask their
- * administrator (VITE_ADMIN_EMAIL) for access.
+ * browser; without it (the default) the session ends when the browser closes. Fields are checked
+ * when they lose focus and on submit; server errors show in a banner that takes focus. Microsoft
+ * sign-in shows only when VITE_SSO_ENABLED is on. There is no self-registration link: people ask
+ * their administrator (VITE_ADMIN_EMAIL) for access.
  */
 export function LoginPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [params] = useSearchParams();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [values, setValues] = useState({ email: '', password: '' });
+  const [touched, setTouched] = useState<Record<LoginField, boolean>>({
+    email: false,
+    password: false,
+  });
   const [showPassword, setShowPassword] = useState(false);
+  const [capsLock, setCapsLock] = useState(false);
   const [remember, setRemember] = useState(false);
   const [forgot, setForgot] = useState(false);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
+  const bannerRef = useRef<HTMLDivElement>(null);
   const next = params.get('next');
+  const notice = signInNotice(params.get('reason'));
+
+  const errors = validateLoginForm(values);
+  const shown = (f: LoginField) => (touched[f] ? errors[f] : undefined);
 
   const login = useMutation({
-    mutationFn: () =>
-      api<LoginResponse>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password }),
-      }),
+    mutationFn: (body: { email: string; password: string }) =>
+      api<LoginResponse>('/auth/login', { method: 'POST', body: JSON.stringify(body) }),
     onSuccess: (data) => {
       auth.setToken(data.token, remember);
       // Start clean: nothing cached from a previous user (or from before sign-in).
@@ -63,16 +121,25 @@ export function LoginPage() {
       });
     },
   });
+  const serverError = login.error ? loginErrorMessage(login.error) : undefined;
+
+  // Screen readers and keyboard users land on the problem straight away.
+  useEffect(() => {
+    if (login.error) bannerRef.current?.focus();
+  }, [login.error]);
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
-    login.mutate();
+    if (login.isPending) return; // no double submit (the button is disabled too)
+    setTouched({ email: true, password: true });
+    if (errors.email) return emailRef.current?.focus();
+    if (errors.password) return passwordRef.current?.focus();
+    login.mutate({ email: values.email.trim(), password: values.password });
   }
 
-  const error =
-    login.error instanceof ApiError && login.error.status === 401
-      ? 'Email or password is incorrect.'
-      : login.error?.message;
+  const set = (f: LoginField) => (e: { target: { value: string } }) =>
+    setValues((v) => ({ ...v, [f]: e.target.value }));
+  const touch = (f: LoginField) => () => setTouched((t) => ({ ...t, [f]: true }));
 
   return (
     <SignInShell>
@@ -82,51 +149,113 @@ export function LoginPage() {
           Access your workspace
         </p>
 
-        <form onSubmit={onSubmit} className="flex flex-col gap-[clamp(0.625rem,1.6vh,1rem)]">
-          <label className={field}>
-            <span className="text-[#5b6785]">
+        {serverError ? (
+          <div
+            ref={bannerRef}
+            role="alert"
+            tabIndex={-1}
+            className="mb-3 rounded-md border border-[#f1b8b4] bg-[#fdeceb] px-3 py-2 text-sm text-[#9f1c14]"
+          >
+            {serverError}
+          </div>
+        ) : (
+          notice && (
+            <div
+              role="status"
+              className="mb-3 rounded-md border border-[#c9d7fb] bg-[#eef3ff] px-3 py-2 text-sm text-[#1f2b4d]"
+            >
+              {notice}
+            </div>
+          )
+        )}
+
+        <form
+          onSubmit={onSubmit}
+          noValidate
+          aria-busy={login.isPending}
+          className="flex flex-col gap-[clamp(0.625rem,1.6vh,1rem)]"
+        >
+          <Field
+            id="login-email"
+            label="Work email"
+            error={shown('email')}
+            icon={
               <svg {...svg}>
                 <circle cx="12" cy="8" r="4" />
                 <path d="M4 21a8 8 0 0 1 16 0" />
               </svg>
-            </span>
-            <span className="sr-only">Email</span>
+            }
+          >
             <input
+              ref={emailRef}
+              id="login-email"
+              name="email"
               type="email"
+              inputMode="email"
               autoComplete="username"
-              placeholder="Email"
-              className="h-full flex-1 bg-transparent text-sm outline-none placeholder:text-[#5b6785]"
-              value={email}
+              autoCapitalize="none"
+              spellCheck={false}
+              placeholder="name@company.com"
+              className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#5b6785]"
+              value={values.email}
               required
+              aria-required="true"
+              aria-invalid={!!shown('email')}
+              aria-describedby={describedBy(shown('email') && 'login-email-error')}
               autoFocus
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={set('email')}
+              onBlur={touch('email')}
             />
-          </label>
-          <div className={field}>
-            <span className="text-[#5b6785]">
+          </Field>
+
+          <Field
+            id="login-password"
+            label="Password"
+            error={shown('password')}
+            icon={
               <svg {...svg}>
                 <rect x="5" y="10" width="14" height="10" rx="2" />
                 <path d="M8 10V7a4 4 0 0 1 8 0v3" />
               </svg>
-            </span>
-            <label className="flex h-full flex-1">
-              <span className="sr-only">Password</span>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                autoComplete="current-password"
-                placeholder="Password"
-                className="h-full flex-1 bg-transparent text-sm outline-none placeholder:text-[#5b6785]"
-                value={password}
-                required
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </label>
+            }
+            hint={
+              capsLock && (
+                <p id="login-caps" className="mt-1 text-xs font-medium text-[#8a4b00]">
+                  Caps Lock is on
+                </p>
+              )
+            }
+          >
+            <input
+              ref={passwordRef}
+              id="login-password"
+              name="password"
+              type={showPassword ? 'text' : 'password'}
+              autoComplete="current-password"
+              placeholder="Enter your password"
+              className="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#5b6785]"
+              value={values.password}
+              required
+              aria-required="true"
+              aria-invalid={!!shown('password')}
+              aria-describedby={describedBy(
+                shown('password') && 'login-password-error',
+                capsLock && 'login-caps',
+              )}
+              onChange={set('password')}
+              onKeyDown={(e) => setCapsLock(isCapsLockOn(e))}
+              onKeyUp={(e) => setCapsLock(isCapsLockOn(e))}
+              onBlur={() => {
+                touch('password')();
+                setCapsLock(false);
+              }}
+            />
             <button
               type="button"
-              className="text-[#3b4867] hover:text-[#1546d6]"
-              aria-label="Show characters"
-              aria-pressed={showPassword}
-              title={showPassword ? 'Hide' : 'Show'}
+              className="rounded text-[#3b4867] hover:text-[#1546d6]"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              aria-controls="login-password"
+              title={showPassword ? 'Hide password' : 'Show password'}
               onClick={() => setShowPassword((s) => !s)}
             >
               {showPassword ? (
@@ -141,12 +270,13 @@ export function LoginPage() {
                 </svg>
               )}
             </button>
-          </div>
+          </Field>
 
           <div className="flex items-center justify-between text-[13px]">
             <label className="flex items-center gap-2.5 text-[#1f2b4d]">
               <input
                 type="checkbox"
+                name="remember"
                 className="h-4 w-4 accent-[#1546d6]"
                 checked={remember}
                 onChange={(e) => setRemember(e.target.checked)}
@@ -168,17 +298,35 @@ export function LoginPage() {
               sign in.
             </p>
           )}
-          {error && (
-            <p role="alert" className="rounded-md bg-red-soft px-3 py-2 text-sm text-red">
-              {error}
-            </p>
-          )}
 
           <button
             type="submit"
             disabled={login.isPending}
-            className="mt-1 h-[clamp(2.5rem,5.2vh,3rem)] rounded-md bg-[#0f3bcf] text-[15px] font-semibold text-white shadow-sm hover:bg-[#0b31b0] disabled:opacity-70"
+            className="mt-1 flex h-[clamp(2.5rem,5.2vh,3rem)] items-center justify-center gap-2 rounded-md bg-[#0f3bcf] text-[15px] font-semibold text-white shadow-sm hover:bg-[#0b31b0] disabled:cursor-wait disabled:opacity-80"
           >
+            {login.isPending && (
+              <svg
+                className="size-4 animate-spin"
+                viewBox="0 0 24 24"
+                fill="none"
+                aria-hidden="true"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="9"
+                  stroke="currentColor"
+                  strokeOpacity=".3"
+                  strokeWidth="3"
+                />
+                <path
+                  d="M21 12a9 9 0 0 0-9-9"
+                  stroke="currentColor"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
             {login.isPending ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
