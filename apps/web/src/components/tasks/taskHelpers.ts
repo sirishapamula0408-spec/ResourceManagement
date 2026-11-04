@@ -4,7 +4,10 @@ import {
   api,
   auth,
   type Person,
+  type Epic,
   type Project,
+  type Sprint,
+  type SprintStatus,
   type Task,
   type TaskStatus,
   type TaskType,
@@ -63,14 +66,50 @@ export function useTaskLookups() {
   };
 }
 
+/** Sprints and epics for filters, the task dialog and the Sprints page. */
+export function usePlanningLookups() {
+  const enabled = auth.getUser()?.role !== 'SALES';
+  const { data: sprints = [] } = useQuery({
+    queryKey: ['sprints'],
+    queryFn: () => api<Sprint[]>('/sprints'),
+    enabled,
+  });
+  const { data: epics = [] } = useQuery({
+    queryKey: ['epics'],
+    queryFn: () => api<Epic[]>('/epics'),
+    enabled,
+  });
+  return { sprints, epics };
+}
+
+export const SPRINT_STATUS_LABEL: Record<SprintStatus, string> = {
+  PLANNED: 'Planned',
+  ACTIVE: 'Active',
+  CLOSED: 'Complete',
+};
+
+/** Filter value for tasks in no sprint (the backlog) or with no epic. */
+export const NONE = 'none';
+
 export interface TaskFilter {
   projectId: string;
   assigneeId: string;
+  /** A sprint id, NONE, or '' for any. */
+  sprintId: string;
+  /** An epic id, NONE, or '' for any. */
+  epicId: string;
   q: string;
 }
 
+const EMPTY_FILTER: TaskFilter = { projectId: '', assigneeId: '', sprintId: '', epicId: '', q: '' };
+
 // Shared between the Board and Tasks pages, like the prototype, so switching views keeps them.
-let lastFilter: TaskFilter = { projectId: '', assigneeId: '', q: '' };
+let lastFilter: TaskFilter = EMPTY_FILTER;
+
+/** Open the Board or Tasks page on one sprint or epic (used by the Sprints page). */
+export function presetTaskFilter(patch: Partial<TaskFilter>) {
+  lastFilter = { ...EMPTY_FILTER, ...patch };
+}
 
 export function useTaskFilter() {
   const [filter, setFilter] = useState<TaskFilter>(lastFilter);
@@ -86,6 +125,8 @@ export function applyTaskFilter(tasks: Task[], f: TaskFilter) {
     (t) =>
       (!f.projectId || t.project.id === f.projectId) &&
       (!f.assigneeId || t.assignee?.id === f.assigneeId) &&
+      (!f.sprintId || (f.sprintId === NONE ? !t.sprint : t.sprint?.id === f.sprintId)) &&
+      (!f.epicId || (f.epicId === NONE ? !t.epic : t.epic?.id === f.epicId)) &&
       (!q || `${t.title} ${t.key}`.toLowerCase().includes(q)),
   );
 }

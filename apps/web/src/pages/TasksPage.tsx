@@ -3,13 +3,20 @@ import { useEffect, useRef, useState } from 'react';
 import { Pagination } from '../components/Pagination';
 import { RowActions } from '../components/RowActions';
 import { TaskDialog } from '../components/tasks/TaskDialog';
-import { PriorityBadge, StatusPill, TaskFilters, Toast } from '../components/tasks/taskUi';
+import {
+  EpicChip,
+  PriorityBadge,
+  StatusPill,
+  TaskFilters,
+  Toast,
+} from '../components/tasks/taskUi';
 import {
   applyTaskFilter,
   dueLabel,
   hours,
   isOverdue,
   PRIORITY_RANK,
+  usePlanningLookups,
   useTaskFilter,
   useTaskLookups,
   useTaskPermissions,
@@ -21,7 +28,8 @@ import { buttonClass, errorMessage } from '../lib/forms';
 import { usePagination } from '../lib/pagination';
 import { fmt } from '../lib/theme';
 
-type SortKey = 'key' | 'title' | 'status' | 'assignee' | 'project' | 'priority' | 'est' | 'due';
+type SortKey =
+  'key' | 'title' | 'status' | 'assignee' | 'project' | 'sprint' | 'priority' | 'est' | 'due';
 
 const COLUMNS: [SortKey, string][] = [
   ['key', 'Key'],
@@ -29,6 +37,7 @@ const COLUMNS: [SortKey, string][] = [
   ['status', 'Status'],
   ['assignee', 'Assignee'],
   ['project', 'Project'],
+  ['sprint', 'Sprint'],
   ['priority', 'Priority'],
   ['est', 'Est / logged'],
   ['due', 'Due'],
@@ -46,6 +55,8 @@ const sortValue = (t: Task, key: SortKey): string | number => {
       return t.assignee?.name ?? '~'; // unassigned last
     case 'project':
       return t.project.name;
+    case 'sprint':
+      return t.sprint?.name ?? '~'; // no sprint last
     case 'priority':
       return PRIORITY_RANK[t.priority];
     case 'est':
@@ -92,6 +103,7 @@ export function TasksPage() {
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'due', dir: 1 });
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const { people, projects } = useTaskLookups();
+  const { sprints, epics } = usePlanningLookups();
   const { canManageProject, canWork, manageableProjects } = useTaskPermissions();
   const qc = useQueryClient();
   const refresh = () => TASK_QUERIES.forEach((queryKey) => qc.invalidateQueries({ queryKey }));
@@ -201,6 +213,8 @@ export function TasksPage() {
           onChange={setFilter}
           people={people}
           projects={projects}
+          sprints={sprints}
+          epics={epics}
           showAssignee={!member}
         />
       </PageHeader>
@@ -300,7 +314,14 @@ export function TasksPage() {
                     </td>
                   )}
                   <td className={`${td} text-xs font-semibold text-muted`}>{t.key}</td>
-                  <td className={td}>{t.title}</td>
+                  <td className={td}>
+                    {t.title}
+                    {t.epic && (
+                      <span className="ml-2">
+                        <EpicChip epic={t.epic} />
+                      </span>
+                    )}
+                  </td>
                   <td className={td}>
                     <StatusPill status={t.status} />
                   </td>
@@ -308,6 +329,9 @@ export function TasksPage() {
                     {t.assignee?.name ?? <span className="text-muted">Unassigned</span>}
                   </td>
                   <td className={td}>{t.project.name}</td>
+                  <td className={`${td} whitespace-nowrap`}>
+                    {t.sprint?.name ?? <span className="text-muted">Backlog</span>}
+                  </td>
                   <td className={td}>
                     <PriorityBadge priority={t.priority} />
                   </td>

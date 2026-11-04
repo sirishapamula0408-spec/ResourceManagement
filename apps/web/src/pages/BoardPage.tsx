@@ -1,16 +1,23 @@
 import {
+  closestCorners,
   DndContext,
   type DragEndEvent,
   PointerSensor,
-  useDraggable,
   useDroppable,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { TaskDialog } from '../components/tasks/TaskDialog';
-import { Avatar, PriorityBadge, TaskFilters, Toast } from '../components/tasks/taskUi';
+import { Avatar, EpicChip, PriorityBadge, TaskFilters, Toast } from '../components/tasks/taskUi';
 import {
   applyTaskFilter,
   dueLabel,
@@ -19,6 +26,7 @@ import {
   PRIORITY_RANK,
   STATUS_LABEL,
   TYPE_LABEL,
+  usePlanningLookups,
   useTaskFilter,
   useTaskLookups,
   useToast,
@@ -34,7 +42,7 @@ interface CardProps {
 }
 
 function TaskCard({ task, personNames, projectCodes, onOpen }: CardProps & { task: Task }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
   });
   const est = hours(task.estimateHours);
@@ -48,7 +56,8 @@ function TaskCard({ task, personNames, projectCodes, onOpen }: CardProps & { tas
       {...attributes}
       onClick={() => onOpen(task)}
       style={{
-        transform: transform ? `translate(${transform.x}px, ${transform.y}px)` : undefined,
+        transform: CSS.Translate.toString(transform),
+        transition,
         borderLeftColor: identityColor(task.project.code, projectCodes),
       }}
       className={`block w-full cursor-grab rounded-md border border-l-[3px] border-line bg-panel p-2.5 text-left hover:border-muted ${isDragging ? 'relative z-10 shadow-lg' : ''}`}
@@ -59,9 +68,34 @@ function TaskCard({ task, personNames, projectCodes, onOpen }: CardProps & { tas
         <PriorityBadge priority={task.priority} />
       </div>
       <div className="mt-1 mb-2 font-medium">{task.title}</div>
+      {task.epic && (
+        <div className="mb-2">
+          <EpicChip epic={task.epic} />
+        </div>
+      )}
       <div className="flex items-center gap-2 text-xs text-muted">
         <Avatar name={task.assignee?.name ?? null} allNames={personNames} size={22} />
         <span className="flex-1">{task.project.code}</span>
+        {task.commentCount > 0 && (
+          <span
+            className="inline-flex items-center gap-1"
+            title={`${task.commentCount} ${task.commentCount === 1 ? 'comment' : 'comments'}`}
+          >
+            <svg
+              width={13}
+              height={13}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              strokeLinejoin="round"
+              aria-hidden
+            >
+              <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12Z" />
+            </svg>
+            {task.commentCount}
+          </span>
+        )}
         <span>
           {fmt(task.loggedHours)}/{fmt(est)}h
         </span>
@@ -99,24 +133,39 @@ function Column({
         <span>{fmt(total)}h</span>
       </header>
       <div className="flex min-h-[60px] flex-1 flex-col gap-2 px-2 pb-2">
-        {tasks.length ? (
-          tasks.map((t) => <TaskCard key={t.id} task={t} {...cardProps} />)
-        ) : (
-          <p className="p-2.5 text-center text-xs text-muted">Drop tasks here</p>
-        )}
+        <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+          {tasks.length ? (
+            tasks.map((t) => <TaskCard key={t.id} task={t} {...cardProps} />)
+          ) : (
+            <p className="p-2.5 text-center text-xs text-muted">Drop tasks here</p>
+          )}
+        </SortableContext>
       </div>
     </section>
   );
 }
 
-/** Cards in a column: highest priority first, then earliest due date. */
-const byPriorityThenDue = (a: Task, b: Task) =>
+/** Cards in a column: by rank (drag to reorder), then highest priority, then earliest due date. */
+const byBoardOrder = (a: Task, b: Task) =>
+  a.order - b.order ||
   PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] ||
-  (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999');
+  (a.dueDate ?? '9999').localeCompare(b.dueDate ?? '9999') ||
+  a.number - b.number;
+
+interface Move {
+  id: string;
+  status: TaskStatus;
+  /** The cards it lands between (null = top / bottom of the column). */
+  afterId: string | null;
+  beforeId: string | null;
+  /** Order to show until the server answers. */
+  order: number;
+}
 
 /**
  * JIRA-style board wired to PATCH /api/tasks/:id/move (requires sign-in).
- * Click a card to open it. TODO(M1): in-column reordering (@dnd-kit/sortable).
+ * Drag a card to another column to change its status, or up and down to reorder it.
+ * Click a card to open it.
  */
 export function BoardPage() {
   const qc = useQueryClient();
@@ -126,14 +175,18 @@ export function BoardPage() {
   // A short drag threshold lets a plain click open the card instead of starting a drag.
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const { people, projects, personNames, projectCodes } = useTaskLookups();
+  const { sprints, epics } = usePlanningLookups();
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ['tasks'],
     queryFn: () => api<Task[]>('/tasks'),
   });
 
   const move = useMutation({
-    mutationFn: ({ id, status, order }: { id: string; status: TaskStatus; order: number }) =>
-      api(`/tasks/${id}/move`, { method: 'PATCH', body: JSON.stringify({ status, order }) }),
+    mutationFn: ({ id, status, afterId, beforeId }: Move) =>
+      api(`/tasks/${id}/move`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status, afterId, beforeId }),
+      }),
     // Optimistic: move the card now, roll back if the API refuses.
     onMutate: async ({ id, status, order }) => {
       await qc.cancelQueries({ queryKey: ['tasks'] });
@@ -157,34 +210,77 @@ export function BoardPage() {
     },
   });
 
+  const visible = applyTaskFilter(tasks, filter);
+  const columnOf = (status: TaskStatus) =>
+    visible.filter((t) => t.status === status).sort(byBoardOrder);
+
   function onDragEnd(e: DragEndEvent) {
-    const status = e.over?.id as TaskStatus | undefined;
     const task = tasks.find((t) => t.id === e.active.id);
-    if (!status || !task || task.status === status) return;
-    const maxOrder = Math.max(0, ...tasks.filter((t) => t.status === status).map((t) => t.order));
+    const overId = e.over?.id;
+    if (!task || overId === undefined || overId === task.id) return;
+    // Dropped on a column (empty space) or on a card in it.
+    const overTask = tasks.find((t) => t.id === overId);
+    const status = overTask ? overTask.status : (overId as TaskStatus);
+
+    let cards: Task[];
+    if (status === task.status) {
+      const column = columnOf(status);
+      const from = column.findIndex((t) => t.id === task.id);
+      const to = overTask ? column.findIndex((t) => t.id === overTask.id) : column.length - 1;
+      if (from === to) return;
+      cards = arrayMove(column, from, to);
+    } else {
+      // From another column: in front of the card it was dropped on, else at the bottom.
+      const column = columnOf(status);
+      const at = overTask ? column.findIndex((t) => t.id === overTask.id) : column.length;
+      cards = [...column.slice(0, at), task, ...column.slice(at)];
+    }
+    const i = cards.findIndex((t) => t.id === task.id);
+    const after = cards[i - 1] ?? null;
+    const before = cards[i + 1] ?? null;
+    const order =
+      after && before
+        ? (after.order + before.order) / 2
+        : after
+          ? after.order + 1000
+          : before
+            ? before.order - 1000
+            : 0;
     move.mutate(
-      { id: task.id, status, order: maxOrder + 1000 },
-      { onSuccess: () => showToast(`${task.key} moved to ${STATUS_LABEL[status]}`) },
+      { id: task.id, status, afterId: after?.id ?? null, beforeId: before?.id ?? null, order },
+      {
+        onSuccess: () =>
+          showToast(
+            status === task.status
+              ? `${task.key} reordered`
+              : `${task.key} moved to ${STATUS_LABEL[status]}`,
+          ),
+      },
     );
   }
-
-  const visible = applyTaskFilter(tasks, filter);
 
   return (
     <>
       <PageHeader title="Board">
-        <TaskFilters filter={filter} onChange={setFilter} people={people} projects={projects} />
+        <TaskFilters
+          filter={filter}
+          onChange={setFilter}
+          people={people}
+          projects={projects}
+          sprints={sprints}
+          epics={epics}
+        />
       </PageHeader>
       {isLoading ? (
         <p className="p-2.5 text-center text-xs text-muted">Loading…</p>
       ) : (
-        <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={onDragEnd}>
           <div className="grid grid-cols-[repeat(6,minmax(240px,1fr))] items-start gap-3 overflow-x-auto pb-2">
             {TASK_STATUSES.map((s) => (
               <Column
                 key={s}
                 status={s}
-                tasks={visible.filter((t) => t.status === s).sort(byPriorityThenDue)}
+                tasks={columnOf(s)}
                 personNames={personNames}
                 projectCodes={projectCodes}
                 onOpen={setOpen}

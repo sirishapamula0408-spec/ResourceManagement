@@ -187,6 +187,8 @@ export interface Task {
   id: string;
   /** Display key: project code and the task's number on that project, e.g. "ATLAS-12". */
   key: string;
+  /** The task's number on its project (the digits in the key). */
+  number: number;
   title: string;
   description: string | null;
   status: TaskStatus;
@@ -199,6 +201,48 @@ export interface Task {
   dueDate: string | null;
   assignee: { id: string; name: string } | null;
   project: { id: string; code: string; name: string };
+  sprint: { id: string; name: string; status: SprintStatus } | null;
+  epic: { id: string; name: string; color: string | null } | null;
+  commentCount: number;
+}
+
+/** A comment on a task. */
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  authorId: string;
+  author: { id: string; name: string };
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type SprintStatus = 'PLANNED' | 'ACTIVE' | 'CLOSED';
+
+/** A sprint on one project, with its task counts. */
+export interface Sprint {
+  id: string;
+  projectId: string;
+  project: { id: string; code: string; name: string };
+  name: string;
+  goal: string | null;
+  status: SprintStatus;
+  startDate: string | null;
+  endDate: string | null;
+  tasks: number;
+  done: number;
+}
+
+/** An epic on one project, with its task counts. */
+export interface Epic {
+  id: string;
+  projectId: string;
+  project: { id: string; code: string; name: string };
+  name: string;
+  description: string | null;
+  color: string | null;
+  tasks: number;
+  done: number;
 }
 
 export type ProjectStatus = 'PLANNED' | 'ACTIVE' | 'ON_HOLD' | 'COMPLETED' | 'CANCELLED';

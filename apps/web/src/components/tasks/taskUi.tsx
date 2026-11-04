@@ -1,6 +1,13 @@
-import type { Person, Project, TaskStatus } from '../../lib/api';
+import type { Epic, Person, Project, Sprint, TaskStatus } from '../../lib/api';
 import { identityColor, initials } from '../../lib/theme';
-import { PRIORITY_LABEL, STATUS_LABEL, type Priority, type TaskFilter } from './taskHelpers';
+import {
+  NONE,
+  PRIORITY_LABEL,
+  SPRINT_STATUS_LABEL,
+  STATUS_LABEL,
+  type Priority,
+  type TaskFilter,
+} from './taskHelpers';
 
 const STATUS_CLASS: Record<TaskStatus, string> = {
   BACKLOG: 'bg-panel2 border border-line',
@@ -34,6 +41,20 @@ export function PriorityBadge({ priority }: { priority: Priority }) {
       className={`rounded-[3px] px-1.5 py-px text-[11px] font-semibold ${PRIORITY_CLASS[priority]}`}
     >
       {PRIORITY_LABEL[priority]}
+    </span>
+  );
+}
+
+/** Epic name on a card or row, in the epic's colour. */
+export function EpicChip({ epic }: { epic: { name: string; color: string | null } }) {
+  const color = epic.color ?? '#6b7280';
+  return (
+    <span
+      className="inline-flex max-w-[12rem] items-center truncate rounded-[3px] border px-1.5 py-px text-[11px] font-semibold"
+      style={{ borderColor: color, color }}
+      title={`Epic: ${epic.name}`}
+    >
+      {epic.name}
     </span>
   );
 }
@@ -73,28 +94,54 @@ export function Avatar({
 
 const control = 'rounded-md border border-line bg-panel px-2.5 py-1.5';
 
-/** Project, assignee and free-text filters for the toolbar. */
+/** Project, assignee, sprint, epic and free-text filters for the toolbar. */
 export function TaskFilters({
   filter,
   onChange,
   people,
   projects,
+  sprints = [],
+  epics = [],
   showAssignee = true,
 }: {
   filter: TaskFilter;
   onChange: (f: TaskFilter) => void;
   people: Person[];
   projects: Project[];
+  sprints?: Sprint[];
+  epics?: Epic[];
   /** Off where the list is already one person's tasks. */
   showAssignee?: boolean;
 }) {
+  // The chosen project's sprints and epics; complete sprints only while selected.
+  const inProject = <T extends { projectId: string }>(rows: T[]) =>
+    filter.projectId ? rows.filter((r) => r.projectId === filter.projectId) : rows;
+  const sprintChoices = inProject(sprints).filter(
+    (s) => s.status !== 'CLOSED' || s.id === filter.sprintId,
+  );
+  const epicChoices = inProject(epics);
+  const label = (r: { name: string; project: { code: string } }) =>
+    filter.projectId ? r.name : `${r.project.code} · ${r.name}`;
   return (
     <>
       <select
         className={control}
         aria-label="Project"
         value={filter.projectId}
-        onChange={(e) => onChange({ ...filter, projectId: e.target.value })}
+        onChange={(e) => {
+          const projectId = e.target.value;
+          // A sprint or epic from another project would hide everything, so drop it.
+          const keep = (id: string, rows: { id: string; projectId: string }[]) =>
+            !projectId || id === NONE || rows.find((r) => r.id === id)?.projectId === projectId
+              ? id
+              : '';
+          onChange({
+            ...filter,
+            projectId,
+            sprintId: keep(filter.sprintId, sprints),
+            epicId: keep(filter.epicId, epics),
+          });
+        }}
       >
         <option value="">All projects</option>
         {projects.map((p) => (
@@ -116,6 +163,39 @@ export function TaskFilters({
               {p.name}
             </option>
           ))}
+        </select>
+      )}
+      {(sprints.length > 0 || filter.sprintId) && (
+        <select
+          className={control}
+          aria-label="Sprint"
+          value={filter.sprintId}
+          onChange={(e) => onChange({ ...filter, sprintId: e.target.value })}
+        >
+          <option value="">All sprints</option>
+          {sprintChoices.map((s) => (
+            <option key={s.id} value={s.id}>
+              {label(s)}
+              {s.status !== 'PLANNED' ? ` (${SPRINT_STATUS_LABEL[s.status].toLowerCase()})` : ''}
+            </option>
+          ))}
+          <option value={NONE}>No sprint (backlog)</option>
+        </select>
+      )}
+      {(epics.length > 0 || filter.epicId) && (
+        <select
+          className={control}
+          aria-label="Epic"
+          value={filter.epicId}
+          onChange={(e) => onChange({ ...filter, epicId: e.target.value })}
+        >
+          <option value="">All epics</option>
+          {epicChoices.map((ep) => (
+            <option key={ep.id} value={ep.id}>
+              {label(ep)}
+            </option>
+          ))}
+          <option value={NONE}>No epic</option>
         </select>
       )}
       <input

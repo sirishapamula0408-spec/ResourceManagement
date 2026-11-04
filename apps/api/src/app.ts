@@ -8,6 +8,7 @@ import { requireAuth, salesAreaGuard } from './middleware/auth.js';
 import { authRouter } from './modules/auth/auth.router.js';
 import { dashboardRouter } from './modules/dashboard/dashboard.router.js';
 import { peopleRouter } from './modules/people/people.router.js';
+import { planningRouter } from './modules/planning/planning.router.js';
 import { leadsRouter } from './modules/leads/leads.router.js';
 import { consentRouter } from './modules/mcp/consent.router.js';
 import { mcpRouter } from './modules/mcp/mcp.router.js';
@@ -42,6 +43,7 @@ export function createApp() {
   app.use('/api/teams', teamsRouter);
   app.use('/api/projects', projectsRouter);
   app.use('/api/tasks', tasksRouter);
+  app.use('/api', planningRouter);
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api/reports', reportsRouter);
   app.use('/api/leads', leadsRouter);

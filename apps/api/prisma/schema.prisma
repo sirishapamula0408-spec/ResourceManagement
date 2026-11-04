@@ -135,6 +135,7 @@ model Person {
   allocations        Allocation[]
   assignedTasks      Task[]              @relation("TaskAssignee")
   worklogs           Worklog[]
+  comments           Comment[]
   leaves             Leave[]
   auditLogs          AuditLog[]
   ownedLeads         Lead[]              @relation("LeadOwner")
@@ -290,6 +291,7 @@ model Task {
   sprint        Sprint?      @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   jiraKey       String?      @unique // M3: two-way sync
   worklogs      Worklog[]
+  comments      Comment[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
@@ -298,6 +300,20 @@ model Task {
   @@index([assigneeId])
   @@index([sprintId])
   @@index([epicId])
+}
+
+/// A comment on a task (M4 JIRA-lite). Its author may edit or delete it; admins may delete any.
+model Comment {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    Person   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([taskId, createdAt])
 }
 
 model Worklog {

@@ -7,6 +7,8 @@ export interface TaskFilter {
   projectId?: string;
   assigneeId?: string;
   status?: TaskStatus;
+  sprintId?: string;
+  epicId?: string;
 }
 
 /** Display key for a task: its project's code and its number on that project, e.g. "ATLAS-12". */
@@ -40,6 +42,9 @@ export async function listTasks(filter: TaskFilter, scope: TaskScope | null = nu
     include: {
       assignee: { select: { id: true, name: true } },
       project: { select: { id: true, code: true, name: true } },
+      sprint: { select: { id: true, name: true, status: true } },
+      epic: { select: { id: true, name: true, color: true } },
+      _count: { select: { comments: true } },
     },
   });
 
@@ -51,8 +56,9 @@ export async function listTasks(filter: TaskFilter, scope: TaskScope | null = nu
   });
   const loggedByTask = new Map(logged.map((l) => [l.taskId, Number(l._sum.hours ?? 0)]));
 
-  return tasks.map((t) => ({
+  return tasks.map(({ _count, ...t }) => ({
     ...t,
+    commentCount: _count.comments,
     key: taskKey(t.project.code, t.number),
     loggedHours: loggedByTask.get(t.id) ?? 0,
   }));
@@ -112,6 +118,33 @@ async function requireMember(projectId: string, personId: string | null | undefi
   }
 }
 
+/** A task's sprint and epic must be on the task's own project (and the sprint not complete). */
+async function requirePlanning(
+  projectId: string,
+  input: { sprintId?: string | null; epicId?: string | null },
+) {
+  const fieldErrors: Record<string, string[]> = {};
+  if (input.sprintId) {
+    const s = await prisma.sprint.findUnique({
+      where: { id: input.sprintId },
+      select: { projectId: true, status: true },
+    });
+    if (!s || s.projectId !== projectId) fieldErrors.sprintId = ['Not a sprint on this project'];
+    else if (s.status === 'CLOSED') fieldErrors.sprintId = ['This sprint is complete'];
+  }
+  if (input.epicId) {
+    const e = await prisma.epic.findUnique({
+      where: { id: input.epicId },
+      select: { projectId: true },
+    });
+    if (!e || e.projectId !== projectId) fieldErrors.epicId = ['Not an epic on this project'];
+  }
+  const fields = Object.keys(fieldErrors);
+  if (fields.length) {
+    throw new HttpError(400, Object.values(fieldErrors)[0][0], { fieldErrors });
+  }
+}
+
 /** Completion date follows the status: set on moving to Done, cleared when reopened. */
 function completion(from: TaskStatus | undefined, to: TaskStatus) {
   if (to === 'DONE' && from !== 'DONE') return { completedAt: new Date() };
@@ -119,9 +152,10 @@ function completion(from: TaskStatus | undefined, to: TaskStatus) {
   return {};
 }
 
-async function nextOrder(projectId: string, status: TaskStatus) {
+/** Bottom of a board column; the board mixes projects, so the rank is column-wide. */
+async function nextOrder(status: TaskStatus) {
   const last = await prisma.task.aggregate({
-    where: { projectId, status },
+    where: { status },
     _max: { order: true },
   });
   return (last._max.order ?? 0) + 1000;
@@ -140,16 +174,19 @@ export interface TaskInput {
   estimateHours?: number | null;
   startDate?: Date | null;
   dueDate?: Date | null;
+  sprintId?: string | null;
+  epicId?: string | null;
 }
 
 export async function createTask(user: AuthUser, input: TaskInput) {
   await requireManage(user, input.projectId);
   await requireMember(input.projectId, input.assigneeId);
+  await requirePlanning(input.projectId, input);
   return prisma.task.create({
     data: {
       ...input,
       ...completion(undefined, input.status ?? 'TODO'),
-      order: await nextOrder(input.projectId, input.status ?? 'TODO'),
+      order: await nextOrder(input.status ?? 'TODO'),
       number: await nextTaskNumber(input.projectId),
     },
   });
@@ -176,6 +213,20 @@ export async function updateTask(user: AuthUser, id: string, input: Partial<Task
     await requireMember(projectId, assigneeId);
   }
 
+  // Sprints and epics belong to one project: moving a task to another project drops them
+  // unless new ones are given.
+  const planning = {
+    sprintId:
+      input.sprintId !== undefined
+        ? input.sprintId
+        : projectId !== task.projectId
+          ? null
+          : undefined,
+    epicId:
+      input.epicId !== undefined ? input.epicId : projectId !== task.projectId ? null : undefined,
+  };
+  await requirePlanning(projectId, planning);
+
   // A task changing column (or project) goes to the bottom of its new column; a task moved to
   // another project takes the next key there.
   const status = input.status ?? task.status;
@@ -185,8 +236,9 @@ export async function updateTask(user: AuthUser, id: string, input: Partial<Task
     where: { id },
     data: {
       ...input,
+      ...planning,
       ...completion(task.status, status),
-      ...(moved ? { order: await nextOrder(projectId, status) } : {}),
+      ...(moved ? { order: await nextOrder(status) } : {}),
       ...(changesProject ? { number: await nextTaskNumber(projectId) } : {}),
     },
   });
@@ -232,10 +284,75 @@ export async function deleteTasks(user: AuthUser, ids: string[]) {
   return { deleted: count };
 }
 
+/** Where a dragged card lands: an explicit order, or between two neighbouring cards. */
+export interface MovePlace {
+  order?: number;
+  /** The card that ends up just above it (null = top of the column). */
+  afterId?: string | null;
+  /** The card that ends up just below it (null = bottom of the column). */
+  beforeId?: string | null;
+}
+
+const PRIORITY_RANK: Record<TaskPriority, number> = { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
+
+/** Board order within a column: rank, then priority, due date and number (as the board draws it). */
+const byBoardOrder = (
+  a: { order: number; priority: TaskPriority; dueDate: Date | null; number: number },
+  b: typeof a,
+) =>
+  a.order - b.order ||
+  PRIORITY_RANK[a.priority] - PRIORITY_RANK[b.priority] ||
+  (a.dueDate?.getTime() ?? Infinity) - (b.dueDate?.getTime() ?? Infinity) ||
+  a.number - b.number;
+
+/** Renumber a column 1000, 2000, ... in board order, leaving room between every card. */
+async function spreadColumn(status: TaskStatus, exceptId: string) {
+  const column = await prisma.task.findMany({
+    where: { status, id: { not: exceptId } },
+    select: { id: true, order: true, priority: true, dueDate: true, number: true },
+  });
+  column.sort(byBoardOrder);
+  await prisma.$transaction(
+    column.map((t, i) =>
+      prisma.task.update({ where: { id: t.id }, data: { order: (i + 1) * 1000 } }),
+    ),
+  );
+}
+
+/** An order value between the two neighbours, renumbering the column once if they are too close. */
+async function orderBetween(
+  status: TaskStatus,
+  id: string,
+  afterId: string | null,
+  beforeId: string | null,
+) {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const [after, before] = await Promise.all(
+      [afterId, beforeId].map((n) =>
+        n
+          ? prisma.task.findUnique({ where: { id: n }, select: { order: true, status: true } })
+          : null,
+      ),
+    );
+    if ((afterId && !after) || (beforeId && !before)) throw new HttpError(404, 'Task not found');
+    if ((after && after.status !== status) || (before && before.status !== status)) {
+      throw new HttpError(400, 'Neighbouring cards must be in the target column');
+    }
+    if (!after && !before) return nextOrder(status);
+    if (!after) return before!.order - 1000;
+    if (!before) return after.order + 1000;
+    if (before.order - after.order >= 2) return Math.floor((after.order + before.order) / 2);
+    await spreadColumn(status, id);
+  }
+  throw new HttpError(409, 'Could not place the card. Refresh the board and try again.');
+}
+
 /** Move a task to a column/position (used by the drag-and-drop board). */
-export async function moveTask(user: AuthUser, id: string, status: TaskStatus, order: number) {
+export async function moveTask(user: AuthUser, id: string, status: TaskStatus, place: MovePlace) {
   const task = await getTask(id);
   await requireWork(user, task);
+  const order =
+    place.order ?? (await orderBetween(status, id, place.afterId ?? null, place.beforeId ?? null));
   return prisma.task.update({
     where: { id },
     data: { status, order, ...completion(task.status, status) },

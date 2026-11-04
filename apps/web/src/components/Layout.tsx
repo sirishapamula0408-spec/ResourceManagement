@@ -12,6 +12,7 @@ const NAV = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/board', label: 'Board' },
   { to: '/tasks', label: 'Tasks' },
+  { to: '/sprints', label: 'Sprints' },
   { to: '/projects', label: 'Projects' },
   { to: '/teams', label: 'Team' },
   { to: '/reports', label: 'Reports' },

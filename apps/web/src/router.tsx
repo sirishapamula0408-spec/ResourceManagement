@@ -11,6 +11,7 @@ import { LoginPage } from './pages/LoginPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { SignupPage } from './pages/SignupPage';
+import { SprintsPage } from './pages/SprintsPage';
 import { TasksPage } from './pages/TasksPage';
 import { TeamsPage } from './pages/TeamsPage';
 
@@ -45,6 +46,7 @@ export const router = createBrowserRouter([
       { path: 'dashboard', element: <DashboardPage /> },
       { path: 'board', element: <BoardPage /> },
       { path: 'tasks', element: <TasksPage /> },
+      { path: 'sprints', element: <SprintsPage /> },
       { path: 'teams', element: <TeamsPage /> },
       { path: 'projects', element: <ProjectsPage /> },
       { path: 'reports', element: <ReportsPage /> },

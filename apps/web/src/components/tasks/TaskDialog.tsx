@@ -11,12 +11,15 @@ import {
 import { errorMessage, inputClass } from '../../lib/forms';
 import { fmt } from '../../lib/theme';
 import { Dialog, Field } from '../Dialog';
+import { TaskComments } from './TaskComments';
 import {
   currentTaskFilter,
   hours,
   PRIORITY_LABEL,
+  SPRINT_STATUS_LABEL,
   STATUS_LABEL,
   TYPE_LABEL,
+  usePlanningLookups,
   useTaskLookups,
   useTaskPermissions,
 } from './taskHelpers';
@@ -42,7 +45,8 @@ export function TaskDialog({
   onSaved?: (message: string) => void;
 }) {
   const qc = useQueryClient();
-  const { people, projects } = useTaskLookups();
+  const { people, projects, personNames } = useTaskLookups();
+  const { sprints, epics } = usePlanningLookups();
   const { canManageProject, canWork, manageableProjects } = useTaskPermissions();
 
   const filter = currentTaskFilter();
@@ -61,6 +65,9 @@ export function TaskDialog({
     startDate: task ? (task.startDate?.slice(0, 10) ?? '') : addDays(0),
     dueDate: task ? (task.dueDate?.slice(0, 10) ?? '') : addDays(4),
     description: task?.description ?? '',
+    // A new task joins the sprint or epic the board is filtered to, if it is a real one.
+    sprintId: task ? (task.sprint?.id ?? '') : filter.sprintId !== 'none' ? filter.sprintId : '',
+    epicId: task ? (task.epic?.id ?? '') : filter.epicId !== 'none' ? filter.epicId : '',
   });
   const [logHours, setLogHours] = useState('');
   const [localError, setLocalError] = useState<string | null>(null);
@@ -83,8 +90,16 @@ export function TaskDialog({
       : members;
   const assigneeName = (id: string) => people.find((p) => p.id === id)?.name;
 
+  // Sprint and epic choices: the selected project's (open sprints, plus the task's current one).
+  const sprintChoices = sprints.filter(
+    (sp) => sp.projectId === projectId && (sp.status !== 'CLOSED' || sp.id === form.sprintId),
+  );
+  const epicChoices = epics.filter((ep) => ep.projectId === projectId);
+  const sprintId = sprintChoices.some((sp) => sp.id === form.sprintId) ? form.sprintId : '';
+  const epicId = epicChoices.some((ep) => ep.id === form.epicId) ? form.epicId : '';
+
   const refresh = () => {
-    for (const queryKey of [['tasks'], ['dashboard'], ['projects']]) {
+    for (const queryKey of [['tasks'], ['dashboard'], ['projects'], ['sprints'], ['epics']]) {
       qc.invalidateQueries({ queryKey });
     }
   };
@@ -102,6 +117,8 @@ export function TaskDialog({
         startDate: form.startDate || null,
         dueDate: form.dueDate || null,
         description: form.description || null,
+        sprintId: sprintId || null,
+        epicId: epicId || null,
       };
       let id = task?.id;
       if (!task) {
@@ -200,7 +217,13 @@ export function TaskDialog({
             const next = projects.find((p) => p.id === e.target.value);
             // Keep the assignee only if they are on the new project's team.
             const keep = next?.members.some((m) => m.id === form.assigneeId);
-            set({ projectId: e.target.value, assigneeId: keep ? form.assigneeId : '' });
+            // Sprints and epics belong to one project.
+            set({
+              projectId: e.target.value,
+              assigneeId: keep ? form.assigneeId : '',
+              sprintId: '',
+              epicId: '',
+            });
           }}
         >
           {(task && lock ? projects : manageableProjects).map((p) => (
@@ -272,6 +295,37 @@ export function TaskDialog({
           ))}
         </select>
       </Field>
+      <Field label="Sprint">
+        <select
+          className={inputClass}
+          value={sprintId}
+          disabled={lock}
+          onChange={(e) => set({ sprintId: e.target.value })}
+        >
+          <option value="">No sprint (backlog)</option>
+          {sprintChoices.map((sp) => (
+            <option key={sp.id} value={sp.id}>
+              {sp.name}
+              {sp.status !== 'PLANNED' ? ` (${SPRINT_STATUS_LABEL[sp.status].toLowerCase()})` : ''}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Epic">
+        <select
+          className={inputClass}
+          value={epicId}
+          disabled={lock}
+          onChange={(e) => set({ epicId: e.target.value })}
+        >
+          <option value="">No epic</option>
+          {epicChoices.map((ep) => (
+            <option key={ep.id} value={ep.id}>
+              {ep.name}
+            </option>
+          ))}
+        </select>
+      </Field>
       <Field label="Estimate (hours)">
         <input
           type="number"
@@ -329,6 +383,7 @@ export function TaskDialog({
           onChange={(e) => set({ description: e.target.value })}
         />
       </Field>
+      {task && <TaskComments taskId={task.id} personNames={personNames} />}
     </Dialog>
   );
 }
