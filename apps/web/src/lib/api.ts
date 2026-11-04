@@ -491,3 +491,23 @@ export interface Lead {
   createdAt: string;
   updatedAt: string;
 }
+
+export type NotificationType = 'ASSIGNED' | 'COMMENTED' | 'STATUS_CHANGED';
+
+/** An in-app notification: "<actor> <message>" about one task. */
+export interface AppNotification {
+  id: string;
+  type: NotificationType;
+  /** What happened, after the actor's name, e.g. "assigned this task to you". */
+  message: string;
+  createdAt: string;
+  readAt: string | null;
+  actor: { id: string; name: string } | null;
+  task: { id: string; key: string; title: string };
+}
+
+/** GET /notifications: the latest 50, newest first, and how many are unread. */
+export interface NotificationList {
+  items: AppNotification[];
+  unreadCount: number;
+}

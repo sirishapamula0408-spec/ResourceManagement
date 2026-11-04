@@ -61,6 +61,13 @@ enum TaskLinkType {
   RELATES
 }
 
+/// What an in-app notification is about (M4 JIRA-lite).
+enum NotificationType {
+  ASSIGNED // a task was assigned to you
+  COMMENTED // a comment on a task you are assigned to or created
+  STATUS_CHANGED // the status of a task assigned to you changed
+}
+
 enum SprintStatus {
   PLANNED
   ACTIVE
@@ -144,6 +151,9 @@ model Person {
   comments           Comment[]
   savedFilters       SavedFilter[]
   attachments        Attachment[]
+  createdTasks       Task[]              @relation("TaskCreator")
+  notifications      Notification[]      @relation("NotificationRecipient")
+  notificationsSent  Notification[]      @relation("NotificationActor")
   leaves             Leave[]
   auditLogs          AuditLog[]
   ownedLeads         Lead[]              @relation("LeadOwner")
@@ -274,44 +284,48 @@ model Sprint {
 }
 
 model Task {
-  id            String       @id @default(cuid())
+  id            String         @id @default(cuid())
   /// Numbered per project; shown with the project code as the key, e.g. "ATLAS-12".
   number        Int
   projectId     String
-  project       Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   title         String
   description   String?
-  status        TaskStatus   @default(TODO)
-  priority      TaskPriority @default(MEDIUM)
-  type          TaskType     @default(TASK)
+  status        TaskStatus     @default(TODO)
+  priority      TaskPriority   @default(MEDIUM)
+  type          TaskType       @default(TASK)
   assigneeId    String?
-  assignee      Person?      @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  estimateHours Decimal?     @db.Decimal(6, 2)
+  assignee      Person?        @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  /// Who created the task (told about comments on it); null for older tasks without a record.
+  createdById   String?
+  createdBy     Person?        @relation("TaskCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  estimateHours Decimal?       @db.Decimal(6, 2)
   /// Sort order within a board column (use gapped integers when reordering).
-  order         Int          @default(0)
+  order         Int            @default(0)
   /// Estimate is spread over the working days from startDate to dueDate (utilization rules).
-  startDate     DateTime?    @db.Date
-  dueDate       DateTime?    @db.Date
+  startDate     DateTime?      @db.Date
+  dueDate       DateTime?      @db.Date
   /// When the task last moved to Done (cleared if it is reopened); drives "completed" in reports.
   completedAt   DateTime?
   /// Parent task when this is a sub-task (M4 JIRA-lite); one level deep, same project.
   parentId      String?
-  parent        Task?        @relation("Subtasks", fields: [parentId], references: [id], onDelete: SetNull)
-  subtasks      Task[]       @relation("Subtasks")
+  parent        Task?          @relation("Subtasks", fields: [parentId], references: [id], onDelete: SetNull)
+  subtasks      Task[]         @relation("Subtasks")
   /// Free-form labels (M4 JIRA-lite), e.g. ["frontend", "customer-request"].
-  labels        String[]     @default([])
+  labels        String[]       @default([])
   epicId        String?
-  epic          Epic?        @relation(fields: [epicId], references: [id], onDelete: SetNull)
+  epic          Epic?          @relation(fields: [epicId], references: [id], onDelete: SetNull)
   sprintId      String?
-  sprint        Sprint?      @relation(fields: [sprintId], references: [id], onDelete: SetNull)
-  jiraKey       String?      @unique // M3: two-way sync
+  sprint        Sprint?        @relation(fields: [sprintId], references: [id], onDelete: SetNull)
+  jiraKey       String?        @unique // M3: two-way sync
   worklogs      Worklog[]
   comments      Comment[]
-  linksOut      TaskLink[]   @relation("LinkFrom")
-  linksIn       TaskLink[]   @relation("LinkTo")
+  linksOut      TaskLink[]     @relation("LinkFrom")
+  linksIn       TaskLink[]     @relation("LinkTo")
   attachments   Attachment[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  notifications Notification[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@unique([projectId, number])
   @@index([projectId, status, order])
@@ -384,6 +398,27 @@ model Attachment {
 
   @@index([taskId, createdAt])
   @@index([uploaderId])
+}
+
+/// An in-app notification for one person (M4 JIRA-lite), shown under the bell in the top bar.
+model Notification {
+  id          String           @id @default(cuid())
+  recipientId String
+  recipient   Person           @relation("NotificationRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  /// Who did it; null once their account is deleted.
+  actorId     String?
+  actor       Person?          @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  type        NotificationType
+  taskId      String
+  task        Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  /// What happened, after the actor's name, e.g. "changed the status from To do to Done".
+  message     String
+  readAt      DateTime?
+  createdAt   DateTime         @default(now())
+
+  @@index([recipientId, readAt])
+  @@index([recipientId, createdAt])
+  @@index([taskId])
 }
 
 model Worklog {

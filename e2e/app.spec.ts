@@ -992,3 +992,42 @@ test('a PM attaches a file to a task, downloads it and deletes it', async ({ pag
   await expect(files.getByRole('list', { name: 'Files' })).toHaveCount(0);
   await expect(files).toContainText('No files yet');
 });
+
+test('a PM assigns a task; the assignee sees it under the bell and opens it', async ({ page }) => {
+  await signIn(page, PM, '/browse/ATLAS-13');
+  await page.getByLabel('Assignee').selectOption({ label: 'Liam Chen' });
+  await expect(toast(page)).toContainText('ATLAS-13 saved');
+  // Your own change never notifies you.
+  await expect(page.getByRole('button', { name: 'Notifications', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Sign out' }).click();
+
+  await signIn(page, MEMBER);
+  const bell = page.getByRole('button', { name: /^Notifications, \d+ unread$/ });
+  await expect(bell).toBeVisible();
+  const before = Number((await bell.getAttribute('aria-label'))!.match(/\d+/)![0]);
+  await bell.click();
+  const panel = page.getByRole('dialog', { name: 'Notifications' });
+  const item = panel
+    .getByRole('button')
+    .filter({ hasText: 'Priya Sharma assigned this task to you' })
+    .filter({ hasText: 'ATLAS-13' })
+    .first();
+  await expect(item).toContainText('Customer feedback widget');
+  await expect(item).toContainText('unread');
+
+  // Escape closes the panel and puts focus back on the bell.
+  await page.keyboard.press('Escape');
+  await expect(panel).toBeHidden();
+  await expect(bell).toBeFocused();
+
+  await bell.click();
+  await item.click();
+  await expect(page).toHaveURL(/\/browse\/ATLAS-13$/);
+  await expect(page.getByRole('heading', { name: 'Customer feedback widget' })).toBeVisible();
+  await expect(
+    page.getByRole('button', {
+      name: before > 1 ? `Notifications, ${before - 1} unread` : 'Notifications',
+      exact: true,
+    }),
+  ).toBeVisible();
+});

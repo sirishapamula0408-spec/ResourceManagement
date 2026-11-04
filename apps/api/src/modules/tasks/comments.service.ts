@@ -2,6 +2,7 @@ import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../lib/http.js';
 import { isMember, projectIdsOf } from '../../lib/visibility.js';
 import type { AuthUser } from '../../middleware/auth.js';
+import { notifyComment } from '../notifications/notifications.service.js';
 
 /**
  * Comments on a task (M4 JIRA-lite). Anyone who can see the task may read and add comments;
@@ -35,7 +36,12 @@ export async function listComments(user: AuthUser, taskId: string) {
 
 export async function addComment(user: AuthUser, taskId: string, body: string) {
   await requireSeeTask(user, taskId);
-  return prisma.comment.create({ data: { taskId, authorId: user.id, body }, include: { author } });
+  const comment = await prisma.comment.create({
+    data: { taskId, authorId: user.id, body },
+    include: { author },
+  });
+  await notifyComment(user.id, taskId, body);
+  return comment;
 }
 
 async function getComment(taskId: string, id: string) {

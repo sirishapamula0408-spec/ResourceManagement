@@ -3,6 +3,7 @@ import { HttpError } from '../../lib/http.js';
 import type { AuthUser } from '../../middleware/auth.js';
 import type { TaskPriority, TaskStatus, TaskType } from '../../generated/prisma/enums.js';
 import { removeFiles } from '../../lib/storage.js';
+import { notifyAssigned, notifyStatus } from '../notifications/notifications.service.js';
 import { storageKeysOf } from './attachments.service.js';
 import { record, trackedSelect } from './history.service.js';
 
@@ -253,12 +254,14 @@ export async function createTask(user: AuthUser, input: TaskInput) {
       ...completion(undefined, input.status ?? 'TODO'),
       order: await nextOrder(input.status ?? 'TODO'),
       number: await nextTaskNumber(input.projectId),
+      createdById: user.id,
     },
   });
   await record(user.id, created.id, 'task.create', null, {
     title: created.title,
     status: created.status,
   });
+  await notifyAssigned(user.id, created.id, created.assigneeId);
   return created;
 }
 
@@ -335,6 +338,12 @@ export async function updateTask(user: AuthUser, id: string, input: Partial<Task
     },
   });
   await record(user.id, id, 'task.update', before, updated);
+  // Tell a new assignee; otherwise tell the assignee when someone else changes the status.
+  const reassigned = updated.assigneeId !== before.assigneeId;
+  if (reassigned) await notifyAssigned(user.id, id, updated.assigneeId);
+  else if (updated.status !== before.status) {
+    await notifyStatus(user.id, updated, before.status, updated.status);
+  }
   return updated;
 }
 
@@ -465,6 +474,7 @@ export async function moveTask(user: AuthUser, id: string, status: TaskStatus, p
     data: { status, order, ...completion(task.status, status) },
   });
   await record(user.id, id, 'task.update', { status: task.status }, { status });
+  if (status !== task.status) await notifyStatus(user.id, moved, task.status, status);
   return moved;
 }
 

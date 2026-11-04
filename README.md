@@ -151,6 +151,10 @@ Prisma 7 does not regenerate the client automatically in every case; run `npm ru
 | POST   | `/api/tasks/:id/attachments?name=`       | Bearer                | raw file body; PM on project or assignee    |
 | GET    | `/api/attachments/:id`                   | Bearer                | download (always `attachment`, nosniff)     |
 | DELETE | `/api/attachments/:id`                   | Bearer                | uploader, admin or PM on the project        |
+| GET    | `/api/notifications?unread=1`            | Bearer                | own, newest 50: `{ items, unreadCount }`    |
+| GET    | `/api/notifications/count`               | Bearer                | `{ unreadCount }`                           |
+| POST   | `/api/notifications/:id/read`            | Bearer                | own only; returns `{ unreadCount }`         |
+| POST   | `/api/notifications/read-all`            | Bearer                | returns `{ unreadCount }`                   |
 
 Dashboard endpoints take `?from=YYYY-MM-DD&weeks=8&projectId=` (default window: two weeks before the
 current week, eight weeks long). Utilization follows the scope plan: each non-backlog task's estimate is
@@ -194,6 +198,19 @@ the `uploads` volume there so files survive restarts and rebuilds (back it up wi
 - Anyone who can see the task lists and downloads its files; an admin, a PM on the project or the
   assignee uploads; the uploader or an admin / PM on the project deletes. Adding and removing files
   shows in the task history. Deleting a task deletes its files.
+
+## Notifications
+
+The bell in the top bar shows unread notifications (refreshed every 30 seconds and when the window
+regains focus); opening one marks it read and goes to its task. You get one when someone else:
+
+- assigns a task to you (on create or edit),
+- comments on a task you are assigned to or created (`Task.createdById`; tasks created before it existed
+  were backfilled from their history),
+- changes the status of a task assigned to you (edit or board move).
+
+Never for your own actions. A team member only sees notifications about tasks they can still see. Sales
+users have no bell (no task access). Notifications are kept; there is no automatic clean-up yet.
 
 ## Reports
 

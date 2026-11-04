@@ -13,6 +13,7 @@ import { planningRouter } from './modules/planning/planning.router.js';
 import { leadsRouter } from './modules/leads/leads.router.js';
 import { consentRouter } from './modules/mcp/consent.router.js';
 import { mcpRouter } from './modules/mcp/mcp.router.js';
+import { notificationsRouter } from './modules/notifications/notifications.router.js';
 import { projectsRouter } from './modules/projects/projects.router.js';
 import { reportsRouter } from './modules/reports/reports.router.js';
 import { attachmentsRouter } from './modules/tasks/attachments.router.js';
@@ -53,6 +54,7 @@ export function createApp() {
   app.use('/api/attachments', attachmentsRouter);
   app.use('/api', planningRouter);
   app.use('/api/filters', filtersRouter);
+  app.use('/api/notifications', notificationsRouter);
   app.use('/api/dashboard', dashboardRouter);
   app.use('/api/reports', reportsRouter);
   app.use('/api/leads', leadsRouter);

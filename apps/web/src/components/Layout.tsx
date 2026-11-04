@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { api, auth, canCreateTasks, ROLE_LABEL, type Role } from '../lib/api';
 import { buttonClass } from '../lib/forms';
+import { NotificationBell } from './NotificationBell';
 import { SedHubMark } from './SignInShell';
 import { useToast } from './tasks/taskHelpers';
 import { TaskDialog } from './tasks/TaskDialog';
@@ -69,6 +70,8 @@ export function Layout() {
             Create task
           </button>
         )}
+        {/* Notifications are about tasks, which sales users don't work on. */}
+        {role && role !== 'SALES' && <NotificationBell />}
         <Link
           to="/account/password"
           className="text-right text-xs leading-tight text-muted hover:text-ink"
