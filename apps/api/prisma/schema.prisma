@@ -142,6 +142,7 @@ model Person {
   assignedTasks      Task[]              @relation("TaskAssignee")
   worklogs           Worklog[]
   comments           Comment[]
+  savedFilters       SavedFilter[]
   leaves             Leave[]
   auditLogs          AuditLog[]
   ownedLeads         Lead[]              @relation("LeadOwner")
@@ -195,11 +196,12 @@ model Project {
   /// Last task number given out on this project; task keys are "<code>-<number>".
   lastTaskNumber Int           @default(0)
 
-  members     ProjectMember[]
-  allocations Allocation[]
-  tasks       Task[]
-  epics       Epic[]
-  sprints     Sprint[]
+  members      ProjectMember[]
+  allocations  Allocation[]
+  tasks        Task[]
+  epics        Epic[]
+  sprints      Sprint[]
+  savedFilters SavedFilter[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -329,6 +331,23 @@ model Comment {
   updatedAt DateTime @updatedAt
 
   @@index([taskId, createdAt])
+}
+
+/// A person's named Board / Tasks filter (M4 JIRA-lite), on one project or across projects.
+model SavedFilter {
+  id        String   @id @default(cuid())
+  personId  String
+  person    Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  name      String
+  /// The project it belongs to; null = the main Board and Tasks pages.
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  /// The filter as a query string, e.g. "sprint=...&label=ui".
+  query     String
+  createdAt DateTime @default(now())
+
+  @@unique([personId, projectId, name])
+  @@index([personId])
 }
 
 /// A link between two tasks, possibly on different projects (M4 JIRA-lite).

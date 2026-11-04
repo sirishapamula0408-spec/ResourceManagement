@@ -570,3 +570,31 @@ test('a task page records who changed what in its history', async ({ page }) => 
   await expect(entries.nth(1)).toContainText('changed Priority');
   await expect(entries.nth(1)).toContainText('High');
 });
+
+test('board filters live in the address and can be saved by name', async ({ page }) => {
+  await signIn(page, PM, '/board');
+  await page
+    .getByLabel('Project', { exact: true })
+    .selectOption({ label: 'Atlas Customer Portal' });
+  await page.getByLabel('Search tasks').fill('Invoice');
+  await expect(page).toHaveURL(/project=.+&q=Invoice/);
+  await page.reload();
+  await expect(page.getByLabel('Search tasks')).toHaveValue('Invoice');
+  await expect(page.getByRole('region', { name: 'In progress' })).toContainText('Invoice PDF');
+
+  await page.getByRole('button', { name: /Saved filters/ }).click();
+  await page.getByLabel('Filter name').fill('Atlas invoices');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('button', { name: /Filter: Atlas invoices/ })).toBeVisible();
+
+  // Clear the filters, then bring the saved one back.
+  await page.goto('/board?q=');
+  await page.getByLabel('Search tasks').fill('');
+  await page.getByRole('button', { name: /Saved filters/ }).click();
+  await page
+    .getByRole('dialog', { name: 'Saved filters' })
+    .getByRole('button', { name: 'Atlas invoices', exact: true })
+    .click();
+  await expect(page.getByLabel('Search tasks')).toHaveValue('Invoice');
+  await expect(page).toHaveURL(/q=Invoice/);
+});

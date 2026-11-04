@@ -40,6 +40,7 @@ import {
   useToast,
 } from '../components/tasks/taskHelpers';
 import { PageHeader } from '../components/PageHeader';
+import { SavedFilters } from '../components/tasks/SavedFilters';
 import { api, ApiError, TASK_STATUSES, type Project, type Task, type TaskStatus } from '../lib/api';
 import { fmt, identityColor } from '../lib/theme';
 
@@ -306,6 +307,7 @@ export function BoardPage({ project }: { project?: Project } = {}) {
           epics={epics}
           labels={labels}
         />
+        <SavedFilters filter={filter} onApply={setFilter} projectId={project?.id} />
       </PageHeader>
       {isLoading ? (
         <p className="p-2.5 text-center text-xs text-muted">Loading…</p>

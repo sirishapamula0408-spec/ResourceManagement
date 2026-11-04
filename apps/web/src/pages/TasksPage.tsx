@@ -27,6 +27,7 @@ import {
   useToast,
 } from '../components/tasks/taskHelpers';
 import { PageHeader } from '../components/PageHeader';
+import { SavedFilters } from '../components/tasks/SavedFilters';
 import { api, auth, isTeamMember, TASK_STATUSES, type Project, type Task } from '../lib/api';
 import { buttonClass, errorMessage } from '../lib/forms';
 import { usePagination } from '../lib/pagination';
@@ -228,6 +229,7 @@ export function TasksPage({ project }: { project?: Project } = {}) {
           labels={labels}
           showAssignee={!member}
         />
+        <SavedFilters filter={filter} onApply={setFilter} projectId={project?.id} />
       </PageHeader>
       <section className="min-w-0 rounded-lg border border-line bg-panel shadow-[0_1px_0_rgba(23,35,59,0.06)]">
         {selectedTasks.length > 0 && (

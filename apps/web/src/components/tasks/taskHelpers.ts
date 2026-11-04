@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   api,
   auth,
@@ -127,8 +128,12 @@ export const EMPTY_FILTER: TaskFilter = {
   q: '',
 };
 
-// Shared between the Board and Tasks pages, like the prototype, so switching views keeps them.
+// The filter last used on the Board or Tasks page: pages opened without filters in their address
+// pick it up, so switching between them keeps it, and new tasks are pre-filled from it.
 let lastFilter: TaskFilter = EMPTY_FILTER;
+const rememberFilter = (f: TaskFilter) => {
+  lastFilter = f;
+};
 
 // The project space open on screen, if any: new tasks default to it.
 let projectContext: string | null = null;
@@ -137,30 +142,73 @@ export const setProjectContext = (projectId: string | null) => {
 };
 export const currentProjectContext = () => projectContext;
 
+/** Filter fields and their names in the page address, e.g. /board?sprint=…&label=ui. */
+const URL_KEYS: [keyof TaskFilter, string][] = [
+  ['projectId', 'project'],
+  ['assigneeId', 'assignee'],
+  ['sprintId', 'sprint'],
+  ['epicId', 'epic'],
+  ['label', 'label'],
+  ['q', 'q'],
+];
+
+/** The filter fields present in a query string (absent ones are left out). */
+export function readFilter(params: URLSearchParams): Partial<TaskFilter> {
+  const out: Partial<TaskFilter> = {};
+  for (const [field, key] of URL_KEYS) {
+    const v = params.get(key);
+    if (v !== null) out[field] = v;
+  }
+  return out;
+}
+
 /**
- * Filters for the Board and Tasks pages. Inside a project space the page keeps its own filters,
- * fixed to that project and starting on its active sprint (as a JIRA board does); elsewhere they
- * are shared between the two pages.
+ * A filter as a query string: empty fields are left out, except an empty sprint inside a project
+ * ("all sprints", as opposed to the default active sprint); the project is left out there too.
+ */
+export function writeFilter(f: TaskFilter, scoped = false) {
+  const params = new URLSearchParams();
+  for (const [field, key] of URL_KEYS) {
+    if (scoped && field === 'projectId') continue;
+    if (f[field] || (scoped && field === 'sprintId')) params.set(key, f[field]);
+  }
+  return params;
+}
+
+const isEmptyFilter = (f: TaskFilter) => URL_KEYS.every(([field]) => !f[field]);
+
+/**
+ * Filters for the Board and Tasks pages, kept in the page address so a refresh, the back button
+ * and a shared link all show the same view. Inside a project space the filter is fixed to that
+ * project and starts on its active sprint, as a JIRA board does.
  */
 export function useScopedTaskFilter(projectId: string | undefined, activeSprintId?: string) {
-  const [shared, setShared] = useTaskFilter();
-  const [own, setOwn] = useState<TaskFilter | null>(null);
-  if (!projectId) return [shared, setShared] as const;
-  const filter = own ?? { ...EMPTY_FILTER, projectId, sprintId: activeSprintId ?? '' };
-  return [{ ...filter, projectId }, setOwn] as const;
+  const [params, setParams] = useSearchParams();
+  const scoped = !!projectId;
+  const present = readFilter(params);
+  const inAddress = Object.keys(present).length > 0;
+
+  const filter: TaskFilter = scoped
+    ? { ...EMPTY_FILTER, sprintId: activeSprintId ?? '', ...present, projectId }
+    : { ...EMPTY_FILTER, ...(inAddress ? present : lastFilter) };
+
+  // Opened without filters in the address: show the last ones there too.
+  const carryOver = !scoped && !inAddress && !isEmptyFilter(lastFilter);
+  useEffect(() => {
+    if (carryOver) setParams(writeFilter(lastFilter), { replace: true });
+  }, [carryOver, setParams]);
+  if (!scoped) rememberFilter(filter);
+
+  const setFilter = (next: TaskFilter) => {
+    if (!scoped) rememberFilter(next);
+    setParams(writeFilter(next, scoped), { replace: true });
+  };
+  return [filter, setFilter] as const;
 }
 
 /** Open the Board or Tasks page on one sprint or epic (used by the Sprints page). */
 export function presetTaskFilter(patch: Partial<TaskFilter>) {
   lastFilter = { ...EMPTY_FILTER, ...patch };
-}
-
-export function useTaskFilter() {
-  const [filter, setFilter] = useState<TaskFilter>(lastFilter);
-  useEffect(() => {
-    lastFilter = filter;
-  }, [filter]);
-  return [filter, setFilter] as const;
 }
 
 export function applyTaskFilter(tasks: Task[], f: TaskFilter) {
