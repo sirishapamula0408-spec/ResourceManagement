@@ -3,12 +3,19 @@
 const TOKEN_KEY = 'rb.token';
 
 export const auth = {
-  getToken: () => localStorage.getItem(TOKEN_KEY),
-  setToken: (token: string) => localStorage.setItem(TOKEN_KEY, token),
-  clear: () => localStorage.removeItem(TOKEN_KEY),
+  /** The session token: kept in localStorage when "Remember me" is on, else for this tab only. */
+  getToken: () => localStorage.getItem(TOKEN_KEY) ?? sessionStorage.getItem(TOKEN_KEY),
+  setToken: (token: string, remember = true) => {
+    auth.clear();
+    (remember ? localStorage : sessionStorage).setItem(TOKEN_KEY, token);
+  },
+  clear: () => {
+    localStorage.removeItem(TOKEN_KEY);
+    sessionStorage.removeItem(TOKEN_KEY);
+  },
   /** Signed-in user from the JWT payload (not verified here; the API enforces access). */
   getUser: (): { id: string; email: string; role: Role } | null => {
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token = auth.getToken();
     if (!token) return null;
     try {
       const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
