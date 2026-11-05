@@ -496,12 +496,62 @@ test('a new person signs in with a temporary password and must choose their own'
   await expect(page.getByRole('link', { name: /Nisha Verma/ })).toBeVisible();
 });
 
+test('an admin creates a team, changes its members and lead, then deletes it', async ({ page }) => {
+  await signIn(page, ADMIN, '/teams');
+  await page.getByRole('button', { name: 'Add team' }).click();
+  let d = dialog(page);
+  await d.getByLabel('Team name').fill('E2E Squad');
+  await d.getByLabel('Description').fill('Short-lived test team');
+  await d
+    .getByRole('group', { name: /Members/ })
+    .getByRole('checkbox', { name: /Arjun Mehta/ })
+    .check();
+  await d
+    .getByRole('group', { name: /Members/ })
+    .getByRole('checkbox', { name: /Meera Iyer/ })
+    .check();
+  await d
+    .getByRole('group', { name: /Leads/ })
+    .getByRole('checkbox', { name: /Arjun Mehta/ })
+    .check();
+  await d.getByRole('button', { name: 'Save' }).click();
+  await expect(d).toHaveCount(0);
+
+  const card = page.getByRole('article', { name: 'E2E Squad' });
+  await expect(card).toContainText('Short-lived test team');
+  await expect(card.getByRole('listitem')).toHaveText(
+    ['Arjun MehtaLead', 'Meera Iyer'].map((t) => new RegExp(t)),
+  );
+
+  // Drop Meera and rename the team.
+  await card.getByRole('button', { name: 'Edit team E2E Squad' }).click();
+  d = dialog(page);
+  await expect(d.getByLabel('Team name')).toHaveValue('E2E Squad');
+  await d
+    .getByRole('group', { name: /Members/ })
+    .getByRole('checkbox', { name: /Meera Iyer/ })
+    .uncheck();
+  await d.getByLabel('Team name').fill('E2E Crew');
+  await d.getByRole('button', { name: 'Save' }).click();
+  await expect(d).toHaveCount(0);
+  const renamed = page.getByRole('article', { name: 'E2E Crew' });
+  await expect(renamed.getByRole('listitem')).toHaveCount(1);
+  await expect(renamed.getByRole('listitem')).toContainText('Arjun Mehta');
+
+  await renamed.getByRole('button', { name: 'Edit team E2E Crew' }).click();
+  page.once('dialog', (confirm) => confirm.accept());
+  await dialog(page).getByRole('button', { name: 'Delete team' }).click();
+  await expect(page.getByRole('button', { name: 'Edit team E2E Crew' })).toHaveCount(0);
+});
+
 test('staffing is read-only for a PM', async ({ page }) => {
   await signIn(page, PM, '/projects');
   await expect(page.getByRole('button', { name: 'Add project' })).toHaveCount(0);
   await page.getByRole('link', { name: 'Team', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Add person' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Edit' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add team' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Edit team/ })).toHaveCount(0);
 });
 
 test('a PM deletes several tasks at once, only on their own projects', async ({ page }) => {

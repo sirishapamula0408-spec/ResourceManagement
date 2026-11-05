@@ -201,6 +201,99 @@ function PersonDialog({
   );
 }
 
+function TeamDialog({
+  team,
+  people,
+  onClose,
+}: {
+  team: Team | null;
+  people: Person[];
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [name, setName] = useState(team?.name ?? '');
+  const [description, setDescription] = useState(team?.description ?? '');
+  const [memberIds, setMemberIds] = useState(team?.members.map((m) => m.person.id) ?? []);
+  const [leadIds, setLeadIds] = useState(
+    team?.members.filter((m) => m.isLead).map((m) => m.person.id) ?? [],
+  );
+  const byId = new Map(people.map((p) => [p.id, p]));
+
+  const done = () => {
+    qc.invalidateQueries({ queryKey: ['teams'] });
+    onClose();
+  };
+  const save = useMutation({
+    mutationFn: () => {
+      const body = JSON.stringify({
+        name,
+        description: description || null,
+        members: memberIds.map((personId) => ({ personId, isLead: leadIds.includes(personId) })),
+      });
+      return team
+        ? api<Team>(`/teams/${team.id}`, { method: 'PATCH', body })
+        : api<Team>('/teams', { method: 'POST', body });
+    },
+    onSuccess: done,
+  });
+  const remove = useMutation({
+    mutationFn: () => api(`/teams/${team!.id}`, { method: 'DELETE' }),
+    onSuccess: done,
+  });
+
+  return (
+    <Dialog
+      title={team ? 'Edit team' : 'Add team'}
+      onClose={onClose}
+      onSave={() => save.mutate()}
+      onDelete={team ? () => remove.mutate() : undefined}
+      deleteLabel="Delete team"
+      deleteConfirm={`Delete the team ${team?.name ?? ''}? The people stay on the Team page.`}
+      saving={save.isPending || remove.isPending}
+      error={save.error || remove.error ? errorMessage(save.error ?? remove.error) : null}
+    >
+      <Field label="Team name">
+        <input
+          className={inputClass}
+          value={name}
+          required
+          maxLength={80}
+          onChange={(e) => setName(e.target.value)}
+        />
+      </Field>
+      <Field label="Description">
+        <input
+          className={inputClass}
+          value={description}
+          maxLength={300}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+      </Field>
+      <Checklist
+        label="Members"
+        options={people.map((p) => ({ id: p.id, label: p.name, hint: p.title ?? undefined }))}
+        selected={memberIds}
+        onChange={(ids) => {
+          setMemberIds(ids);
+          // A lead must be a member.
+          setLeadIds((leads) => leads.filter((id) => ids.includes(id)));
+        }}
+        empty="Add people above first."
+      />
+      <Checklist
+        label="Leads"
+        options={memberIds.flatMap((id) => {
+          const p = byId.get(id);
+          return p ? [{ id, label: p.name }] : [];
+        })}
+        selected={leadIds}
+        onChange={setLeadIds}
+        empty="Pick members first; leads are chosen from them."
+      />
+    </Dialog>
+  );
+}
+
 /** Colour of the load bar: over capacity, healthy, moderate, low (prototype bands). */
 const loadColor = (pct: number) =>
   pct > 100
@@ -214,6 +307,7 @@ const loadColor = (pct: number) =>
 export function TeamsPage() {
   const editable = canManageStaffing();
   const [editing, setEditing] = useState<Person | 'new' | null>(null);
+  const [editingTeam, setEditingTeam] = useState<Team | 'new' | null>(null);
   const { people, projects, personNames } = useTaskLookups();
   const codes = projects.map((p) => p.code);
   const me = auth.getUser();
@@ -392,12 +486,34 @@ export function TeamsPage() {
       <section className="min-w-0 rounded-lg border border-line bg-panel shadow-[0_1px_0_rgba(23,35,59,0.06)]">
         <h2 className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-3 text-sm font-semibold">
           Teams
-          <span className="text-xs font-normal text-muted">groups across projects</span>
+          <span className="flex items-center gap-3 text-xs font-normal text-muted">
+            groups across projects
+            {editable && (
+              <button className={buttonClass()} onClick={() => setEditingTeam('new')}>
+                Add team
+              </button>
+            )}
+          </span>
         </h2>
         <div className="grid gap-3 px-4 py-3 md:grid-cols-2 xl:grid-cols-4">
           {teams.map((team) => (
-            <div key={team.id} className="rounded-md border border-line bg-panel2 p-3">
-              <div className="font-semibold">{team.name}</div>
+            <article
+              key={team.id}
+              aria-label={team.name}
+              className="rounded-md border border-line bg-panel2 p-3"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="font-semibold">{team.name}</div>
+                {editable && (
+                  <button
+                    className="text-xs text-teal hover:underline"
+                    aria-label={`Edit team ${team.name}`}
+                    onClick={() => setEditingTeam(team)}
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
               <div className="mb-2 text-xs text-muted">{team.description}</div>
               <ul className="flex flex-col gap-1.5">
                 {team.members.map((m) => (
@@ -407,9 +523,15 @@ export function TeamsPage() {
                     {m.isLead && <span className="text-xs font-semibold text-teal">Lead</span>}
                   </li>
                 ))}
+                {!team.members.length && <li className="text-xs text-muted">No members yet</li>}
               </ul>
-            </div>
+            </article>
           ))}
+          {!teams.length && (
+            <p className="text-xs text-muted">
+              No teams yet.{editable && ' Use Add team to group people.'}
+            </p>
+          )}
         </div>
       </section>
 
@@ -419,6 +541,13 @@ export function TeamsPage() {
           projects={projects}
           departments={departments}
           onClose={() => setEditing(null)}
+        />
+      )}
+      {editingTeam && (
+        <TeamDialog
+          team={editingTeam === 'new' ? null : editingTeam}
+          people={people}
+          onClose={() => setEditingTeam(null)}
         />
       )}
       <Toast message={toastMessage} />
