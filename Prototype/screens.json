@@ -1,0 +1,1589 @@
+[
+ {
+  "id": "login",
+  "title": "Sign in",
+  "group": "Sign-in",
+  "role": "Everyone",
+  "note": "Work email and password, Remember me, Forgot password, lockout after 5 failed attempts.",
+  "file": "login.png",
+  "width": 1440,
+  "height": 900,
+  "hotspots": [
+   {
+    "x": 859,
+    "y": 540.828125,
+    "w": 392,
+    "h": 46.796875,
+    "to": "dashboard",
+    "label": "Sign in"
+   },
+   {
+    "x": 1145.890625,
+    "y": 503.59375,
+    "w": 105.109375,
+    "h": 18.84375,
+    "to": "forgot-password",
+    "label": "Forgot password?"
+   }
+  ]
+ },
+ {
+  "id": "login-errors",
+  "title": "Sign in: validation",
+  "group": "Sign-in",
+  "role": "Everyone",
+  "note": "Field errors show only after leaving a field or submitting; the card keeps its height.",
+  "file": "login-errors.png",
+  "width": 1440,
+  "height": 900,
+  "hotspots": [
+   {
+    "x": 859,
+    "y": 540.828125,
+    "w": 392,
+    "h": 46.796875,
+    "to": "dashboard",
+    "label": "Sign in"
+   }
+  ]
+ },
+ {
+  "id": "forgot-password",
+  "title": "Reset your password",
+  "group": "Sign-in",
+  "role": "Everyone",
+  "note": "Admins reset passwords; Email administrator uses VITE_ADMIN_EMAIL.",
+  "file": "forgot-password.png",
+  "width": 1440,
+  "height": 900,
+  "hotspots": [
+   {
+    "x": 1011.96875,
+    "y": 500.25,
+    "w": 86.046875,
+    "h": 17,
+    "to": "login",
+    "label": "Back to sign in"
+   }
+  ]
+ },
+ {
+  "id": "login-phone",
+  "title": "Sign in on a phone",
+  "group": "Sign-in",
+  "role": "Everyone",
+  "note": "The brand panel becomes a slim header.",
+  "file": "login-phone.png",
+  "width": 390,
+  "height": 844,
+  "hotspots": []
+ },
+ {
+  "id": "dashboard",
+  "title": "Dashboard",
+  "group": "Admin and managers",
+  "role": "Admin, Delivery head, Resource manager, PM",
+  "note": "KPIs, demand vs availability, hours by department, utilization heat map.",
+  "file": "dashboard.png",
+  "width": 1440,
+  "height": 1486,
+  "hotspots": [
+   {
+    "x": 131.15625,
+    "y": 0,
+    "w": 97.703125,
+    "h": 55,
+    "to": "dashboard",
+    "label": "Dashboard"
+   },
+   {
+    "x": 313.296875,
+    "y": 0,
+    "w": 62.984375,
+    "h": 55,
+    "to": "team",
+    "label": "Team"
+   },
+   {
+    "x": 378.28125,
+    "y": 0,
+    "w": 78.34375,
+    "h": 55,
+    "to": "reports",
+    "label": "Reports"
+   },
+   {
+    "x": 458.625,
+    "y": 0,
+    "w": 65.703125,
+    "h": 55,
+    "to": "leads",
+    "label": "Leads"
+   },
+   {
+    "x": 1081.953125,
+    "y": 10.34375,
+    "w": 99.109375,
+    "h": 34.296875,
+    "to": "create-task",
+    "label": "Create task"
+   },
+   {
+    "x": 230.859375,
+    "y": 0,
+    "w": 80.4375,
+    "h": 55,
+    "to": "projects",
+    "label": "Projects"
+   },
+   {
+    "x": 1341.84375,
+    "y": 10.34375,
+    "w": 78.15625,
+    "h": 34.296875,
+    "to": "login",
+    "label": "Sign out"
+   }
+  ]
+ },
+ {
+  "id": "projects",
+  "title": "Projects",
+  "group": "Admin and managers",
+  "role": "Everyone (Members and Viewers see their own)",
+  "note": "Click a project to open its space.",
+  "file": "projects.png",
+  "width": 1440,
+  "height": 900,
+  "hotspots": [
+   {
+    "x": 131.15625,
+    "y": 0,
+    "w": 97.703125,
+    "h": 55,
+    "to": "dashboard",
+    "label": "Dashboard"
+   },
+   {
+    "x": 313.296875,
+    "y": 0,
+    "w": 62.984375,
+    "h": 55,
+    "to": "team",
+    "label": "Team"
+   },
+   {
+    "x": 378.28125,
+    "y": 0,
+    "w": 78.34375,
+    "h": 55,
+    "to": "reports",
+    "label": "Reports"
+   },
+   {
+    "x": 458.625,
+    "y": 0,
+    "w": 65.703125,
+    "h": 55,
+    "to": "leads",
+    "label": "Leads"
+   },
+   {
+    "x": 1081.953125,
+    "y": 10.34375,
+    "w": 99.109375,
+    "h": 34.296875,
+    "to": "create-task",
+    "label": "Create task"
+   },
+   {
+    "x": 230.859375,
+    "y": 0,
+    "w": 80.4375,
+    "h": 55,
+    "to": "projects",
+    "label": "Projects"
+   },
+   {
+    "x": 1341.84375,
+    "y": 10.34375,
+    "w": 78.15625,
+    "h": 34.296875,
+    "to": "login",
+    "label": "Sign out"
+   },
+   {
+    "x": 21,
+    "y": 162.640625,
+    "w": 1398,
+    "h": 47,
+    "to": "project-summary",
+    "label": "Open ATLAS"
+   }
+  ]
+ },
+ {
+  "id": "project-summary",
+  "title": "Project: Summary",
+  "group": "Project space",
+  "role": "Everyone on the project",
+  "note": "Counts, status overview, active sprint with burndown, due next, epics, team.",
+  "file": "project-summary.png",
+  "width": 1440,
+  "height": 1030,
+  "hotspots": [
+   {
+    "x": 131.15625,
+    "y": 0,
+    "w": 97.703125,
+    "h": 55,
+    "to": "dashboard",
+    "label": "Dashboard"
+   },
+   {
+    "x": 313.296875,
+    "y": 0,
+    "w": 62.984375,
+    "h": 55,
+    "to": "team",
+    "label": "Team"
+   },
+   {
+    "x": 378.28125,
+    "y": 0,
+    "w": 78.34375,
+    "h": 55,
+    "to": "reports",
+    "label": "Reports"
+   },
+   {
+    "x": 458.625,
+    "y": 0,
+    "w": 65.703125,
+    "h": 55,
+    "to": "leads",
+    "label": "Leads"
+   },
+   {
+    "x": 1081.953125,
+    "y": 10.34375,
+    "w": 99.109375,
+    "h": 34.296875,
+    "to": "create-task",
+    "label": "Create task"
+   },
+   {
+    "x": 230.859375,
+    "y": 0,
+    "w": 80.4375,
+    "h": 55,
+    "to": "projects",
+    "label": "Projects"
+   },
+   {
+    "x": 1341.84375,
+    "y": 10.34375,
+    "w": 78.15625,
+    "h": 34.296875,
+    "to": "login",
+    "label": "Sign out"
+   },
+   {
+    "x": 20,
+    "y": 128.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-summary",
+    "label": "Summary"
+   },
+   {
+    "x": 20,
+    "y": 164.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-backlog",
+    "label": "Backlog"
+   },
+   {
+    "x": 20,
+    "y": 200.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-board",
+    "label": "Board"
+   },
+   {
+    "x": 20,
+    "y": 236.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-list",
+    "label": "List"
+   },
+   {
+    "x": 20,
+    "y": 272.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-sprints",
+    "label": "Sprints"
+   },
+   {
+    "x": 20,
+    "y": 308.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-settings",
+    "label": "Settings"
+   }
+  ]
+ },
+ {
+  "id": "project-backlog",
+  "title": "Project: Backlog",
+  "group": "Project space",
+  "role": "Admin and PMs edit; others read",
+  "note": "Sprints and backlog; drag or Move to; create sprint; start and complete sprints.",
+  "file": "project-backlog.png",
+  "width": 1440,
+  "height": 960,
+  "hotspots": [
+   {
+    "x": 131.15625,
+    "y": 0,
+    "w": 97.703125,
+    "h": 55,
+    "to": "dashboard",
+    "label": "Dashboard"
+   },
+   {
+    "x": 313.296875,
+    "y": 0,
+    "w": 62.984375,
+    "h": 55,
+    "to": "team",
+    "label": "Team"
+   },
+   {
+    "x": 378.28125,
+    "y": 0,
+    "w": 78.34375,
+    "h": 55,
+    "to": "reports",
+    "label": "Reports"
+   },
+   {
+    "x": 458.625,
+    "y": 0,
+    "w": 65.703125,
+    "h": 55,
+    "to": "leads",
+    "label": "Leads"
+   },
+   {
+    "x": 1081.953125,
+    "y": 10.34375,
+    "w": 99.109375,
+    "h": 34.296875,
+    "to": "create-task",
+    "label": "Create task"
+   },
+   {
+    "x": 230.859375,
+    "y": 0,
+    "w": 80.4375,
+    "h": 55,
+    "to": "projects",
+    "label": "Projects"
+   },
+   {
+    "x": 1341.84375,
+    "y": 10.34375,
+    "w": 78.15625,
+    "h": 34.296875,
+    "to": "login",
+    "label": "Sign out"
+   },
+   {
+    "x": 20,
+    "y": 128.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-summary",
+    "label": "Summary"
+   },
+   {
+    "x": 20,
+    "y": 164.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-backlog",
+    "label": "Backlog"
+   },
+   {
+    "x": 20,
+    "y": 200.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-board",
+    "label": "Board"
+   },
+   {
+    "x": 20,
+    "y": 236.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-list",
+    "label": "List"
+   },
+   {
+    "x": 20,
+    "y": 272.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-sprints",
+    "label": "Sprints"
+   },
+   {
+    "x": 20,
+    "y": 308.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-settings",
+    "label": "Settings"
+   }
+  ]
+ },
+ {
+  "id": "project-board",
+  "title": "Project: Board",
+  "group": "Project space",
+  "role": "Everyone on the project",
+  "note": "Opens on the active sprint; drag cards between and within columns.",
+  "file": "project-board.png",
+  "width": 1440,
+  "height": 900,
+  "hotspots": [
+   {
+    "x": 131.15625,
+    "y": 0,
+    "w": 97.703125,
+    "h": 55,
+    "to": "dashboard",
+    "label": "Dashboard"
+   },
+   {
+    "x": 313.296875,
+    "y": 0,
+    "w": 62.984375,
+    "h": 55,
+    "to": "team",
+    "label": "Team"
+   },
+   {
+    "x": 378.28125,
+    "y": 0,
+    "w": 78.34375,
+    "h": 55,
+    "to": "reports",
+    "label": "Reports"
+   },
+   {
+    "x": 458.625,
+    "y": 0,
+    "w": 65.703125,
+    "h": 55,
+    "to": "leads",
+    "label": "Leads"
+   },
+   {
+    "x": 1081.953125,
+    "y": 10.34375,
+    "w": 99.109375,
+    "h": 34.296875,
+    "to": "create-task",
+    "label": "Create task"
+   },
+   {
+    "x": 230.859375,
+    "y": 0,
+    "w": 80.4375,
+    "h": 55,
+    "to": "projects",
+    "label": "Projects"
+   },
+   {
+    "x": 1341.84375,
+    "y": 10.34375,
+    "w": 78.15625,
+    "h": 34.296875,
+    "to": "login",
+    "label": "Sign out"
+   },
+   {
+    "x": 20,
+    "y": 128.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-summary",
+    "label": "Summary"
+   },
+   {
+    "x": 20,
+    "y": 164.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-backlog",
+    "label": "Backlog"
+   },
+   {
+    "x": 20,
+    "y": 200.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-board",
+    "label": "Board"
+   },
+   {
+    "x": 20,
+    "y": 236.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-list",
+    "label": "List"
+   },
+   {
+    "x": 20,
+    "y": 272.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-sprints",
+    "label": "Sprints"
+   },
+   {
+    "x": 20,
+    "y": 308.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-settings",
+    "label": "Settings"
+   },
+   {
+    "x": 763,
+    "y": 327.03125,
+    "w": 222,
+    "h": 132.890625,
+    "to": "task",
+    "label": "Open ATLAS-5"
+   },
+   {
+    "x": 1156.671875,
+    "y": 96,
+    "w": 120.828125,
+    "h": 34.296875,
+    "to": "saved-filters",
+    "label": "Saved filters"
+   }
+  ]
+ },
+ {
+  "id": "saved-filters",
+  "title": "Saved filters",
+  "group": "Project space",
+  "role": "Everyone",
+  "note": "Filters live in the address; save them by name per project.",
+  "file": "saved-filters.png",
+  "width": 1440,
+  "height": 900,
+  "hotspots": [
+   {
+    "x": 20,
+    "y": 128.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-summary",
+    "label": "Summary"
+   },
+   {
+    "x": 20,
+    "y": 164.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-backlog",
+    "label": "Backlog"
+   },
+   {
+    "x": 20,
+    "y": 200.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-board",
+    "label": "Board"
+   },
+   {
+    "x": 20,
+    "y": 236.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-list",
+    "label": "List"
+   },
+   {
+    "x": 20,
+    "y": 272.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-sprints",
+    "label": "Sprints"
+   },
+   {
+    "x": 20,
+    "y": 308.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-settings",
+    "label": "Settings"
+   },
+   {
+    "x": 1156.671875,
+    "y": 96,
+    "w": 120.828125,
+    "h": 34.296875,
+    "to": "project-board",
+    "label": "Close"
+   }
+  ]
+ },
+ {
+  "id": "project-list",
+  "title": "Project: List",
+  "group": "Project space",
+  "role": "Everyone on the project",
+  "note": "Sortable list with filters, labels, epics, sub-tasks and blocked badges.",
+  "file": "project-list.png",
+  "width": 1440,
+  "height": 900,
+  "hotspots": [
+   {
+    "x": 131.15625,
+    "y": 0,
+    "w": 97.703125,
+    "h": 55,
+    "to": "dashboard",
+    "label": "Dashboard"
+   },
+   {
+    "x": 313.296875,
+    "y": 0,
+    "w": 62.984375,
+    "h": 55,
+    "to": "team",
+    "label": "Team"
+   },
+   {
+    "x": 378.28125,
+    "y": 0,
+    "w": 78.34375,
+    "h": 55,
+    "to": "reports",
+    "label": "Reports"
+   },
+   {
+    "x": 458.625,
+    "y": 0,
+    "w": 65.703125,
+    "h": 55,
+    "to": "leads",
+    "label": "Leads"
+   },
+   {
+    "x": 1081.953125,
+    "y": 10.34375,
+    "w": 99.109375,
+    "h": 34.296875,
+    "to": "create-task",
+    "label": "Create task"
+   },
+   {
+    "x": 230.859375,
+    "y": 0,
+    "w": 80.4375,
+    "h": 55,
+    "to": "projects",
+    "label": "Projects"
+   },
+   {
+    "x": 1341.84375,
+    "y": 10.34375,
+    "w": 78.15625,
+    "h": 34.296875,
+    "to": "login",
+    "label": "Sign out"
+   },
+   {
+    "x": 20,
+    "y": 128.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-summary",
+    "label": "Summary"
+   },
+   {
+    "x": 20,
+    "y": 164.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-backlog",
+    "label": "Backlog"
+   },
+   {
+    "x": 20,
+    "y": 200.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-board",
+    "label": "Board"
+   },
+   {
+    "x": 20,
+    "y": 236.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-list",
+    "label": "List"
+   },
+   {
+    "x": 20,
+    "y": 272.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-sprints",
+    "label": "Sprints"
+   },
+   {
+    "x": 20,
+    "y": 308.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-settings",
+    "label": "Settings"
+   },
+   {
+    "x": 251,
+    "y": 640.515625,
+    "w": 1168,
+    "h": 56.6875,
+    "to": "task",
+    "label": "Open ATLAS-5"
+   }
+  ]
+ },
+ {
+  "id": "project-sprints",
+  "title": "Project: Sprints and burndown",
+  "group": "Project space",
+  "role": "Admin and PMs edit; others read",
+  "note": "Every sprint with progress; burndown of hours or tasks against the ideal line.",
+  "file": "project-sprints.png",
+  "width": 1440,
+  "height": 900,
+  "hotspots": [
+   {
+    "x": 131.15625,
+    "y": 0,
+    "w": 97.703125,
+    "h": 55,
+    "to": "dashboard",
+    "label": "Dashboard"
+   },
+   {
+    "x": 313.296875,
+    "y": 0,
+    "w": 62.984375,
+    "h": 55,
+    "to": "team",
+    "label": "Team"
+   },
+   {
+    "x": 378.28125,
+    "y": 0,
+    "w": 78.34375,
+    "h": 55,
+    "to": "reports",
+    "label": "Reports"
+   },
+   {
+    "x": 458.625,
+    "y": 0,
+    "w": 65.703125,
+    "h": 55,
+    "to": "leads",
+    "label": "Leads"
+   },
+   {
+    "x": 1081.953125,
+    "y": 10.34375,
+    "w": 99.109375,
+    "h": 34.296875,
+    "to": "create-task",
+    "label": "Create task"
+   },
+   {
+    "x": 230.859375,
+    "y": 0,
+    "w": 80.4375,
+    "h": 55,
+    "to": "projects",
+    "label": "Projects"
+   },
+   {
+    "x": 1341.84375,
+    "y": 10.34375,
+    "w": 78.15625,
+    "h": 34.296875,
+    "to": "login",
+    "label": "Sign out"
+   },
+   {
+    "x": 20,
+    "y": 128.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-summary",
+    "label": "Summary"
+   },
+   {
+    "x": 20,
+    "y": 164.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-backlog",
+    "label": "Backlog"
+   },
+   {
+    "x": 20,
+    "y": 200.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-board",
+    "label": "Board"
+   },
+   {
+    "x": 20,
+    "y": 236.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-list",
+    "label": "List"
+   },
+   {
+    "x": 20,
+    "y": 272.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-sprints",
+    "label": "Sprints"
+   },
+   {
+    "x": 20,
+    "y": 308.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-settings",
+    "label": "Settings"
+   }
+  ]
+ },
+ {
+  "id": "project-settings",
+  "title": "Project: Settings",
+  "group": "Project space",
+  "role": "Admin, Delivery head, Resource manager edit details",
+  "note": "Details, team members and epics.",
+  "file": "project-settings.png",
+  "width": 1440,
+  "height": 900,
+  "hotspots": [
+   {
+    "x": 131.15625,
+    "y": 0,
+    "w": 97.703125,
+    "h": 55,
+    "to": "dashboard",
+    "label": "Dashboard"
+   },
+   {
+    "x": 313.296875,
+    "y": 0,
+    "w": 62.984375,
+    "h": 55,
+    "to": "team",
+    "label": "Team"
+   },
+   {
+    "x": 378.28125,
+    "y": 0,
+    "w": 78.34375,
+    "h": 55,
+    "to": "reports",
+    "label": "Reports"
+   },
+   {
+    "x": 458.625,
+    "y": 0,
+    "w": 65.703125,
+    "h": 55,
+    "to": "leads",
+    "label": "Leads"
+   },
+   {
+    "x": 1081.953125,
+    "y": 10.34375,
+    "w": 99.109375,
+    "h": 34.296875,
+    "to": "create-task",
+    "label": "Create task"
+   },
+   {
+    "x": 230.859375,
+    "y": 0,
+    "w": 80.4375,
+    "h": 55,
+    "to": "projects",
+    "label": "Projects"
+   },
+   {
+    "x": 1341.84375,
+    "y": 10.34375,
+    "w": 78.15625,
+    "h": 34.296875,
+    "to": "login",
+    "label": "Sign out"
+   },
+   {
+    "x": 20,
+    "y": 128.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-summary",
+    "label": "Summary"
+   },
+   {
+    "x": 20,
+    "y": 164.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-backlog",
+    "label": "Backlog"
+   },
+   {
+    "x": 20,
+    "y": 200.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-board",
+    "label": "Board"
+   },
+   {
+    "x": 20,
+    "y": 236.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-list",
+    "label": "List"
+   },
+   {
+    "x": 20,
+    "y": 272.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-sprints",
+    "label": "Sprints"
+   },
+   {
+    "x": 20,
+    "y": 308.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-settings",
+    "label": "Settings"
+   }
+  ]
+ },
+ {
+  "id": "task",
+  "title": "Task page",
+  "group": "Task",
+  "role": "Admin and PMs edit; assignee changes status",
+  "note": "Summary, description, sub-tasks, links, attachments, comments; Details panel saves each field.",
+  "file": "task.png",
+  "width": 1440,
+  "height": 900,
+  "hotspots": [
+   {
+    "x": 131.15625,
+    "y": 0,
+    "w": 97.703125,
+    "h": 55,
+    "to": "dashboard",
+    "label": "Dashboard"
+   },
+   {
+    "x": 313.296875,
+    "y": 0,
+    "w": 62.984375,
+    "h": 55,
+    "to": "team",
+    "label": "Team"
+   },
+   {
+    "x": 378.28125,
+    "y": 0,
+    "w": 78.34375,
+    "h": 55,
+    "to": "reports",
+    "label": "Reports"
+   },
+   {
+    "x": 458.625,
+    "y": 0,
+    "w": 65.703125,
+    "h": 55,
+    "to": "leads",
+    "label": "Leads"
+   },
+   {
+    "x": 1081.953125,
+    "y": 10.34375,
+    "w": 99.109375,
+    "h": 34.296875,
+    "to": "create-task",
+    "label": "Create task"
+   },
+   {
+    "x": 230.859375,
+    "y": 0,
+    "w": 80.4375,
+    "h": 55,
+    "to": "projects",
+    "label": "Projects"
+   },
+   {
+    "x": 1341.84375,
+    "y": 10.34375,
+    "w": 78.15625,
+    "h": 34.296875,
+    "to": "login",
+    "label": "Sign out"
+   },
+   {
+    "x": 20,
+    "y": 128.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-summary",
+    "label": "Summary"
+   },
+   {
+    "x": 20,
+    "y": 164.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-backlog",
+    "label": "Backlog"
+   },
+   {
+    "x": 20,
+    "y": 200.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-board",
+    "label": "Board"
+   },
+   {
+    "x": 20,
+    "y": 236.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-list",
+    "label": "List"
+   },
+   {
+    "x": 20,
+    "y": 272.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-sprints",
+    "label": "Sprints"
+   },
+   {
+    "x": 20,
+    "y": 308.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-settings",
+    "label": "Settings"
+   },
+   {
+    "x": 390.890625,
+    "y": 495.25,
+    "w": 55.546875,
+    "h": 20,
+    "to": "task-history",
+    "label": "History"
+   }
+  ]
+ },
+ {
+  "id": "task-history",
+  "title": "Task page: History",
+  "group": "Task",
+  "role": "Everyone who can see the task",
+  "note": "Who changed what and when.",
+  "file": "task-history.png",
+  "width": 1440,
+  "height": 900,
+  "hotspots": [
+   {
+    "x": 20,
+    "y": 128.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-summary",
+    "label": "Summary"
+   },
+   {
+    "x": 20,
+    "y": 164.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-backlog",
+    "label": "Backlog"
+   },
+   {
+    "x": 20,
+    "y": 200.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-board",
+    "label": "Board"
+   },
+   {
+    "x": 20,
+    "y": 236.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-list",
+    "label": "List"
+   },
+   {
+    "x": 20,
+    "y": 272.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-sprints",
+    "label": "Sprints"
+   },
+   {
+    "x": 20,
+    "y": 308.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-settings",
+    "label": "Settings"
+   },
+   {
+    "x": 311.4375,
+    "y": 495.25,
+    "w": 75.453125,
+    "h": 20,
+    "to": "task",
+    "label": "Comments"
+   }
+  ]
+ },
+ {
+  "id": "create-task",
+  "title": "Create task",
+  "group": "Task",
+  "role": "Admin and PMs",
+  "note": "Project, assignee, status, priority, type, sprint, epic, labels, estimate, dates.",
+  "file": "create-task.png",
+  "width": 1440,
+  "height": 900,
+  "hotspots": [
+   {
+    "x": 886.71875,
+    "y": 780,
+    "w": 69.5,
+    "h": 34.296875,
+    "to": "dashboard",
+    "label": "Cancel"
+   }
+  ]
+ },
+ {
+  "id": "team",
+  "title": "Team",
+  "group": "Admin and managers",
+  "role": "Admin, Delivery head, Resource manager, PM",
+  "note": "People, roles (including Viewer), departments and teams.",
+  "file": "team.png",
+  "width": 1440,
+  "height": 982,
+  "hotspots": [
+   {
+    "x": 131.15625,
+    "y": 0,
+    "w": 97.703125,
+    "h": 55,
+    "to": "dashboard",
+    "label": "Dashboard"
+   },
+   {
+    "x": 313.296875,
+    "y": 0,
+    "w": 62.984375,
+    "h": 55,
+    "to": "team",
+    "label": "Team"
+   },
+   {
+    "x": 378.28125,
+    "y": 0,
+    "w": 78.34375,
+    "h": 55,
+    "to": "reports",
+    "label": "Reports"
+   },
+   {
+    "x": 458.625,
+    "y": 0,
+    "w": 65.703125,
+    "h": 55,
+    "to": "leads",
+    "label": "Leads"
+   },
+   {
+    "x": 989.640625,
+    "y": 10.34375,
+    "w": 99.109375,
+    "h": 34.296875,
+    "to": "create-task",
+    "label": "Create task"
+   },
+   {
+    "x": 230.859375,
+    "y": 0,
+    "w": 80.4375,
+    "h": 55,
+    "to": "projects",
+    "label": "Projects"
+   },
+   {
+    "x": 1341.84375,
+    "y": 10.34375,
+    "w": 78.15625,
+    "h": 34.296875,
+    "to": "login",
+    "label": "Sign out"
+   }
+  ]
+ },
+ {
+  "id": "reports",
+  "title": "Reports",
+  "group": "Admin and managers",
+  "role": "Admin, Delivery head, Resource manager, PM",
+  "note": "Weekly and monthly project status, CSV and PowerPoint export.",
+  "file": "reports.png",
+  "width": 1440,
+  "height": 2202,
+  "hotspots": [
+   {
+    "x": 131.15625,
+    "y": 0,
+    "w": 97.703125,
+    "h": 55,
+    "to": "dashboard",
+    "label": "Dashboard"
+   },
+   {
+    "x": 313.296875,
+    "y": 0,
+    "w": 62.984375,
+    "h": 55,
+    "to": "team",
+    "label": "Team"
+   },
+   {
+    "x": 378.28125,
+    "y": 0,
+    "w": 78.34375,
+    "h": 55,
+    "to": "reports",
+    "label": "Reports"
+   },
+   {
+    "x": 458.625,
+    "y": 0,
+    "w": 65.703125,
+    "h": 55,
+    "to": "leads",
+    "label": "Leads"
+   },
+   {
+    "x": 1081.953125,
+    "y": 10.34375,
+    "w": 99.109375,
+    "h": 34.296875,
+    "to": "create-task",
+    "label": "Create task"
+   },
+   {
+    "x": 230.859375,
+    "y": 0,
+    "w": 80.4375,
+    "h": 55,
+    "to": "projects",
+    "label": "Projects"
+   },
+   {
+    "x": 1341.84375,
+    "y": 10.34375,
+    "w": 78.15625,
+    "h": 34.296875,
+    "to": "login",
+    "label": "Sign out"
+   }
+  ]
+ },
+ {
+  "id": "leads",
+  "title": "Leads",
+  "group": "Admin and managers",
+  "role": "Admin, Delivery head, PM, Sales",
+  "note": "Sales pipeline by stage, value and follow-up.",
+  "file": "leads.png",
+  "width": 1440,
+  "height": 1730,
+  "hotspots": [
+   {
+    "x": 131.15625,
+    "y": 0,
+    "w": 97.703125,
+    "h": 55,
+    "to": "dashboard",
+    "label": "Dashboard"
+   },
+   {
+    "x": 313.296875,
+    "y": 0,
+    "w": 62.984375,
+    "h": 55,
+    "to": "team",
+    "label": "Team"
+   },
+   {
+    "x": 378.28125,
+    "y": 0,
+    "w": 78.34375,
+    "h": 55,
+    "to": "reports",
+    "label": "Reports"
+   },
+   {
+    "x": 458.625,
+    "y": 0,
+    "w": 65.703125,
+    "h": 55,
+    "to": "leads",
+    "label": "Leads"
+   },
+   {
+    "x": 1081.953125,
+    "y": 10.34375,
+    "w": 99.109375,
+    "h": 34.296875,
+    "to": "create-task",
+    "label": "Create task"
+   },
+   {
+    "x": 230.859375,
+    "y": 0,
+    "w": 80.4375,
+    "h": 55,
+    "to": "projects",
+    "label": "Projects"
+   },
+   {
+    "x": 1341.84375,
+    "y": 10.34375,
+    "w": 78.15625,
+    "h": 34.296875,
+    "to": "login",
+    "label": "Sign out"
+   }
+  ]
+ },
+ {
+  "id": "member-projects",
+  "title": "Member: Projects only",
+  "group": "Member",
+  "role": "Member",
+  "note": "Members see only the Projects tab; other pages redirect here.",
+  "file": "member-projects.png",
+  "width": 1440,
+  "height": 900,
+  "hotspots": [
+   {
+    "x": 131.15625,
+    "y": 0,
+    "w": 80.4375,
+    "h": 55,
+    "to": "member-projects",
+    "label": "Projects"
+   },
+   {
+    "x": 1341.84375,
+    "y": 10.34375,
+    "w": 78.15625,
+    "h": 34.296875,
+    "to": "login",
+    "label": "Sign out"
+   },
+   {
+    "x": 1187.953125,
+    "y": 9.5,
+    "w": 36,
+    "h": 36,
+    "to": "member-notifications",
+    "label": "Notifications"
+   }
+  ]
+ },
+ {
+  "id": "member-notifications",
+  "title": "Member: Notifications",
+  "group": "Member",
+  "role": "Everyone except Sales",
+  "note": "Assignment, comments and status changes; never your own actions.",
+  "file": "member-notifications.png",
+  "width": 1440,
+  "height": 900,
+  "hotspots": [
+   {
+    "x": 844.953125,
+    "y": 95.796875,
+    "w": 378,
+    "h": 76,
+    "to": "member-projects",
+    "label": "Open the task"
+   }
+  ]
+ },
+ {
+  "id": "viewer-task",
+  "title": "Viewer: read-only task",
+  "group": "Viewer",
+  "role": "Viewer",
+  "note": "Every field disabled; no comment, upload, link or hours controls.",
+  "file": "viewer-task.png",
+  "width": 1440,
+  "height": 900,
+  "hotspots": [
+   {
+    "x": 131.15625,
+    "y": 0,
+    "w": 80.4375,
+    "h": 55,
+    "to": "viewer-projects",
+    "label": "Projects"
+   },
+   {
+    "x": 1341.84375,
+    "y": 10.34375,
+    "w": 78.15625,
+    "h": 34.296875,
+    "to": "login",
+    "label": "Sign out"
+   },
+   {
+    "x": 20,
+    "y": 128.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-summary",
+    "label": "Summary"
+   },
+   {
+    "x": 20,
+    "y": 164.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-backlog",
+    "label": "Backlog"
+   },
+   {
+    "x": 20,
+    "y": 200.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-board",
+    "label": "Board"
+   },
+   {
+    "x": 20,
+    "y": 236.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-list",
+    "label": "List"
+   },
+   {
+    "x": 20,
+    "y": 272.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-sprints",
+    "label": "Sprints"
+   },
+   {
+    "x": 20,
+    "y": 308.296875,
+    "w": 210,
+    "h": 32,
+    "to": "project-settings",
+    "label": "Settings"
+   }
+  ]
+ },
+ {
+  "id": "viewer-projects",
+  "title": "Viewer: Projects only",
+  "group": "Viewer",
+  "role": "Viewer",
+  "note": "Read-only role; sees only their projects.",
+  "file": "viewer-projects.png",
+  "width": 1440,
+  "height": 900,
+  "hotspots": [
+   {
+    "x": 131.15625,
+    "y": 0,
+    "w": 80.4375,
+    "h": 55,
+    "to": "viewer-projects",
+    "label": "Projects"
+   },
+   {
+    "x": 1341.84375,
+    "y": 10.34375,
+    "w": 78.15625,
+    "h": 34.296875,
+    "to": "login",
+    "label": "Sign out"
+   }
+  ]
+ }
+]
