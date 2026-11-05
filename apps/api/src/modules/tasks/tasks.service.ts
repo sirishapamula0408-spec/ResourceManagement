@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../lib/http.js';
+import { requireNotViewer } from '../../lib/permissions.js';
 import type { AuthUser } from '../../middleware/auth.js';
 import type { TaskPriority, TaskStatus, TaskType } from '../../generated/prisma/enums.js';
 import { removeFiles } from '../../lib/storage.js';
@@ -104,6 +105,7 @@ export async function listLabels(scope: TaskScope | null = null) {
 /**
  * Admins manage every project; PMs manage the projects they own or are staffed on.
  * Members never manage, but may work on (move, log hours) tasks assigned to them.
+ * Viewers never manage or work on anything.
  */
 export async function canManageProject(user: AuthUser, projectId: string) {
   if (user.role === 'ADMIN') return true;
@@ -133,22 +135,31 @@ async function requireManage(user: AuthUser, projectId: string) {
   }
 }
 
-/** Manage the project, or be the task's assignee. */
+/** Manage the project, or be the task's assignee (never a viewer). */
 async function requireWork(user: AuthUser, task: { projectId: string; assigneeId: string | null }) {
+  requireNotViewer(user);
   if (task.assigneeId === user.id) return;
   await requireManage(user, task.projectId);
 }
 
-/** The assignee must be staffed on the project, so utilization and staffing agree. */
+/**
+ * The assignee must be staffed on the project, so utilization and staffing agree, and must be
+ * able to work on it: a viewer only watches, so is never an assignee.
+ */
 async function requireMember(projectId: string, personId: string | null | undefined) {
   if (!personId) return;
   const member = await prisma.projectMember.findUnique({
     where: { projectId_personId: { projectId, personId } },
-    select: { personId: true },
+    select: { person: { select: { role: true } } },
   });
   if (!member) {
     throw new HttpError(400, 'The assignee is not a member of this project. Add them first.', {
       fieldErrors: { assigneeId: ['Not a member of this project'] },
+    });
+  }
+  if (member.person.role === 'VIEWER') {
+    throw new HttpError(400, 'A viewer can’t be assigned tasks', {
+      fieldErrors: { assigneeId: ['Viewers can’t be assigned tasks'] },
     });
   }
 }
@@ -272,6 +283,7 @@ const changesProjectOf = (task: { projectId: string }, projectId: string) =>
 const ASSIGNEE_FIELDS = new Set(['status']);
 
 export async function updateTask(user: AuthUser, id: string, input: Partial<TaskInput>) {
+  requireNotViewer(user);
   const task = await getTask(id);
   const manages = await canManageProject(user, task.projectId);
   if (!manages) {

@@ -87,3 +87,32 @@ export function salesAreaGuard(req: Request, _res: Response, next: NextFunction)
     return next(new HttpError(403, 'This part of the app isn’t available to sales users'));
   next();
 }
+
+/** API areas a viewer may not even read: the pages they lead to are not theirs either. */
+const VIEWER_HIDDEN = ['/api/dashboard', '/api/reports', '/api/teams', '/api/leads'];
+
+/**
+ * Personal things a viewer may still change: their own sign-in and password, connector
+ * consent, saved filters and notification read state. Nothing here touches project data.
+ */
+const VIEWER_WRITABLE = ['/api/auth/', '/api/oauth/', '/api/filters', '/api/notifications'];
+
+/**
+ * Viewers are read-only: every write (anything but GET/HEAD) outside their own personal
+ * settings is refused, for the web app and the Claude connector alike (its tools call this
+ * API). They also may not read the dashboard, reports, teams or leads. The services check
+ * again (requireNotViewer), so this guard is not the only protection.
+ */
+export function viewerGuard(req: Request, _res: Response, next: NextFunction) {
+  if (req.user?.role !== 'VIEWER') return next();
+  const path = req.baseUrl + req.path;
+  const under = (prefixes: string[]) => prefixes.some((p) => path.startsWith(p));
+  if (under(VIEWER_HIDDEN)) {
+    return next(new HttpError(403, 'This part of the app isn’t available to viewers'));
+  }
+  const reading = req.method === 'GET' || req.method === 'HEAD';
+  if (!reading && !under(VIEWER_WRITABLE)) {
+    return next(new HttpError(403, 'Viewers have read-only access'));
+  }
+  next();
+}

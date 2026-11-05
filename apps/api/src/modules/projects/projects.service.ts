@@ -11,7 +11,8 @@ export async function listProjects(projectIds: string[] | null = null) {
       owner: { select: { id: true, name: true } },
       members: {
         orderBy: { person: { name: 'asc' } },
-        select: { person: { select: { id: true, name: true } } },
+        // The role lets the task forms leave viewers out of the assignee choices.
+        select: { person: { select: { id: true, name: true, role: true } } },
       },
       _count: { select: { tasks: true, allocations: true } },
     },

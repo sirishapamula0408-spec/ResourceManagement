@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { HttpError } from './http.js';
 import type { Role } from '../generated/prisma/enums.js';
 
 /**
@@ -23,3 +24,14 @@ export const LEAD_VIEW_ROLES: Role[] = ['ADMIN', 'SALES', 'DELIVERY_HEAD', 'PM']
 
 /** Who adds, edits and deletes leads: every sales user can work every lead. */
 export const LEAD_EDIT_ROLES: Role[] = ['ADMIN', 'SALES'];
+
+/**
+ * Viewers are read-only observers: they see what a team member sees (their own projects and
+ * those projects' tasks) and change nothing. viewerGuard (middleware/auth.ts) refuses their
+ * writes for the whole API; the services check again so no path depends on the guard alone.
+ */
+export const isViewer = (user: { role: Role } | undefined) => user?.role === 'VIEWER';
+
+export function requireNotViewer(user: { role: Role } | undefined) {
+  if (isViewer(user)) throw new HttpError(403, 'Viewers have read-only access');
+}

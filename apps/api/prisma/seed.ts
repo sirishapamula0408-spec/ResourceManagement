@@ -5,6 +5,7 @@
  * Logins (documented in README):
  *   admin@resourceboard.local / Admin@12345   (ADMIN)
  *   priya.sharma@resourceboard.local / Password@123 (PM) - all other users share this password
+ *   viewer@resourceboard.local / Password@123 (VIEWER, read-only on ATLAS)
  */
 import bcrypt from 'bcryptjs';
 import { prisma } from '../src/lib/prisma.js';
@@ -96,6 +97,14 @@ async function main() {
     // Oversight roles from the scope plan (appended so the destructuring below is unchanged).
     { name: 'Kavya Rao', title: 'Delivery Head', dept: 'PMO', role: 'DELIVERY_HEAD' },
     { name: 'Omar Haddad', title: 'Resource Manager', dept: 'PMO', role: 'RESOURCE_MANAGER' },
+    // Read-only observer staffed on ATLAS: sees that project and its tasks, changes nothing.
+    {
+      name: 'Vera Viewer',
+      title: 'Client Stakeholder',
+      dept: 'PMO',
+      role: 'VIEWER',
+      email: `viewer@${DOMAIN}`,
+    },
   ];
 
   const people: Person[] = [];
@@ -340,6 +349,7 @@ async function main() {
   const memberships = new Set<string>();
   for (const p of projects) if (p.ownerId) memberships.add(`${p.id}:${p.ownerId}`);
   for (const t of tasks) if (t.assigneeId) memberships.add(`${t.projectId}:${t.assigneeId}`);
+  memberships.add(`${atlas.id}:${byName('Vera Viewer').id}`);
   await prisma.projectMember.createMany({
     data: [...memberships].map((m) => {
       const [projectId, personId] = m.split(':');

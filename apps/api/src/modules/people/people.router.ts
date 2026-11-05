@@ -48,7 +48,7 @@ const onlyAdmin = (req: { user?: { role: Role } }, message: string) => {
 peopleRouter.post('/', ...canEdit, async (req, res) => {
   const input = parse(createSchema, req.body);
   if (input.role && input.role !== 'MEMBER')
-    onlyAdmin(req, 'Only an admin can grant the PM or Admin role');
+    onlyAdmin(req, 'Only an admin can give a new person a role other than Team member');
   res.status(201).json(await service.createPerson(input));
 });
 

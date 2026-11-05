@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../lib/http.js';
+import { requireNotViewer } from '../../lib/permissions.js';
 import { isMember, projectIdsOf } from '../../lib/visibility.js';
 import type { AuthUser } from '../../middleware/auth.js';
 import { notifyComment } from '../notifications/notifications.service.js';
@@ -7,7 +8,7 @@ import { notifyComment } from '../notifications/notifications.service.js';
 /**
  * Comments on a task (M4 JIRA-lite). Anyone who can see the task may read and add comments;
  * a team member sees the tasks on their projects and those assigned to them. Only the author
- * edits a comment; the author or an admin deletes it.
+ * edits a comment; the author or an admin deletes it. Viewers read comments but never write.
  */
 export async function requireSeeTask(user: AuthUser, taskId: string) {
   const task = await prisma.task.findUnique({
@@ -35,6 +36,7 @@ export async function listComments(user: AuthUser, taskId: string) {
 }
 
 export async function addComment(user: AuthUser, taskId: string, body: string) {
+  requireNotViewer(user);
   await requireSeeTask(user, taskId);
   const comment = await prisma.comment.create({
     data: { taskId, authorId: user.id, body },
@@ -51,6 +53,7 @@ async function getComment(taskId: string, id: string) {
 }
 
 export async function editComment(user: AuthUser, taskId: string, id: string, body: string) {
+  requireNotViewer(user);
   await requireSeeTask(user, taskId);
   const comment = await getComment(taskId, id);
   if (comment.authorId !== user.id) {
@@ -60,6 +63,7 @@ export async function editComment(user: AuthUser, taskId: string, id: string, bo
 }
 
 export async function deleteComment(user: AuthUser, taskId: string, id: string) {
+  requireNotViewer(user);
   await requireSeeTask(user, taskId);
   const comment = await getComment(taskId, id);
   if (comment.authorId !== user.id && user.role !== 'ADMIN') {

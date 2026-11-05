@@ -4,7 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config.js';
 import { errorHandler, notFound } from './lib/http.js';
-import { requireAuth, salesAreaGuard } from './middleware/auth.js';
+import { requireAuth, salesAreaGuard, viewerGuard } from './middleware/auth.js';
 import { authRouter } from './modules/auth/auth.router.js';
 import { dashboardRouter } from './modules/dashboard/dashboard.router.js';
 import { filtersRouter } from './modules/filters/filters.router.js';
@@ -47,6 +47,7 @@ export function createApp() {
   app.use('/api/auth', authRouter);
   app.use('/api', requireAuth);
   app.use('/api', salesAreaGuard);
+  app.use('/api', viewerGuard);
   app.use('/api/people', peopleRouter);
   app.use('/api/teams', teamsRouter);
   app.use('/api/projects', projectsRouter);

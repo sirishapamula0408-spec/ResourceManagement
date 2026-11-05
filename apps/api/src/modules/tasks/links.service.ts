@@ -1,5 +1,6 @@
 import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../lib/http.js';
+import { isViewer } from '../../lib/permissions.js';
 import type { AuthUser } from '../../middleware/auth.js';
 import { requireSeeTask } from './comments.service.js';
 import { canManageProject, taskKey } from './tasks.service.js';
@@ -58,6 +59,7 @@ export async function listLinks(user: AuthUser, taskId: string) {
 
 /** May this person change links on this task: manage its project, or be its assignee. */
 async function canEdit(user: AuthUser, task: { projectId: string; assigneeId: string | null }) {
+  if (isViewer(user)) return false;
   return task.assigneeId === user.id || (await canManageProject(user, task.projectId));
 }
 

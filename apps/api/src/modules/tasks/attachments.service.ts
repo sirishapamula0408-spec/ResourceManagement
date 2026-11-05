@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { config } from '../../config.js';
 import { HttpError } from '../../lib/http.js';
+import { requireNotViewer } from '../../lib/permissions.js';
 import { prisma } from '../../lib/prisma.js';
 import { openFile, removeFiles, saveFile } from '../../lib/storage.js';
 import type { AuthUser } from '../../middleware/auth.js';
@@ -11,7 +12,7 @@ import { canManageProject } from './tasks.service.js';
 /**
  * Files attached to a task (M4 JIRA-lite). Anyone who can see the task lists and downloads its
  * files; an admin, a PM on the project or the task's assignee uploads (as for links); the uploader
- * or an admin / PM on the project deletes. Files are kept on local disk (lib/storage.ts).
+ * or an admin / PM on the project deletes. Viewers only list and download. Files are kept on local disk (lib/storage.ts).
  */
 export const maxUploadBytes = () => Math.round(config.MAX_UPLOAD_MB * 1024 * 1024);
 
@@ -83,6 +84,7 @@ export async function addAttachment(
   taskId: string,
   file: { name: string; mimeType?: string; bytes: Buffer },
 ) {
+  requireNotViewer(user);
   await requireSeeTask(user, taskId);
   const task = await prisma.task.findUniqueOrThrow({
     where: { id: taskId },
@@ -131,6 +133,7 @@ export async function downloadAttachment(user: AuthUser, id: string) {
 }
 
 export async function deleteAttachment(user: AuthUser, id: string) {
+  requireNotViewer(user);
   const attachment = await getAttachment(user, id);
   if (
     attachment.uploaderId !== user.id &&

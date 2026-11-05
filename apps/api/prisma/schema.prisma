@@ -22,6 +22,7 @@ enum Role {
   PM // create, edit and move tasks on own projects
   MEMBER // own tasks: status and hours logged
   SALES // leads pipeline; read-only project list
+  VIEWER // read-only: own projects and their tasks, no changes
 }
 
 enum ProjectStatus {
