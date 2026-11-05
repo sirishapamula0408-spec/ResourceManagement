@@ -62,7 +62,7 @@ export function DashboardPage() {
   return (
     <>
       <PageHeader
-        title="Utilization"
+        title="Resource Dashboard"
         subtitle={`${isTeamMember() ? 'Your own workload · ' : ''}${shortDate(window.from)} – ${shortDate(window.to)} · ${window.weeks} weeks`}
       >
         <select

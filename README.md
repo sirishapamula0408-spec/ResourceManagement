@@ -177,7 +177,7 @@ sees the same projects and their tasks, read-only: the API refuses every write f
 (`viewerGuard` in `middleware/auth.ts`, and again in the task services), except their own password,
 saved filters and notification read state. Viewers can't be assigned tasks.
 
-Top-bar tabs: admins, delivery heads and PMs get Dashboard, Projects, Team, Reports and Leads; resource
+Top-bar tabs: admins, delivery heads and PMs get Resource Dashboard, Projects, Team, Reports and Leads; resource
 managers the same without Leads; sales users Leads and Projects; team members and viewers Projects only
 (other pages redirect them to Projects, and viewers also get 403 from the dashboard, reports, teams and
 leads API).
