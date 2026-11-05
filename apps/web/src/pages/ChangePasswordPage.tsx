@@ -26,7 +26,8 @@ export function ChangePasswordPage() {
           newPassword: form.newPassword,
         }),
       }),
-    onSuccess: () => navigate('/dashboard', { replace: true }),
+    // Home picks the first page for the role (dashboard, leads or the person's projects).
+    onSuccess: () => navigate('/', { replace: true }),
   });
 
   function onSubmit(e: FormEvent) {
@@ -93,7 +94,7 @@ export function ChangePasswordPage() {
           {change.isPending ? 'Saving…' : 'Save password'}
         </button>
         {!required && (
-          <Link to="/dashboard" className="text-center text-xs text-muted hover:text-ink">
+          <Link to="/" className="text-center text-xs text-muted hover:text-ink">
             Cancel
           </Link>
         )}

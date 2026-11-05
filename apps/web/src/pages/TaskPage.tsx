@@ -30,6 +30,8 @@ import {
 } from '../components/tasks/taskHelpers';
 import {
   api,
+  canBeAssigned,
+  isViewer,
   TASK_STATUSES,
   type Task,
   type TaskPriority,
@@ -261,7 +263,7 @@ export function TaskPage() {
   const manages = canManageProject(task.project.id);
   const works = canWork(task);
   const project = projects.find((p) => p.id === task.project.id);
-  const members = project?.members ?? [];
+  const members = (project?.members ?? []).filter(canBeAssigned);
   const assignees =
     task.assignee && !members.some((m) => m.id === task.assignee!.id)
       ? [...members, task.assignee]
@@ -591,7 +593,9 @@ export function TaskPage() {
             <p className="px-1 text-xs text-muted">
               {works
                 ? 'You can change the status of, log hours on, link and attach files to tasks assigned to you.'
-                : 'View only: an admin or a PM on this project edits this task.'}
+                : isViewer()
+                  ? 'View only: as a viewer you can read this task but not change it.'
+                  : 'View only: an admin or a PM on this project edits this task.'}
             </p>
           )}
         </aside>

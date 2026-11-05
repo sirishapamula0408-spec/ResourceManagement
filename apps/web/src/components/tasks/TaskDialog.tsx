@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import {
   api,
+  canBeAssigned,
   TASK_STATUSES,
   type Task,
   type TaskPriority,
@@ -96,7 +97,7 @@ export function TaskDialog({
 
   // Assignee choices: the selected project's team (plus the current assignee, if they left it).
   const project = projects.find((p) => p.id === projectId);
-  const members = project?.members ?? [];
+  const members = (project?.members ?? []).filter(canBeAssigned);
   const assigneeChoices =
     task?.assignee && !members.some((m) => m.id === task.assignee!.id)
       ? [...members, task.assignee]

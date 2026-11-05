@@ -25,7 +25,15 @@ import { usePagination } from '../lib/pagination';
 import { fmt, identityColor } from '../lib/theme';
 
 /** Least to most access, for the role picker. */
-const ROLE_ORDER: Role[] = ['MEMBER', 'SALES', 'PM', 'RESOURCE_MANAGER', 'DELIVERY_HEAD', 'ADMIN'];
+const ROLE_ORDER: Role[] = [
+  'VIEWER',
+  'MEMBER',
+  'SALES',
+  'PM',
+  'RESOURCE_MANAGER',
+  'DELIVERY_HEAD',
+  'ADMIN',
+];
 
 // Same rule as the API: 8+ characters with a letter and a number.
 const PASSWORD_PATTERN = '(?=.*[A-Za-z])(?=.*[0-9]).{8,}';

@@ -22,8 +22,19 @@ const LEADS = { to: '/leads', label: 'Leads' };
 /** Pages a sales user may open; everything else sends them to Leads. */
 const SALES_PAGES = ['/leads', '/projects'];
 
+/** Team members and viewers work inside their projects only. */
+const PROJECTS_ONLY: Role[] = ['MEMBER', 'VIEWER'];
+
+/**
+ * Pages a team member or viewer may open: the project list and project spaces, task pages, and
+ * the old Board / Tasks / Sprints links (they redirect into a project). The home page picks
+ * their project. Everything else (dashboard, team, reports, leads) sends them to Projects.
+ */
+const PROJECT_PAGES = ['/projects', '/browse/', '/board', '/tasks', '/sprints'];
+
 function navFor(role: Role | undefined) {
   if (role === 'SALES') return [LEADS, { to: '/projects', label: 'Projects' }];
+  if (role && PROJECTS_ONLY.includes(role)) return [{ to: '/projects', label: 'Projects' }];
   return role && ['ADMIN', 'DELIVERY_HEAD', 'PM'].includes(role) ? [...NAV, LEADS] : NAV;
 }
 
@@ -42,6 +53,14 @@ export function Layout() {
   const location = useLocation();
   if (role === 'SALES' && !SALES_PAGES.some((p) => location.pathname.startsWith(p))) {
     return <Navigate to="/leads" replace />;
+  }
+  if (
+    role &&
+    PROJECTS_ONLY.includes(role) &&
+    location.pathname !== '/' &&
+    !PROJECT_PAGES.some((p) => location.pathname.startsWith(p))
+  ) {
+    return <Navigate to="/projects" replace />;
   }
 
   return (

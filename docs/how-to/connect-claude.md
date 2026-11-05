@@ -5,7 +5,8 @@
 Once connected, you can ask Claude about your projects, tasks, hours, utilization, status reports and
 sales leads, and ask it to make changes for you. Claude signs in **as you**: it sees and changes exactly
 what you can in the app, nothing more. A team member's Claude sees only their own projects; a sales
-user's Claude sees leads and the project list.
+user's Claude sees leads and the project list; a viewer's Claude can read their projects and tasks but
+change nothing.
 
 You need the SedHub address from your admin, for example `https://board.example.com`. The
 connector address is that plus `/mcp`, for example `https://board.example.com/mcp`.

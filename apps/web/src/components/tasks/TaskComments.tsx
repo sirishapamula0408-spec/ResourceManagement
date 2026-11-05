@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { api, auth, type TaskComment } from '../../lib/api';
+import { api, auth, isViewer, type TaskComment } from '../../lib/api';
 import { buttonClass, errorMessage, inputClass } from '../../lib/forms';
 import { Avatar } from './taskUi';
 
@@ -19,6 +19,8 @@ const when = (iso: string) =>
 export function TaskComments({ taskId, personNames }: { taskId: string; personNames: string[] }) {
   const qc = useQueryClient();
   const me = auth.getUser();
+  // Viewers read the thread but don't comment (the API refuses it too).
+  const canWrite = !isViewer();
   const queryKey = ['comments', taskId];
   const { data: comments = [], isLoading } = useQuery({
     queryKey,
@@ -73,7 +75,7 @@ export function TaskComments({ taskId, personNames }: { taskId: string; personNa
                   {c.updatedAt !== c.createdAt ? ' · edited' : ''}
                 </span>
                 <span className="flex-1" />
-                {c.authorId === me?.id && editing?.id !== c.id && (
+                {canWrite && c.authorId === me?.id && editing?.id !== c.id && (
                   <button
                     type="button"
                     className="text-muted hover:text-ink"
@@ -82,7 +84,7 @@ export function TaskComments({ taskId, personNames }: { taskId: string; personNa
                     Edit
                   </button>
                 )}
-                {(c.authorId === me?.id || me?.role === 'ADMIN') && (
+                {canWrite && (c.authorId === me?.id || me?.role === 'ADMIN') && (
                   <button
                     type="button"
                     className="text-muted hover:text-red"
@@ -127,38 +129,40 @@ export function TaskComments({ taskId, personNames }: { taskId: string; personNa
           </li>
         ))}
       </ol>
-      <div className="flex flex-col gap-1.5">
-        <textarea
-          className={inputClass}
-          rows={2}
-          placeholder="Add a comment"
-          aria-label="Add a comment"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => {
-            // Ctrl/Cmd+Enter posts, like JIRA.
-            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-              e.preventDefault();
-              post();
-            }
-          }}
-        />
-        <span className="flex items-center justify-end gap-2">
-          {error && (
-            <span role="alert" className="flex-1 text-xs text-red">
-              {errorMessage(error)}
-            </span>
-          )}
-          <button
-            type="button"
-            className={buttonClass()}
-            disabled={add.isPending || !draft.trim()}
-            onClick={post}
-          >
-            {add.isPending ? 'Posting…' : 'Comment'}
-          </button>
-        </span>
-      </div>
+      {canWrite && (
+        <div className="flex flex-col gap-1.5">
+          <textarea
+            className={inputClass}
+            rows={2}
+            placeholder="Add a comment"
+            aria-label="Add a comment"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              // Ctrl/Cmd+Enter posts, like JIRA.
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                post();
+              }
+            }}
+          />
+          <span className="flex items-center justify-end gap-2">
+            {error && (
+              <span role="alert" className="flex-1 text-xs text-red">
+                {errorMessage(error)}
+              </span>
+            )}
+            <button
+              type="button"
+              className={buttonClass()}
+              disabled={add.isPending || !draft.trim()}
+              onClick={post}
+            >
+              {add.isPending ? 'Posting…' : 'Comment'}
+            </button>
+          </span>
+        </div>
+      )}
     </section>
   );
 }

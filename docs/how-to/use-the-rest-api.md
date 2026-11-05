@@ -65,7 +65,9 @@ Bodies are JSON, dates are `YYYY-MM-DD`, and ids come from the list endpoints.
 
 ## Endpoints
 
-Every endpoint needs the token except `GET /api/health` and `POST /api/auth/login`.
+Every endpoint needs the token except `GET /api/health` and `POST /api/auth/login`. Viewers (read-only
+role) see what a team member sees and get 403 from every write except their own password, saved filters
+and notifications, and from the dashboard, reports, teams and leads endpoints.
 
 | Method | Path                                     | Who                                    | Notes                                                                                                      |
 | ------ | ---------------------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------------------------------- |

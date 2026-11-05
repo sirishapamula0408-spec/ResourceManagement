@@ -41,18 +41,35 @@ import {
 } from '../components/tasks/taskHelpers';
 import { PageHeader } from '../components/PageHeader';
 import { SavedFilters } from '../components/tasks/SavedFilters';
-import { api, ApiError, TASK_STATUSES, type Project, type Task, type TaskStatus } from '../lib/api';
+import {
+  api,
+  ApiError,
+  isViewer,
+  TASK_STATUSES,
+  type Project,
+  type Task,
+  type TaskStatus,
+} from '../lib/api';
 import { fmt, identityColor } from '../lib/theme';
 
 interface CardProps {
   personNames: string[];
   projectCodes: string[];
   onOpen: (task: Task) => void;
+  /** Viewers can't move cards: they open them only. */
+  readOnly?: boolean;
 }
 
-function TaskCard({ task, personNames, projectCodes, onOpen }: CardProps & { task: Task }) {
+function TaskCard({
+  task,
+  personNames,
+  projectCodes,
+  onOpen,
+  readOnly,
+}: CardProps & { task: Task }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
+    disabled: readOnly,
   });
   const est = hours(task.estimateHours);
   const progress = est ? Math.min(100, (task.loggedHours / est) * 100) : 0;
@@ -61,15 +78,27 @@ function TaskCard({ task, personNames, projectCodes, onOpen }: CardProps & { tas
   return (
     <div
       ref={setNodeRef}
-      {...listeners}
-      {...attributes}
+      // A read-only card is a plain button that opens the task: no drag listeners, and none of
+      // the sortable attributes (they would mark it aria-disabled).
+      {...(readOnly
+        ? {
+            role: 'button',
+            tabIndex: 0,
+            onKeyDown: (e: React.KeyboardEvent) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onOpen(task);
+              }
+            },
+          }
+        : { ...listeners, ...attributes })}
       onClick={() => onOpen(task)}
       style={{
         transform: CSS.Translate.toString(transform),
         transition,
         borderLeftColor: identityColor(task.project.code, projectCodes),
       }}
-      className={`block w-full cursor-grab rounded-md border border-l-[3px] border-line bg-panel p-2.5 text-left hover:border-muted ${isDragging ? 'relative z-10 shadow-lg' : ''}`}
+      className={`block w-full ${readOnly ? 'cursor-pointer' : 'cursor-grab'} rounded-md border border-l-[3px] border-line bg-panel p-2.5 text-left hover:border-muted ${isDragging ? 'relative z-10 shadow-lg' : ''}`}
     >
       <div className="flex items-center gap-2 text-xs text-muted">
         <span className="font-semibold">{task.key}</span>
@@ -153,7 +182,9 @@ function Column({
           {tasks.length ? (
             tasks.map((t) => <TaskCard key={t.id} task={t} {...cardProps} />)
           ) : (
-            <p className="p-2.5 text-center text-xs text-muted">Drop tasks here</p>
+            <p className="p-2.5 text-center text-xs text-muted">
+              {cardProps.readOnly ? 'No tasks' : 'Drop tasks here'}
+            </p>
           )}
         </SortableContext>
       </div>
@@ -195,6 +226,7 @@ export function BoardPage({ project }: { project?: Project } = {}) {
   const openTask = (t: Task) =>
     navigate(`/browse/${t.key}`, { state: project ? { from: 'board' } : undefined });
   // A short drag threshold lets a plain click open the card instead of starting a drag.
+  const readOnly = isViewer();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const { people, projects, personNames, projectCodes } = useTaskLookups();
   const labels = useLabels();
@@ -322,6 +354,7 @@ export function BoardPage({ project }: { project?: Project } = {}) {
                 personNames={personNames}
                 projectCodes={projectCodes}
                 onOpen={openTask}
+                readOnly={readOnly}
               />
             ))}
           </div>

@@ -491,7 +491,8 @@ test('a new person signs in with a temporary password and must choose their own'
   await page.getByLabel('New password', { exact: true }).fill('NishaChose9');
   await page.getByLabel('Confirm new password').fill('NishaChose9');
   await page.getByRole('button', { name: 'Save password' }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  // A new team member on no project yet starts at the project list.
+  await expect(page).toHaveURL(/\/projects$/);
   await expect(page.getByRole('link', { name: /Nisha Verma/ })).toBeVisible();
 });
 
@@ -541,13 +542,13 @@ test('the task list pages through results and returns to page 1 when filtering',
   await expect(pager).toContainText(/Showing 1–\d of \d tasks/);
 });
 
-test('a team member sees only their own projects, board, tasks and figures', async ({ page }) => {
+test('a team member sees only their own projects, board and tasks', async ({ page }) => {
   // Liam is on ATLAS only and has two tasks assigned to him there, so he lands on its list.
   await signIn(page, MEMBER, '/');
   await expect(page).toHaveURL(/\/projects\/ATLAS\/list$/);
   await expect(
     page.getByRole('navigation', { name: 'Views', exact: true }).getByRole('link'),
-  ).toHaveText(['Dashboard', 'Projects', 'Team', 'Reports']);
+  ).toHaveText(['Projects']);
   await expect(page.getByText('Tasks assigned to you')).toBeVisible();
   await expect(page.getByLabel('Assignee')).toHaveCount(0);
   const rows = page.locator('tbody tr');
@@ -571,14 +572,100 @@ test('a team member sees only their own projects, board, tasks and figures', asy
   // Other projects' spaces stay closed to him.
   await page.goto('/projects/NOVA/board');
   await expect(page.getByText('Project NOVA was not found, or you are not on it.')).toBeVisible();
+});
 
-  await page.getByRole('link', { name: 'Dashboard', exact: true }).click();
-  await expect(page.getByText(/Your own workload/)).toBeVisible();
-  await expect(kpi(page, 'On bench this week')).toContainText('of 1');
+/** Opens each manager page by its address and checks it lands on Projects instead. */
+async function expectSentToProjects(page: Page) {
+  for (const path of ['/dashboard', '/teams', '/reports', '/leads']) {
+    await page.goto(path);
+    await expect(page).toHaveURL(/\/projects$/);
+    await expect(page.getByRole('heading', { name: 'Projects' })).toBeVisible();
+  }
+}
 
-  await page.getByRole('link', { name: 'Team', exact: true }).click();
-  await expect(page.getByRole('navigation', { name: 'people pages' })).toContainText('of 1 people');
-  await expect(page.getByRole('row', { name: /Liam Chen/ })).toBeVisible();
+test('team members get the Projects tab only; other pages send them to Projects', async ({
+  page,
+}) => {
+  await signIn(page, MEMBER, '/reports');
+  await expect(page).toHaveURL(/\/projects$/);
+  await expect(
+    page.getByRole('navigation', { name: 'Views', exact: true }).getByRole('link'),
+  ).toHaveText(['Projects']);
+  await expectSentToProjects(page);
+
+  // The API still keeps a member's reports to their own projects (e.g. for the Claude connector).
+  const projects = await page.evaluate(async () => {
+    const token = localStorage.getItem('rb.token') ?? sessionStorage.getItem('rb.token');
+    const res = await fetch('/api/reports/status', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return ((await res.json()) as { totals: { projects: number } }).totals.projects;
+  });
+  expect(projects).toBe(1);
+});
+
+test('an admin gets all five tabs', async ({ page }) => {
+  await signIn(page, ADMIN);
+  await expect(
+    page.getByRole('navigation', { name: 'Views', exact: true }).getByRole('link'),
+  ).toHaveText(['Dashboard', 'Projects', 'Team', 'Reports', 'Leads']);
+});
+
+const VIEWER = { email: 'viewer@resourceboard.local', password: 'Password@123' };
+
+test('a viewer sees their project read-only and only the Projects tab', async ({ page }) => {
+  // Vera is on ATLAS only, so she lands on its board.
+  await signIn(page, VIEWER, '/');
+  await expect(page).toHaveURL(/\/projects\/ATLAS\/board$/);
+  await expect(
+    page.getByRole('navigation', { name: 'Views', exact: true }).getByRole('link'),
+  ).toHaveText(['Projects']);
+  await expect(page.getByRole('link', { name: /Vera Viewer/ })).toContainText('Viewer');
+  await expect(page.getByRole('button', { name: 'Create task' })).toHaveCount(0);
+  await expectSentToProjects(page);
+  await expect(page.locator('tbody tr')).toHaveCount(1); // ATLAS only
+
+  // Sprints and settings: nothing to start, create or edit.
+  await page.goto('/projects/ATLAS/sprints');
+  await expect(page.getByRole('button', { name: /Show the burndown of/ }).first()).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /^(New sprint|Start|Complete|Edit|Delete)$/ }),
+  ).toHaveCount(0);
+  await page.goto('/projects/ATLAS/backlog');
+  await expect(page.getByText(/ATLAS-\d+/).first()).toBeVisible();
+  await expect(page.getByRole('button', { name: /Create sprint|Start sprint/ })).toHaveCount(0);
+  await expect(page.getByLabel(/^Move ATLAS-\d+ to$/)).toHaveCount(0);
+
+  // A task page: everything visible, nothing changeable.
+  await page.goto('/projects/ATLAS/board');
+  await page.getByRole('button', { name: /Invoice PDF download/ }).click();
+  await expect(page).toHaveURL(/\/browse\/ATLAS-\d+$/);
+  await expect(page.getByRole('heading', { name: 'Invoice PDF download' })).toBeVisible();
+  await expect(page.getByLabel('Status')).toBeDisabled();
+  for (const field of ['Assignee', 'Priority', 'Type', 'Sprint', 'Epic', 'Start', 'Due']) {
+    await expect(page.getByLabel(field, { exact: true })).toBeDisabled();
+  }
+  await expect(page.getByLabel('Estimate (hours)')).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Delete' })).toHaveCount(0);
+  await expect(page.getByLabel('Hours worked today')).toHaveCount(0);
+  await expect(page.getByLabel('Add a comment')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add file' })).toHaveCount(0);
+  await expect(page.getByLabel('Link type')).toHaveCount(0);
+  await expect(page.getByText('View only: as a viewer you can read this task')).toBeVisible();
+
+  // And the API refuses a write even if the page were bypassed.
+  const status = await page.evaluate(async () => {
+    const token = localStorage.getItem('rb.token') ?? sessionStorage.getItem('rb.token');
+    const tasks = await fetch('/api/tasks', { headers: { Authorization: `Bearer ${token}` } });
+    const [task] = (await tasks.json()) as { id: string }[];
+    const res = await fetch(`/api/tasks/${task.id}/comments`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body: 'Hello' }),
+    });
+    return res.status;
+  });
+  expect(status).toBe(403);
 });
 
 test('reports: weekly and monthly project status reports with CSV download', async ({ page }) => {
@@ -619,14 +706,6 @@ test('reports: weekly and monthly project status reports with CSV download', asy
   const bytes = Buffer.concat(await (await deck.createReadStream()).toArray());
   expect(bytes.subarray(0, 2).toString()).toBe('PK'); // a zip container, as .pptx files are
   expect(bytes.length).toBeGreaterThan(20_000);
-});
-
-test('a team member only gets reports for their own projects', async ({ page }) => {
-  await signIn(page, MEMBER, '/reports');
-  await expect(page.getByText('Status of the projects you are on')).toBeVisible();
-  await expect(page.getByRole('region', { name: 'ATLAS status' })).toBeVisible();
-  await expect(page.getByRole('region', { name: /NOVA status|ORION status/ })).toHaveCount(0);
-  await expect(page.getByRole('region', { name: 'Portfolio summary' })).toHaveCount(0);
 });
 
 const SALES = { email: 'rohan.gupta@resourceboard.local', password: 'Sales@12345' };
@@ -922,6 +1001,9 @@ test('a task page records who changed what in its history', async ({ page }) => 
 
 test('board filters live in the address and can be saved by name', async ({ page }) => {
   await signIn(page, PM, '/projects/ATLAS/board');
+  // Wait for the active sprint to load (the board is titled after it): a filter typed before
+  // then has no sprint to keep.
+  await expect(page.getByRole('heading', { level: 1 })).not.toHaveText('Board');
   await page.getByLabel('Search tasks').fill('Invoice');
   await expect(page).toHaveURL(/sprint=.+&q=Invoice/);
   await page.reload();

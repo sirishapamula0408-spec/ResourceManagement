@@ -33,7 +33,7 @@ export interface LoginResponse {
   user: { id: string; name: string; email: string; role: Role; mustChangePassword: boolean };
 }
 
-/** Only return to pages inside this app after signing in or up. */
+/** Only return to pages inside this app after signing in or up; otherwise home, which picks the page for the role. */
 export const safeNext = (next: string | null) =>
   next &&
   next.startsWith('/') &&
@@ -41,10 +41,11 @@ export const safeNext = (next: string | null) =>
   !next.startsWith('/login') &&
   !next.startsWith('/signup')
     ? next
-    : '/dashboard';
+    : '/';
 
 /** App roles from the scope plan's "Users and roles" table. */
-export type Role = 'ADMIN' | 'DELIVERY_HEAD' | 'RESOURCE_MANAGER' | 'PM' | 'MEMBER' | 'SALES';
+export type Role =
+  'ADMIN' | 'DELIVERY_HEAD' | 'RESOURCE_MANAGER' | 'PM' | 'MEMBER' | 'SALES' | 'VIEWER';
 
 export const ROLE_LABEL: Record<Role, string> = {
   ADMIN: 'Admin',
@@ -53,6 +54,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   PM: 'Project manager',
   MEMBER: 'Team member',
   SALES: 'Sales',
+  VIEWER: 'Viewer',
 };
 
 /** Admins, delivery heads and resource managers maintain people, projects and staffing. */
@@ -71,6 +73,15 @@ export const canEditLeads = () => ['ADMIN', 'SALES'].includes(auth.getUser()?.ro
 
 /** Team members see only their own projects, tasks and figures (the API enforces it). */
 export const isTeamMember = () => auth.getUser()?.role === 'MEMBER';
+
+/**
+ * Viewers see what a team member sees (their own projects and those projects' tasks) and change
+ * nothing: the API refuses all their writes, and the permission helpers here never let them pass.
+ */
+export const isViewer = () => auth.getUser()?.role === 'VIEWER';
+
+/** Viewers only watch, so they are never offered as assignees (the API refuses them too). */
+export const canBeAssigned = (person: { role?: Role }) => person.role !== 'VIEWER';
 
 /** Admins and PMs create tasks (PMs on the projects they own or are staffed on). */
 export const canCreateTasks = () => {
@@ -372,7 +383,8 @@ export interface Project {
   startDate: string | null;
   endDate: string | null;
   owner: { id: string; name: string } | null;
-  members: { id: string; name: string }[];
+  /** Role lets task forms leave viewers out of the assignee choices (absent for sales). */
+  members: { id: string; name: string; role?: Role }[];
   openTasks: number;
   estimateHours: number;
   loggedHours: number;

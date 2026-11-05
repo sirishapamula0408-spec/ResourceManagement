@@ -258,7 +258,9 @@ export function useTaskPermissions() {
   return {
     me,
     canManageProject,
-    canWork: (t: Task) => !!me && (t.assignee?.id === me.id || canManageProject(t.project.id)),
+    // Viewers never work on tasks (they can't be assignees either; the API refuses both).
+    canWork: (t: Task) =>
+      !!me && me.role !== 'VIEWER' && (t.assignee?.id === me.id || canManageProject(t.project.id)),
     manageableProjects: projects.filter((p) => canManageProject(p.id)),
   };
 }

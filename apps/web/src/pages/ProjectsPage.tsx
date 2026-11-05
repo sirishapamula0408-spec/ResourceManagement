@@ -13,6 +13,7 @@ import {
   canManageStaffing,
   isSales,
   isTeamMember,
+  isViewer,
   type Person,
   type Project,
   type ProjectStatus,
@@ -244,7 +245,7 @@ export function ProjectsPage() {
         subtitle={
           editable
             ? undefined
-            : isTeamMember()
+            : isTeamMember() || isViewer()
               ? 'Projects you are on'
               : 'Only admins, delivery heads and resource managers can add, edit or delete projects.'
         }

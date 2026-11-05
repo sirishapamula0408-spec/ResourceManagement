@@ -61,8 +61,9 @@ Don't run both at once.
 | RESOURCE_MANAGER | `omar.haddad@resourceboard.local` (fresh seeds only)                                | `Password@123` |
 | SALES            | `rohan.gupta@` / `ananya.iyer@resourceboard.local`                                  | `Sales@12345`  |
 | MEMBER           | e.g. `liam.chen@resourceboard.local` (all others: `first.last@resourceboard.local`) | `Password@123` |
+| VIEWER           | `viewer@resourceboard.local` (Vera Viewer, on ATLAS; fresh seeds only)              | `Password@123` |
 
-Sample data: 5 departments, 13 people, 4 teams, 3 projects (ATLAS, NOVA active; ORION planned),
+Sample data: 5 departments, 14 people, 4 teams, 3 projects (ATLAS, NOVA active; ORION planned),
 8 weeks of allocations (2 past + current + 5 future, relative to the day you seed), 24 tasks across
 all statuses, epics, sprints, worklogs, leave and alert thresholds. Development credentials only.
 
@@ -170,9 +171,16 @@ next sign-in (`POST /api/auth/password`); until then other endpoints return 403
 
 ### Roles (scope plan: Users and roles)
 
-A team member only sees their own projects, the tasks on those projects (their board), the tasks
-assigned to them on the Tasks page, and only their own figures on the Dashboard and Team pages. The
-API enforces this on every read (`apps/api/src/lib/visibility.ts`).
+A team member only sees their own projects, the tasks on those projects (their board) and the tasks
+assigned to them. The API enforces this on every read (`apps/api/src/lib/visibility.ts`). A viewer
+sees the same projects and their tasks, read-only: the API refuses every write from a viewer with 403
+(`viewerGuard` in `middleware/auth.ts`, and again in the task services), except their own password,
+saved filters and notification read state. Viewers can't be assigned tasks.
+
+Top-bar tabs: admins, delivery heads and PMs get Dashboard, Projects, Team, Reports and Leads; resource
+managers the same without Leads; sales users Leads and Projects; team members and viewers Projects only
+(other pages redirect them to Projects, and viewers also get 403 from the dashboard, reports, teams and
+leads API).
 
 | Role             | People, projects, staffing                  | Tasks                                          | Roles / admins |
 | ---------------- | ------------------------------------------- | ---------------------------------------------- | -------------- |
@@ -182,6 +190,7 @@ API enforces this on every read (`apps/api/src/lib/visibility.ts`).
 | PM               | view                                        | create/edit/move on projects they own or staff | -              |
 | MEMBER           | view own projects only                      | status + hours on tasks assigned to them       | -              |
 | SALES            | project list only (no team, tasks or hours) | none; works the Leads pipeline (all leads)     | -              |
+| VIEWER           | view own projects only                      | view tasks on own projects; no changes         | -              |
 
 ## Task attachments
 
