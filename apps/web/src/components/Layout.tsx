@@ -89,6 +89,16 @@ export function Layout() {
             Create task
           </button>
         )}
+        {role === 'ADMIN' && (
+          <NavLink
+            to="/audit"
+            className={({ isActive }) =>
+              `text-xs font-medium ${isActive ? 'text-teal' : 'text-muted hover:text-ink'}`
+            }
+          >
+            Audit log
+          </NavLink>
+        )}
         {/* Notifications are about tasks, which sales users don't work on. */}
         {role && role !== 'SALES' && <NotificationBell />}
         <Link

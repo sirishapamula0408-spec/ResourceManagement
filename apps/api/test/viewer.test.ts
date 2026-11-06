@@ -148,12 +148,13 @@ describe('viewer: reads', () => {
     expect(file.text).toBe('hello');
   });
 
-  it('may not read the dashboard, reports, teams or leads', async () => {
+  it('may not read the dashboard, reports, teams, leave or leads', async () => {
     for (const url of [
       '/api/dashboard/overview',
       '/api/dashboard/kpis',
       '/api/reports/status',
       '/api/teams',
+      '/api/leave',
       '/api/leads',
     ]) {
       expect([url, (await as(viewer).get(url)).status]).toEqual([url, 403]);

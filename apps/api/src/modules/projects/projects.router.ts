@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { ProjectStatus } from '../../generated/prisma/enums.js';
 import { parse } from '../../lib/http.js';
+import { audit } from '../../lib/audit.js';
 import { STAFFING_ROLES } from '../../lib/permissions.js';
 import { visibleProjectIds } from '../../lib/visibility.js';
 import { requireRole } from '../../middleware/auth.js';
@@ -67,21 +68,28 @@ projectsRouter.get('/', async (req, res) => {
 const canEdit = [requireRole(...STAFFING_ROLES)];
 
 projectsRouter.post('/', ...canEdit, async (req, res) => {
-  res.status(201).json(await service.createProject(parse(projectSchema, req.body)));
+  const input = parse(projectSchema, req.body);
+  const project = await service.createProject(input);
+  await audit(req, 'project.create', 'Project', project.id, { after: input });
+  res.status(201).json(project);
 });
 
 projectsRouter.patch('/:id', ...canEdit, async (req, res) => {
   const input = parse(projectPatchSchema, req.body);
-  res.json(await service.updateProject(String(req.params.id), input));
+  const project = await service.updateProject(String(req.params.id), input);
+  await audit(req, 'project.update', 'Project', String(req.params.id), { after: input });
+  res.json(project);
 });
 
 projectsRouter.delete('/:id', ...canEdit, async (req, res) => {
   await service.deleteProject(String(req.params.id));
+  await audit(req, 'project.delete', 'Project', String(req.params.id));
   res.status(204).end();
 });
 
 projectsRouter.put('/:id/members', ...canEdit, async (req, res) => {
   const { personIds } = parse(membersSchema, req.body);
   await service.setProjectMembers(String(req.params.id), personIds);
+  await audit(req, 'project.members', 'Project', String(req.params.id), { after: { personIds } });
   res.status(204).end();
 });

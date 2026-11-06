@@ -45,7 +45,6 @@ describe('MFA hand-over from sign-in', () => {
       mfaToken: 't',
       next: '/x',
       remember: true,
-      destination: undefined,
     });
   });
 });

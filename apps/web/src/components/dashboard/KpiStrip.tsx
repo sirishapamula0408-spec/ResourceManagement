@@ -65,6 +65,7 @@ export function KpiStrip({ kpis }: { kpis: DashboardOverview['kpis'] }) {
   const total = kpis.totalDemandHours;
   const share = (h: number) => (total ? (h / total) * 100 : 0);
   const of = `of ${kpis.teamSize}`;
+  const { underUtilizedPct, overUtilizedPct } = kpis.thresholds;
   return (
     <section
       aria-label="Key figures"
@@ -89,13 +90,13 @@ export function KpiStrip({ kpis }: { kpis: DashboardOverview['kpis'] }) {
         ring={{ pct: share(kpis.nonBillableDemandHours), color: 'var(--color-amber)' }}
       />
       <Kpi
-        label="Under-utilized this week"
+        label={`Under-utilized (<${fmt(underUtilizedPct)}%) this week`}
         value={kpis.underUtilized}
         unit={of}
         valueClass="text-amber"
       />
       <Kpi
-        label="Over-utilized this week"
+        label={`Over-utilized (>${fmt(overUtilizedPct)}%) this week`}
         value={kpis.overUtilized}
         unit={of}
         valueClass="text-plum"

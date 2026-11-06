@@ -286,6 +286,16 @@ per address.
   instance; several instances would need a shared store.
 - Sign-ins, failures and lockouts are written to the audit log (`auth.login`, `auth.login_failed`,
   `auth.locked`, with the client address).
+- **Two-step verification (optional, per person)** with Microsoft Authenticator or any authenticator
+  app (TOTP: 6 digits, 30 seconds). People turn it on at **Account → Two-step verification**
+  (`/account/security`): scan the QR code, enter the first code. Sign-in then answers
+  `{ mfaRequired, mfaToken }` (valid 5 minutes) after the password, and `POST /api/auth/mfa/verify`
+  with the code starts the session. Each code works once; 5 wrong codes in 15 minutes lock the
+  second step (`423`). Someone who loses their phone asks an admin, who resets it from their dialog
+  on the Team page (`DELETE /api/people/:id/mfa`). Secrets are stored encrypted with
+  `MFA_ENCRYPTION_KEY` (derived from `JWT_SECRET` when unset; changing either means people set it
+  up again). Logged as `auth.mfa_enabled`, `auth.mfa_disabled`, `auth.mfa_failed` and
+  `person.mfa_reset`.
 - "Encrypted connection (TLS)" on the sign-in page relies on the deployment: the bundled nginx
   (`deploy/nginx.conf`) listens on plain HTTP, so put HTTPS in front of it (load balancer or reverse
   proxy), as the Claude connector also requires.

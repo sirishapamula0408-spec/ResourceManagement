@@ -130,7 +130,6 @@ export function LoginPage() {
           mfaToken: data.mfaToken,
           next,
           remember,
-          destination: data.destination,
         };
         navigate('/login/mfa', { state });
         return;

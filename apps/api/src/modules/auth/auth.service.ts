@@ -5,6 +5,7 @@ import { prisma } from '../../lib/prisma.js';
 import { HttpError } from '../../lib/http.js';
 import { signToken } from '../../middleware/auth.js';
 import { clearFailures, lockedFor, recordFailure } from './lockout.js';
+import { mfaToken, personIdFrom, verifySignIn } from './mfa.service.js';
 
 export const hashPassword = (password: string) => bcrypt.hash(password, 10);
 
@@ -12,13 +13,22 @@ export const hashPassword = (password: string) => bcrypt.hash(password, 10);
 // check and an unknown email takes as long as a wrong password.
 const DUMMY_HASH = bcrypt.hashSync('no-account-has-this-password', 10);
 
-type AuthAction = 'auth.login' | 'auth.login_failed' | 'auth.locked';
+type AuthAction =
+  | 'auth.login'
+  | 'auth.login_failed'
+  | 'auth.locked'
+  | 'auth.mfa_failed'
+  | 'auth.mfa_enabled'
+  | 'auth.mfa_disabled';
+
+/** Attempts that didn't prove who was there have no actor. */
+const UNPROVEN: AuthAction[] = ['auth.login_failed', 'auth.locked', 'auth.mfa_failed'];
 
 /** Sign-in events in the audit log ("Audit-logged access" on the sign-in page). */
-function audit(action: AuthAction, personId: string | null, ip?: string, after?: object) {
+export function audit(action: AuthAction, personId: string | null, ip?: string, after?: object) {
   return prisma.auditLog.create({
     data: {
-      actorId: action === 'auth.login' ? personId : null,
+      actorId: UNPROVEN.includes(action) ? null : personId,
       action,
       entityType: 'Person',
       entityId: personId,
@@ -64,8 +74,25 @@ export async function login(email: string, password: string, ip?: string) {
   }
 
   clearFailures(key);
+  // Two-step verification: the session starts once the authenticator code is checked.
+  if (person.mfaEnabled) return { mfaRequired: true as const, mfaToken: mfaToken(person.id) };
   await audit('auth.login', person.id, ip);
   return session(person);
+}
+
+/** Second sign-in step: the code from the authenticator app. */
+export async function verifyMfa(token: string, code: string, ip?: string) {
+  try {
+    const person = await verifySignIn(token, code);
+    await audit('auth.login', person.id, ip, { mfa: true });
+    return session(person);
+  } catch (err) {
+    const id = personIdFrom(token);
+    if (id && err instanceof HttpError && (err.status === 401 || err.status === 423)) {
+      await audit('auth.mfa_failed', id, ip);
+    }
+    throw err;
+  }
 }
 
 /** Token and user details returned after sign-in or sign-up. */

@@ -138,6 +138,12 @@ model Person {
   passwordHash        String?
   /// Set when someone else chose the password (new person, reset); cleared when they change it.
   mustChangePassword  Boolean     @default(false)
+  /// Two-step sign-in with an authenticator app (Microsoft Authenticator): the TOTP secret,
+  /// encrypted (lib/secretBox.ts). Set during setup; only used once mfaEnabled is true.
+  mfaSecret           String?
+  mfaEnabled          Boolean     @default(false)
+  /// Time step of the last accepted code, so a code can't be used twice.
+  mfaLastStep         Int?
   active              Boolean     @default(true)
   // M3: Azure AD SSO / JIRA sync identifiers
   externalId          String?     @unique

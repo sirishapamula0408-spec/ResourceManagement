@@ -94,9 +94,14 @@ export function ChangePasswordPage() {
           {change.isPending ? 'Saving…' : 'Save password'}
         </button>
         {!required && (
-          <Link to="/" className="text-center text-xs text-muted hover:text-ink">
-            Cancel
-          </Link>
+          <div className="flex justify-between text-xs">
+            <Link to="/account/security" className="text-teal hover:underline">
+              Two-step verification
+            </Link>
+            <Link to="/" className="text-muted hover:text-ink">
+              Cancel
+            </Link>
+          </div>
         )}
       </form>
     </AuthCard>

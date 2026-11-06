@@ -1,14 +1,14 @@
 import { prisma } from '../../lib/prisma.js';
+import { leaveDaysByWeek } from '../leave/leave.service.js';
+import { getThresholds, type Thresholds } from '../settings/thresholds.service.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import {
   addDays,
   bandOf,
   FTE_WEEK_HOURS,
   isoDate,
-  OVER_UTILIZED_PCT,
   round1,
   spreadTaskHours,
-  UNDER_UTILIZED_PCT,
   utilizationPct,
   weekStartOf,
 } from './utilization.js';
@@ -25,6 +25,7 @@ export interface DashboardQuery {
 }
 
 const UNASSIGNED = 'Unassigned';
+const WORK_DAYS = 5;
 const NO_DEPARTMENT = 'No department';
 
 /**
@@ -48,7 +49,7 @@ async function buildUtilization(query: DashboardQuery, now: Date) {
     ...(query.personId ? { assigneeId: query.personId } : {}),
   };
 
-  const [people, tasks, unscheduledTasks] = await Promise.all([
+  const [people, tasks, unscheduledTasks, leave, thresholds] = await Promise.all([
     prisma.person.findMany({
       where: query.personId ? { id: query.personId, active: true } : { active: true },
       select: {
@@ -85,6 +86,8 @@ async function buildUtilization(query: DashboardQuery, now: Date) {
         OR: [{ startDate: null }, { dueDate: null }, { estimateHours: null }],
       },
     }),
+    leaveDaysByWeek(rangeStart, addDays(rangeEnd, 6), query.personId),
+    getThresholds(),
   ]);
 
   const personWeek = new Map<string, Map<string, number>>();
@@ -118,14 +121,23 @@ async function buildUtilization(query: DashboardQuery, now: Date) {
     }
   }
 
-  const rows = people.map((p) => ({
-    personId: p.id,
-    name: p.name,
-    title: p.title,
-    department: p.department?.name ?? NO_DEPARTMENT,
-    capacityHours: Number(p.weeklyCapacityHours),
-    hoursByWeek: personWeek.get(p.id) ?? new Map<string, number>(),
-  }));
+  const rows = people.map((p) => {
+    const capacityHours = Number(p.weeklyCapacityHours);
+    const leaveByWeek = leave.get(p.id) ?? new Map<string, number>();
+    return {
+      personId: p.id,
+      name: p.name,
+      title: p.title,
+      department: p.department?.name ?? NO_DEPARTMENT,
+      capacityHours,
+      hoursByWeek: personWeek.get(p.id) ?? new Map<string, number>(),
+      leaveDays: (week: string) => leaveByWeek.get(week) ?? 0,
+      /** Each working day of leave takes a fifth of the weekly capacity. */
+      capacityIn: (week: string) =>
+        (capacityHours * Math.max(0, WORK_DAYS - (leaveByWeek.get(week) ?? 0))) / WORK_DAYS,
+    };
+  });
+  const teamCapacityIn = (week: string) => rows.reduce((sum, r) => sum + r.capacityIn(week), 0);
 
   return {
     currentWeek: isoDate(currentWeek),
@@ -134,12 +146,14 @@ async function buildUtilization(query: DashboardQuery, now: Date) {
     weeks,
     rows,
     teamCapacity: rows.reduce((sum, r) => sum + r.capacityHours, 0),
+    teamCapacityIn,
     weekDemand,
     weekUnassigned,
     deptHours,
     billable,
     nonBillable,
     unscheduledTasks,
+    thresholds,
   };
 }
 
@@ -158,10 +172,14 @@ function kpis(u: Utilization) {
   let onBench = 0;
   for (const r of u.rows) {
     const hours = r.hoursByWeek.get(u.currentWeek) ?? 0;
-    const pct = utilizationPct(hours, r.capacityHours);
-    if (hours === 0) onBench++;
-    else if (pct < UNDER_UTILIZED_PCT) underUtilized++;
-    else if (pct > OVER_UTILIZED_PCT) overUtilized++;
+    const capacity = r.capacityIn(u.currentWeek);
+    const pct = utilizationPct(hours, capacity);
+    if (capacity === 0) {
+      // On leave all week: not on the bench, but any work planned for them is too much.
+      if (hours > 0) overUtilized++;
+    } else if (hours === 0) onBench++;
+    else if (pct < u.thresholds.underUtilizedPct) underUtilized++;
+    else if (pct > u.thresholds.overUtilizedPct) overUtilized++;
   }
   return {
     window: windowOf(u),
@@ -173,7 +191,7 @@ function kpis(u: Utilization) {
     overUtilized,
     onBench,
     unscheduledTasks: u.unscheduledTasks,
-    thresholds: { underUtilizedPct: UNDER_UTILIZED_PCT, overUtilizedPct: OVER_UTILIZED_PCT },
+    thresholds: u.thresholds satisfies Thresholds,
   };
 }
 
@@ -182,11 +200,12 @@ function demandVsAvailability(u: Utilization) {
     window: windowOf(u),
     weeks: u.weeks.map((week) => {
       const demand = u.weekDemand.get(week) ?? 0;
-      const demandPct = utilizationPct(demand, u.teamCapacity);
+      const capacity = u.teamCapacityIn(week);
+      const demandPct = utilizationPct(demand, capacity);
       return {
         weekStart: week,
         isCurrent: week === u.currentWeek,
-        capacityHours: round1(u.teamCapacity),
+        capacityHours: round1(capacity),
         demandHours: round1(demand),
         unassignedHours: round1(u.weekUnassigned.get(week) ?? 0),
         demandPct: round1(demandPct),
@@ -210,9 +229,18 @@ function departments(u: Utilization) {
 }
 
 function heatmap(u: Utilization) {
-  const cell = (week: string, hours: number, capacity: number) => {
+  const cell = (week: string, hours: number, capacity: number, leaveDays = 0) => {
     const pct = utilizationPct(hours, capacity);
-    return { weekStart: week, hours: round1(hours), pct: round1(pct), band: bandOf(pct) };
+    // Fully on leave: no percentage; any planned work makes the week over-allocated.
+    const band = capacity === 0 && leaveDays > 0 ? (hours > 0 ? 'over' : 'leave') : bandOf(pct);
+    return {
+      weekStart: week,
+      hours: round1(hours),
+      capacityHours: round1(capacity),
+      leaveDays,
+      pct: round1(pct),
+      band,
+    };
   };
   return {
     window: windowOf(u),
@@ -223,7 +251,9 @@ function heatmap(u: Utilization) {
       title: r.title,
       department: r.department,
       capacityHours: r.capacityHours,
-      cells: u.weeks.map((w) => cell(w, r.hoursByWeek.get(w) ?? 0, r.capacityHours)),
+      cells: u.weeks.map((w) =>
+        cell(w, r.hoursByWeek.get(w) ?? 0, r.capacityIn(w), r.leaveDays(w)),
+      ),
     })),
     // Sum of the people rows; unassigned work is reported on the demand chart instead.
     total: {
@@ -232,7 +262,8 @@ function heatmap(u: Utilization) {
         cell(
           w,
           u.rows.reduce((sum, r) => sum + (r.hoursByWeek.get(w) ?? 0), 0),
-          u.teamCapacity,
+          u.teamCapacityIn(w),
+          u.rows.reduce((sum, r) => sum + r.leaveDays(w), 0),
         ),
       ),
     },

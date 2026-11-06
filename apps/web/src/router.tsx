@@ -5,6 +5,7 @@ import { LegacyTaskRedirect } from './components/LegacyTaskRedirect';
 import { LeadsPage } from './pages/LeadsPage';
 import { RequireAuth } from './components/RequireAuth';
 import { ChangePasswordPage } from './pages/ChangePasswordPage';
+import { SecurityPage } from './pages/SecurityPage';
 import { ConnectPage } from './pages/ConnectPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
@@ -17,6 +18,7 @@ import { ProjectBoard, ProjectList, ProjectSprints } from './pages/project/Proje
 import { ProjectSettings } from './pages/project/ProjectSettings';
 import { ProjectSummary } from './pages/project/ProjectSummary';
 import { ReportsPage } from './pages/ReportsPage';
+import { AuditPage } from './pages/AuditPage';
 import { SignupPage } from './pages/SignupPage';
 import { TaskPage } from './pages/TaskPage';
 import { TeamsPage } from './pages/TeamsPage';
@@ -39,6 +41,14 @@ export const router = createBrowserRouter([
     element: (
       <RequireAuth>
         <ChangePasswordPage />
+      </RequireAuth>
+    ),
+  },
+  {
+    path: '/account/security',
+    element: (
+      <RequireAuth>
+        <SecurityPage />
       </RequireAuth>
     ),
   },
@@ -72,6 +82,7 @@ export const router = createBrowserRouter([
         ],
       },
       { path: 'reports', element: <ReportsPage /> },
+      { path: 'audit', element: <AuditPage /> },
       { path: 'leads', element: <LeadsPage /> },
       { path: '*', element: <p className="text-muted">Page not found.</p> },
     ],

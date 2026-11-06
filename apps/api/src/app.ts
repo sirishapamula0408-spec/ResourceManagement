@@ -19,6 +19,9 @@ import { reportsRouter } from './modules/reports/reports.router.js';
 import { attachmentsRouter } from './modules/tasks/attachments.router.js';
 import { tasksRouter } from './modules/tasks/tasks.router.js';
 import { teamsRouter } from './modules/teams/teams.router.js';
+import { leaveRouter } from './modules/leave/leave.router.js';
+import { settingsRouter } from './modules/settings/settings.router.js';
+import { auditRouter } from './modules/audit/audit.router.js';
 
 export function createApp() {
   const app = express();
@@ -50,6 +53,9 @@ export function createApp() {
   app.use('/api', viewerGuard);
   app.use('/api/people', peopleRouter);
   app.use('/api/teams', teamsRouter);
+  app.use('/api/leave', leaveRouter);
+  app.use('/api/settings', settingsRouter);
+  app.use('/api/audit', auditRouter);
   app.use('/api/projects', projectsRouter);
   app.use('/api/tasks', tasksRouter);
   app.use('/api/attachments', attachmentsRouter);

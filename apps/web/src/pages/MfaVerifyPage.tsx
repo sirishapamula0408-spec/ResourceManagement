@@ -4,32 +4,23 @@ import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { focusRing, SignInCard, SignInShell, TrustBadges } from '../components/SignInShell';
 import { ApiError, auth, safeNext } from '../lib/api';
 import { loginErrorMessage } from '../lib/loginForm';
-import {
-  CODE_LENGTH,
-  enterDigits,
-  isComplete,
-  readMfaState,
-  RESEND_COOLDOWN_SECONDS,
-  resendMfaCode,
-  verifyMfaCode,
-} from '../lib/mfa';
+import { CODE_LENGTH, enterDigits, isComplete, readMfaState, verifyMfaCode } from '../lib/mfa';
 
 const empty = () => Array<string>(CODE_LENGTH).fill('');
 
 function mfaErrorMessage(error: unknown) {
   if (error instanceof ApiError && error.status === 401) {
-    return 'That code is incorrect or has expired. Try again, or resend the code.';
-  }
-  if (error instanceof ApiError && error.status === 404) {
-    return 'Two-step verification isn’t available yet. Contact your administrator.';
+    return (error.details as { code?: string } | undefined)?.code === 'MFA_TOKEN_EXPIRED'
+      ? 'Your sign-in has expired. Go back and sign in again.'
+      : 'That code is incorrect or has expired. Enter the code the app shows now.';
   }
   return loginErrorMessage(error);
 }
 
 /**
- * Second sign-in step: a 6-digit code (boxes advance as you type, and a pasted code fills them
- * all), "Resend code" with a 30-second cooldown and "Use a different method". Reached from the
- * sign-in page when the API asks for MFA; opened directly, it goes back to sign-in.
+ * Second sign-in step: the 6-digit code from Microsoft Authenticator (boxes advance as you
+ * type, and a pasted code fills them all), and help for someone without their phone. Reached
+ * from the sign-in page when the API asks for MFA; opened directly, it goes back to sign-in.
  */
 export function MfaVerifyPage() {
   const location = useLocation();
@@ -37,16 +28,9 @@ export function MfaVerifyPage() {
   const queryClient = useQueryClient();
   const mfa = readMfaState(location.state);
   const [digits, setDigits] = useState(empty);
-  const [cooldown, setCooldown] = useState(RESEND_COOLDOWN_SECONDS);
   const [otherMethod, setOtherMethod] = useState(false);
   const boxes = useRef<(HTMLInputElement | null)[]>([]);
   const bannerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = setTimeout(() => setCooldown((c) => c - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [cooldown]);
 
   const verify = useMutation({
     mutationFn: (code: string) => verifyMfaCode(mfa!.mfaToken, code),
@@ -59,11 +43,7 @@ export function MfaVerifyPage() {
     },
     onError: () => setDigits(empty()),
   });
-  const resend = useMutation({
-    mutationFn: () => resendMfaCode(mfa!.mfaToken),
-    onMutate: () => setCooldown(RESEND_COOLDOWN_SECONDS),
-  });
-  const error = verify.error ?? resend.error;
+  const error = verify.error;
 
   useEffect(() => {
     if (error) bannerRef.current?.focus();
@@ -113,7 +93,7 @@ export function MfaVerifyPage() {
       <SignInCard>
         <h1 className="text-[1.55rem] font-bold text-[#0b1f5c]">Verify it’s you</h1>
         <p className="mb-[clamp(0.75rem,2vh,1.25rem)] text-[13px] text-[#3b4867]">
-          Enter the 6-digit code we sent to {mfa.destination ?? 'you'}.
+          Open Microsoft Authenticator on your phone and enter the 6-digit code shown for SedHub.
         </p>
 
         {error && (
@@ -169,29 +149,22 @@ export function MfaVerifyPage() {
         </form>
 
         <div className="mt-[clamp(0.75rem,2vh,1.25rem)] flex items-center justify-between text-[13px]">
-          <button
-            type="button"
-            className={link}
-            disabled={cooldown > 0 || resend.isPending}
-            onClick={() => resend.mutate()}
-          >
-            {cooldown > 0 ? `Resend code (${cooldown}s)` : 'Resend code'}
-          </button>
+          <Link to="/login" className={link}>
+            Back to sign in
+          </Link>
           <button
             type="button"
             className={link}
             aria-expanded={otherMethod}
             onClick={() => setOtherMethod((o) => !o)}
           >
-            Use a different method
+            Don’t have your phone?
           </button>
         </div>
-        <p role="status" className="sr-only">
-          {resend.isSuccess ? 'A new code is on its way.' : ''}
-        </p>
         {otherMethod && (
           <p className="mt-3 rounded-md bg-[#eef3ff] px-3 py-2 text-sm text-[#1f2b4d]">
-            No other sign-in methods are set up for your account. Contact your administrator, or{' '}
+            Ask your administrator to reset two-step verification for your account. You can then
+            sign in with your password and set it up again on your new phone. Or{' '}
             <Link
               to="/login"
               className={`rounded font-medium text-[#1546d6] hover:underline ${focusRing}`}

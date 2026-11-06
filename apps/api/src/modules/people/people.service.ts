@@ -25,6 +25,7 @@ export async function listPeople(scope: { personId: string; projectIds: string[]
       role: true,
       title: true,
       weeklyCapacityHours: true,
+      mfaEnabled: true,
       department: { select: { id: true, name: true } },
       projectMemberships: {
         where: scope ? { projectId: { in: scope.projectIds } } : undefined,

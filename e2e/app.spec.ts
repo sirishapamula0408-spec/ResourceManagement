@@ -1,5 +1,7 @@
 import { expect, type Page, test } from '@playwright/test';
+import JSZip from 'jszip';
 import { E2E_ADMIN_EMAIL } from '../playwright.config';
+import { codeFor, stepAt } from '../apps/api/src/lib/totp';
 
 // Sample-data logins (see README); the e2e database is reset before every run.
 const ADMIN = { email: 'admin@resourceboard.local', password: 'Admin@12345' };
@@ -316,37 +318,76 @@ test('an expired session returns to sign-in with a notice, then to the page', as
   await expect(page).toHaveURL(/\/projects$/);
 });
 
-test('a sign-in that needs MFA continues on the code page', async ({ page }) => {
-  // The API has no MFA yet: answer the sign-in with a challenge and the code with a real session.
-  const real = await page.request.post('/api/auth/login', { data: PM });
-  const session = await real.json();
-  await page.route('**/api/auth/login', (route) =>
-    route.fulfill({
-      json: { mfaRequired: true, mfaToken: 'mfa-123', destination: 'p•••@resourceboard.local' },
-    }),
-  );
-  let verified: unknown;
-  await page.route('**/api/auth/mfa/verify', (route) => {
-    verified = route.request().postDataJSON();
-    return route.fulfill({ json: session });
+test('a person turns on Microsoft Authenticator, signs in with a code, and an admin resets it', async ({
+  page,
+}) => {
+  // A person of this test's own, with a password they chose.
+  const MFA_USER = { email: 'mfa.tester@resourceboard.local', password: 'Chosen1234' };
+  const admin = (await (await page.request.post('/api/auth/login', { data: ADMIN })).json()).token;
+  await page.request.post('/api/people', {
+    headers: { authorization: `Bearer ${admin}` },
+    data: { name: 'Mfa Tester', email: MFA_USER.email, password: 'Start1234' },
+  });
+  const temp = (
+    await (
+      await page.request.post('/api/auth/login', {
+        data: { email: MFA_USER.email, password: 'Start1234' },
+      })
+    ).json()
+  ).token;
+  await page.request.post('/api/auth/password', {
+    headers: { authorization: `Bearer ${temp}` },
+    data: { currentPassword: 'Start1234', newPassword: MFA_USER.password },
   });
 
-  await page.goto('/login?next=%2Fprojects');
-  await page.getByLabel('Work email').fill(PM.email);
-  await page.getByLabel('Password', { exact: true }).fill(PM.password);
+  // Set it up: the page shows a QR code and the key; the app's first code turns it on.
+  await signIn(page, MFA_USER, '/account/security');
+  await page.getByRole('button', { name: 'Set up Microsoft Authenticator' }).click();
+  await expect(
+    page.getByRole('img', { name: 'QR code to add SedHub to Microsoft Authenticator' }),
+  ).toBeVisible();
+  const secret = (await page.getByTestId('mfa-secret').textContent())!.replace(/\s/g, '');
+  await page.getByLabel('3. Enter the 6-digit code the app shows').fill('000000');
+  await page.getByRole('button', { name: 'Turn on' }).click();
+  await expect(page.getByRole('alert')).toContainText('That code doesn’t match');
+  await page.getByLabel('3. Enter the 6-digit code the app shows').fill(codeFor(secret, stepAt()));
+  await page.getByRole('button', { name: 'Turn on' }).click();
+  await expect(page.getByRole('status')).toContainText('Two-step verification is on');
+
+  // Sign out and in again: after the password, the code page; the next code signs in.
+  await page.goto('/projects');
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await page.getByLabel('Work email').fill(MFA_USER.email);
+  await page.getByLabel('Password', { exact: true }).fill(MFA_USER.password);
   await page.getByRole('button', { name: 'Sign in', exact: true }).click();
   await expect(page).toHaveURL(/\/login\/mfa$/);
   await expect(page.getByRole('heading', { name: 'Verify it’s you' })).toBeVisible();
-  await expect(page.getByText('p•••@resourceboard.local')).toBeVisible();
-  await expect(page.getByRole('button', { name: /Resend code \(\d+s\)/ })).toBeDisabled();
-
-  // Each digit moves to the next box; the sixth sends the code.
+  await expect(page.getByText('Open Microsoft Authenticator')).toBeVisible();
   await expect(page.getByLabel('Digit 1 of 6')).toBeFocused();
-  await page.keyboard.type('12345');
-  await expect(page.getByLabel('Digit 6 of 6')).toBeFocused();
-  await page.keyboard.type('6');
+  await page.keyboard.type('000000');
+  await expect(page.getByRole('alert')).toHaveText(
+    'That code is incorrect or has expired. Enter the code the app shows now.',
+  );
+  // The code used to turn it on is spent; the app's next code works (one step of drift allowed).
+  await page.getByLabel('Digit 1 of 6').focus();
+  await page.keyboard.type(codeFor(secret, stepAt() + 1));
   await expect(page).toHaveURL(/\/projects$/);
-  expect(verified).toEqual({ mfaToken: 'mfa-123', code: '123456' });
+
+  // Lost phone: an admin resets it from the person's dialog on the Team page.
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await signIn(page, ADMIN, '/teams');
+  await page
+    .getByRole('navigation', { name: 'people pages' })
+    .getByLabel('Rows per page')
+    .selectOption('25');
+  await page.getByRole('row', { name: /Mfa Tester/ }).click();
+  const d = dialog(page);
+  await expect(d).toContainText('Two-step verification: On');
+  page.once('dialog', (confirm) => confirm.accept());
+  await d.getByRole('button', { name: 'Reset two-step verification' }).click();
+  await expect(d).toContainText('Two-step verification: Off (reset)');
+  const relogin = await page.request.post('/api/auth/login', { data: MFA_USER });
+  expect((await relogin.json()).token).toBeTruthy();
 });
 
 test('the MFA page sends people without a challenge back to sign-in', async ({ page }) => {
@@ -363,6 +404,37 @@ test('dashboard shows the KPIs and the project filter applies to them', async ({
   // NOVA is non-billable, so filtering to it leaves no billable demand.
   await page.getByLabel('Project').selectOption({ label: 'Nova Data Platform' });
   await expect(kpi(page, 'Billable demand')).toContainText('0.0');
+});
+
+test('an admin changes the utilization limits and the KPI tiles follow', async ({ page }) => {
+  await signIn(page, ADMIN);
+  // The sample data sets 60% and 100%.
+  await expect(page.getByText('Under-utilized (<60%) this week')).toBeVisible();
+  await page.getByRole('button', { name: 'Limits' }).click();
+  let d = dialog(page);
+  await d.getByLabel('Under-utilized below (%)').fill('120');
+  await expect(d.getByRole('alert')).toHaveText(
+    'The under-utilized limit must be below the over-utilized limit.',
+  );
+  await d.getByLabel('Under-utilized below (%)').fill('55');
+  await d.getByLabel('Over-utilized above (%)').fill('120');
+  await d.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('Under-utilized (<55%) this week')).toBeVisible();
+  await expect(page.getByText('Over-utilized (>120%) this week')).toBeVisible();
+
+  // Put the sample limits back for the other tests.
+  await page.getByRole('button', { name: 'Limits' }).click();
+  d = dialog(page);
+  await d.getByLabel('Under-utilized below (%)').fill('60');
+  await d.getByLabel('Over-utilized above (%)').fill('100');
+  await d.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('Under-utilized (<60%) this week')).toBeVisible();
+});
+
+test('the Limits button is for admins only', async ({ page }) => {
+  await signIn(page, PM, '/dashboard');
+  await expect(page.getByText(/^Under-utilized \(<\d+%\) this week$/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Limits' })).toHaveCount(0);
 });
 
 test('a PM creates a task in the dialog, then edits it on its task page', async ({ page }) => {
@@ -542,6 +614,76 @@ test('an admin creates a team, changes its members and lead, then deletes it', a
   page.once('dialog', (confirm) => confirm.accept());
   await dialog(page).getByRole('button', { name: 'Delete team' }).click();
   await expect(page.getByRole('button', { name: 'Edit team E2E Crew' })).toHaveCount(0);
+});
+
+test('an admin records a week of leave; the dashboard shows it, then it is deleted', async ({
+  page,
+}) => {
+  // Monday to Friday of next week (UTC, like the app).
+  const now = new Date();
+  const monday = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + 7 - ((now.getUTCDay() + 6) % 7),
+    ),
+  );
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const friday = new Date(monday.getTime() + 4 * 86_400_000);
+
+  await signIn(page, ADMIN, '/teams');
+  await page.getByRole('button', { name: 'Add leave' }).click();
+  const d = dialog(page);
+  await d.getByLabel('Person').selectOption({ label: 'Arjun Mehta' });
+  await d.getByLabel('First day').fill(iso(monday));
+  await d.getByLabel('Last day').fill(iso(friday));
+  await d.getByLabel('Type').selectOption({ label: 'Training' });
+  await d.getByLabel('Note').fill('E2E course');
+  await expect(d).toContainText('5 working days');
+  await d.getByRole('button', { name: 'Save' }).click();
+  await expect(d).toHaveCount(0);
+  const row = page.getByRole('row', { name: /Arjun Mehta.*E2E course/ });
+  await expect(row).toContainText('Training');
+  await expect(row.getByRole('cell').nth(2)).toHaveText('5');
+
+  // The heat map shows the week as leave.
+  await page.getByRole('link', { name: 'Resource Dashboard' }).click();
+  await expect(page.getByTitle(/^Arjun Mehta · .* · 5 days of leave$/)).toHaveText('Leave');
+
+  await page.getByRole('link', { name: 'Team', exact: true }).click();
+  page.once('dialog', (confirm) => confirm.accept());
+  await row.getByRole('button', { name: 'Delete leave' }).click();
+  await expect(row).toHaveCount(0);
+});
+
+test('an admin finds a change and their own sign-in in the audit log', async ({ page }) => {
+  await signIn(page, ADMIN, '/teams');
+  await page.getByRole('button', { name: 'Add team' }).click();
+  const d = dialog(page);
+  await d.getByLabel('Team name').fill('E2E Audit');
+  await d.getByRole('button', { name: 'Save' }).click();
+  await expect(d).toHaveCount(0);
+
+  await page.getByRole('link', { name: 'Audit log' }).click();
+  await expect(page.getByRole('heading', { name: 'Audit log' })).toBeVisible();
+  await page.getByLabel('Area').selectOption({ label: 'Teams' });
+  const row = page.getByRole('row', { name: /Created team.*E2E Audit/ });
+  await expect(row).toContainText('Admin');
+  await page.getByLabel('Area').selectOption({ label: 'Sign-ins' });
+  await expect(page.getByRole('row', { name: /Signed in/ }).first()).toBeVisible();
+
+  // Tidy up.
+  await page.getByRole('link', { name: 'Team', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit team E2E Audit' }).click();
+  page.once('dialog', (confirm) => confirm.accept());
+  await dialog(page).getByRole('button', { name: 'Delete team' }).click();
+  await expect(page.getByRole('button', { name: 'Edit team E2E Audit' })).toHaveCount(0);
+});
+
+test('the audit log is for admins only', async ({ page }) => {
+  await signIn(page, PM, '/audit');
+  await expect(page.getByRole('link', { name: 'Audit log' })).toHaveCount(0);
+  await expect(page.getByText('Only admins can see the audit log.')).toBeVisible();
 });
 
 test('staffing is read-only for a PM', async ({ page }) => {
@@ -756,6 +898,22 @@ test('reports: weekly and monthly project status reports with CSV download', asy
   const bytes = Buffer.concat(await (await deck.createReadStream()).toArray());
   expect(bytes.subarray(0, 2).toString()).toBe('PK'); // a zip container, as .pptx files are
   expect(bytes.length).toBeGreaterThan(20_000);
+
+  // And as an Excel workbook with three sheets.
+  const [book] = await Promise.all([
+    page.waitForEvent('download'),
+    page.getByRole('button', { name: 'Download Excel' }).click(),
+  ]);
+  expect(book.suggestedFilename()).toMatch(/^project-status-\d{4}-W\d{2}\.xlsx$/);
+  await book.saveAs('test-results/report-weekly.xlsx');
+  const zip = await JSZip.loadAsync(Buffer.concat(await (await book.createReadStream()).toArray()));
+  const workbook = await zip.file('xl/workbook.xml')!.async('string');
+  expect(workbook.match(/<sheet name="[^"]+"/g)).toEqual([
+    '<sheet name="Projects"',
+    '<sheet name="Tasks"',
+    '<sheet name="Team hours"',
+  ]);
+  expect(await zip.file('xl/worksheets/sheet1.xml')!.async('string')).toContain('ATLAS');
 });
 
 const SALES = { email: 'rohan.gupta@resourceboard.local', password: 'Sales@12345' };

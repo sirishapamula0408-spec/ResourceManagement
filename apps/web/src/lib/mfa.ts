@@ -1,28 +1,24 @@
 import { api, type LoginResponse } from './api';
 
 /**
- * Second sign-in step (MFA). The API does not offer MFA yet: when it does, POST /auth/login
- * answers { mfaRequired: true, mfaToken } instead of a session, and the endpoints below finish
- * the sign-in. Until then nothing sends people here.
+ * Second sign-in step (MFA) with an authenticator app such as Microsoft Authenticator. For
+ * people who have turned it on, POST /auth/login answers { mfaRequired: true, mfaToken }
+ * instead of a session, and POST /auth/mfa/verify finishes the sign-in with the app's code.
  */
 
 export const CODE_LENGTH = 6;
-export const RESEND_COOLDOWN_SECONDS = 30;
 
 /** What the sign-in page passes to the MFA page in router state. */
 export interface MfaState {
   mfaToken: string;
   next: string | null;
   remember: boolean;
-  /** Where the code went, already masked by the API, e.g. "p•••@company.com". */
-  destination?: string;
 }
 
 /** Sign-in answer when a second step is needed. */
 export interface MfaChallenge {
   mfaRequired: true;
   mfaToken: string;
-  destination?: string;
 }
 
 export const needsMfa = (res: LoginResponse | MfaChallenge): res is MfaChallenge =>
@@ -36,7 +32,6 @@ export function readMfaState(state: unknown): MfaState | null {
         mfaToken: s.mfaToken,
         next: s.next ?? null,
         remember: !!s.remember,
-        destination: s.destination,
       }
     : null;
 }
@@ -64,14 +59,27 @@ export function enterDigits(
 export const isComplete = (digits: string[]) =>
   digits.length === CODE_LENGTH && digits.every((d) => /^\d$/.test(d));
 
-// TODO(MFA): the API has no MFA endpoints yet. Add POST /api/auth/mfa/verify
-// ({ mfaToken, code } -> LoginResponse, 401 for a wrong or expired code) and
-// POST /api/auth/mfa/resend ({ mfaToken } -> 204, rate-limited). These calls are ready for them.
+/** 401 for a wrong, reused or expired code (or an expired sign-in), 423 after too many. */
 export const verifyMfaCode = (mfaToken: string, code: string) =>
   api<LoginResponse>('/auth/mfa/verify', {
     method: 'POST',
     body: JSON.stringify({ mfaToken, code }),
   });
 
-export const resendMfaCode = (mfaToken: string) =>
-  api<void>('/auth/mfa/resend', { method: 'POST', body: JSON.stringify({ mfaToken }) });
+/** Setting it up on your account (Account page). */
+export interface MfaSetup {
+  /** The key in groups of four, for typing into the app instead of scanning. */
+  secret: string;
+  account: string;
+  issuer: string;
+  otpauthUrl: string;
+  /** QR code of otpauthUrl, as SVG markup from the API. */
+  qrSvg: string;
+}
+
+export const mfaStatus = () => api<{ enabled: boolean }>('/auth/mfa');
+export const startMfaSetup = () => api<MfaSetup>('/auth/mfa/setup', { method: 'POST' });
+export const enableMfa = (code: string) =>
+  api<void>('/auth/mfa/enable', { method: 'POST', body: JSON.stringify({ code }) });
+export const disableMfa = (password: string) =>
+  api<void>('/auth/mfa/disable', { method: 'POST', body: JSON.stringify({ password }) });

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Checklist, Dialog, Field } from '../components/Dialog';
+import { LeaveSection } from '../components/LeaveSection';
 import { PageHeader } from '../components/PageHeader';
 import { Pagination } from '../components/Pagination';
 import { RowActions } from '../components/RowActions';
@@ -95,6 +96,10 @@ function PersonDialog({
     mutationFn: () => api(`/people/${person!.id}`, { method: 'DELETE' }),
     onSuccess: done,
   });
+  const resetMfa = useMutation({
+    mutationFn: () => api(`/people/${person!.id}/mfa`, { method: 'DELETE' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['people'] }),
+  });
 
   return (
     <Dialog
@@ -105,7 +110,11 @@ function PersonDialog({
       deleteLabel="Remove from team"
       deleteConfirm={`Remove ${person?.name ?? 'this person'} from the team? Their open tasks become unassigned.`}
       saving={save.isPending || remove.isPending}
-      error={save.error || remove.error ? errorMessage(save.error ?? remove.error) : null}
+      error={
+        save.error || remove.error || resetMfa.error
+          ? errorMessage(save.error ?? remove.error ?? resetMfa.error)
+          : null
+      }
     >
       <Field label="Name" full>
         <input
@@ -186,6 +195,33 @@ function PersonDialog({
           ? 'A new password must be changed at their next sign-in.'
           : 'Share it with them; they choose their own at first sign-in.'}
       </p>
+      {person && (
+        <div className="flex items-center justify-between gap-3 text-xs text-muted sm:col-span-2">
+          <span>
+            Two-step verification:{' '}
+            <b className="text-ink">
+              {resetMfa.isSuccess ? 'Off (reset)' : person.mfaEnabled ? 'On' : 'Off'}
+            </b>
+          </span>
+          {isAdmin && person.mfaEnabled && !resetMfa.isSuccess && (
+            <button
+              type="button"
+              className={buttonClass()}
+              disabled={resetMfa.isPending}
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Reset two-step verification for ${person.name}? They sign in with just their password until they set it up again.`,
+                  )
+                )
+                  resetMfa.mutate();
+              }}
+            >
+              Reset two-step verification
+            </button>
+          )}
+        </div>
+      )}
       <Checklist
         label="Projects"
         options={projects.map((p) => ({
@@ -482,6 +518,8 @@ export function TeamsPage() {
         </div>
         <Pagination paged={paged} noun="people" />
       </section>
+
+      <LeaveSection people={people} />
 
       <section className="min-w-0 rounded-lg border border-line bg-panel shadow-[0_1px_0_rgba(23,35,59,0.06)]">
         <h2 className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-3 text-sm font-semibold">

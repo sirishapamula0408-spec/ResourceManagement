@@ -56,7 +56,7 @@ export function reportToCsv(report: StatusReport): string {
 }
 
 /** e.g. "project-status-2026-W43.csv" or "project-status-2026-10.pptx". */
-export function reportFileName(report: StatusReport, ext: 'csv' | 'pptx' = 'csv'): string {
+export function reportFileName(report: StatusReport, ext: 'csv' | 'pptx' | 'xlsx' = 'csv'): string {
   const { type, start, label } = report.period;
   if (type === 'month') return `project-status-${start.slice(0, 7)}.${ext}`;
   const week = label.match(/Week (\d+)/)?.[1] ?? start;

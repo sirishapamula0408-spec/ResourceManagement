@@ -12,17 +12,45 @@ import {
 } from '../../lib/theme';
 
 type Heatmap = DashboardOverview['heatmap'];
+type Cell = Heatmap['total']['cells'][number];
 
 const avg = (values: number[]) =>
   values.length ? values.reduce((a, b) => a + b, 0) / values.length : 0;
 
-function HeatCell({ pct, title }: { pct: number; title?: string }) {
+/** Weeks fully on leave have no percentage, so they are left out of the average. */
+const avgPct = (cells: Cell[]) =>
+  avg(cells.filter((c) => c.capacityHours > 0 || c.hours > 0).map((c) => c.pct));
+
+const tip = (who: string, c: Cell) =>
+  `${who} · ${shortDate(c.weekStart)}: ${fmt(c.hours, 1)} of ${fmt(c.capacityHours, 1)} h` +
+  (c.leaveDays ? ` · ${c.leaveDays} day${c.leaveDays === 1 ? '' : 's'} of leave` : '');
+
+function HeatCell({ pct, title, cell }: { pct: number; title?: string; cell?: Cell }) {
+  if (cell && cell.capacityHours === 0 && cell.leaveDays > 0) {
+    // On leave all week: planned work is over-allocation; otherwise just "Leave".
+    return (
+      <td
+        className={`rounded-[3px] px-1.5 py-[7px] text-center font-semibold whitespace-nowrap ${cell.hours > 0 ? HEAT_CLASS[4] : 'bg-panel2 text-muted italic'}`}
+        title={title}
+      >
+        Leave
+      </td>
+    );
+  }
   return (
     <td
       className={`rounded-[3px] px-1.5 py-[7px] text-center font-semibold whitespace-nowrap ${HEAT_CLASS[heatLevel(pct)]}`}
       title={title}
     >
       {fmt(pct, 1)}
+      {cell && cell.leaveDays > 0 && (
+        <sup
+          className="ml-0.5 font-normal text-muted"
+          aria-label={`${cell.leaveDays} days of leave`}
+        >
+          L
+        </sup>
+      )}
     </td>
   );
 }
@@ -37,14 +65,13 @@ export function UtilizationHeat({
   currentWeek: string;
 }) {
   const names = heatmap.rows.map((r) => r.name);
-  const teamPcts = heatmap.total.cells.map((c) => c.pct);
 
   return (
     <Panel
       title="Utilization by person"
       note={
         <>
-          allocated hours ÷ weekly capacity ·{' '}
+          allocated hours ÷ weekly capacity after leave (L) ·{' '}
           {HEAT_LEGEND.map(({ level, label }) => (
             <span key={level} className="mr-1.5">
               <Swatch className={HEAT_CLASS[level]} />
@@ -77,13 +104,9 @@ export function UtilizationHeat({
             <td className="border-t border-line py-[7px] text-left">
               <b>Team total</b>
             </td>
-            <HeatCell pct={avg(teamPcts)} />
+            <HeatCell pct={avgPct(heatmap.total.cells)} />
             {heatmap.total.cells.map((c) => (
-              <HeatCell
-                key={c.weekStart}
-                pct={c.pct}
-                title={`Team · ${shortDate(c.weekStart)}: ${fmt(c.hours, 1)} of ${fmt(heatmap.total.capacityHours)} h`}
-              />
+              <HeatCell key={c.weekStart} pct={c.pct} cell={c} title={tip('Team', c)} />
             ))}
           </tr>
           {heatmap.rows.map((r) => (
@@ -105,13 +128,9 @@ export function UtilizationHeat({
                   </span>
                 </div>
               </td>
-              <HeatCell pct={avg(r.cells.map((c) => c.pct))} />
+              <HeatCell pct={avgPct(r.cells)} />
               {r.cells.map((c) => (
-                <HeatCell
-                  key={c.weekStart}
-                  pct={c.pct}
-                  title={`${r.name} · ${shortDate(c.weekStart)}: ${fmt(c.hours, 1)} of ${fmt(r.capacityHours)} h`}
-                />
+                <HeatCell key={c.weekStart} pct={c.pct} cell={c} title={tip(r.name, c)} />
               ))}
             </tr>
           ))}

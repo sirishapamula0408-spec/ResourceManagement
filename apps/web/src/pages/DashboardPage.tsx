@@ -3,11 +3,13 @@ import { useState } from 'react';
 import { DemandBars } from '../components/dashboard/DemandBars';
 import { DepartmentDonut } from '../components/dashboard/DepartmentDonut';
 import { KpiStrip } from '../components/dashboard/KpiStrip';
+import { LimitsDialog } from '../components/dashboard/LimitsDialog';
 import { UtilizationHeat } from '../components/dashboard/UtilizationHeat';
 import { shortDate } from '../lib/theme';
 import { PageHeader } from '../components/PageHeader';
 import {
   api,
+  auth,
   isTeamMember,
   type DashboardOverview,
   type Department,
@@ -29,6 +31,8 @@ export function DashboardPage() {
   const [projectId, setProjectId] = useState('');
   // undefined = the API's default window (two weeks back, six forward)
   const [from, setFrom] = useState<string>();
+  const [editingLimits, setEditingLimits] = useState(false);
+  const isAdmin = auth.getUser()?.role === 'ADMIN';
 
   const { data, isLoading, error, isPlaceholderData } = useQuery({
     queryKey: ['dashboard', 'overview', { projectId, from }],
@@ -96,7 +100,15 @@ export function DashboardPage() {
             Later →
           </button>
         </div>
+        {isAdmin && (
+          <button className={control} onClick={() => setEditingLimits(true)}>
+            Limits
+          </button>
+        )}
       </PageHeader>
+      {editingLimits && (
+        <LimitsDialog limits={data.kpis.thresholds} onClose={() => setEditingLimits(false)} />
+      )}
 
       <div className={`transition-opacity ${isPlaceholderData ? 'opacity-60' : ''}`}>
         {unscheduledTasks > 0 && (

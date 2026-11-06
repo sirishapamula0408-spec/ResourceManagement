@@ -6,6 +6,7 @@ import { HttpError, parse } from '../../lib/http.js';
 import { passwordSchema } from '../../lib/permissions.js';
 import { requireAuth } from '../../middleware/auth.js';
 import * as service from './auth.service.js';
+import * as mfa from './mfa.service.js';
 
 const loginSchema = z.object({
   email: z.email(),
@@ -17,6 +18,10 @@ const signupSchema = z.object({
   email: z.email(),
   password: passwordSchema,
 });
+
+const mfaVerifySchema = z.object({ mfaToken: z.string().min(1), code: z.string().trim() });
+const codeSchema = z.object({ code: z.string().trim() });
+const passwordOnlySchema = z.object({ password: z.string().min(1) });
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
@@ -63,6 +68,42 @@ authRouter.post('/login', loginIpLimit, async (req, res) => {
     }
     throw err;
   }
+});
+
+// Second sign-in step for people with two-step verification on. Wrong codes also count
+// against the per-address limit.
+authRouter.post('/mfa/verify', loginIpLimit, async (req, res) => {
+  const { mfaToken, code } = parse(mfaVerifySchema, req.body);
+  try {
+    res.json(await service.verifyMfa(mfaToken, code, req.ip));
+  } catch (err) {
+    const retry = (err as HttpError).details as { retryAfterSeconds?: number } | undefined;
+    if (err instanceof HttpError && err.status === 423 && retry?.retryAfterSeconds) {
+      res.set('Retry-After', String(retry.retryAfterSeconds));
+    }
+    throw err;
+  }
+});
+
+// Your own two-step verification: status, set-up (QR code, then a first code), turning it off.
+authRouter.get('/mfa', requireAuth, async (req, res) => {
+  res.json(await mfa.status(req.user!.id));
+});
+
+authRouter.post('/mfa/setup', requireAuth, async (req, res) => {
+  res.json(await mfa.startSetup(req.user!.id));
+});
+
+authRouter.post('/mfa/enable', requireAuth, async (req, res) => {
+  await mfa.enable(req.user!.id, parse(codeSchema, req.body).code);
+  await service.audit('auth.mfa_enabled', req.user!.id, req.ip);
+  res.status(204).end();
+});
+
+authRouter.post('/mfa/disable', requireAuth, async (req, res) => {
+  await mfa.disable(req.user!.id, parse(passwordOnlySchema, req.body).password);
+  await service.audit('auth.mfa_disabled', req.user!.id, req.ip);
+  res.status(204).end();
 });
 
 // Whether the login page offers sign-up, and for which email domains.

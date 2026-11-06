@@ -9,7 +9,7 @@
 
 const DAY_MS = 86_400_000;
 
-/** KPI thresholds. TODO(M2): read from AlertThreshold so admins can configure them. */
+/** Default KPI limits; admins can change them (settings/thresholds.service.ts). */
 export const UNDER_UTILIZED_PCT = 70;
 export const OVER_UTILIZED_PCT = 100;
 /** Hours in one FTE week, used for "average FTE per week" on the department donut. */

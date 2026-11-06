@@ -200,13 +200,38 @@ export interface DashboardWindow {
   currentWeek: string;
 }
 
-export type UtilizationBand = 'low' | 'moderate' | 'healthy' | 'over';
+/** 'leave': on leave all week with nothing planned (no percentage to show). */
+export type UtilizationBand = 'low' | 'moderate' | 'healthy' | 'over' | 'leave';
 
 export interface HeatmapCell {
   weekStart: string;
   hours: number;
   pct: number;
   band: UtilizationBand;
+  /** This week's capacity after leave. */
+  capacityHours: number;
+  /** Working days of leave in the week (the team row adds everyone's). */
+  leaveDays: number;
+}
+
+export type LeaveType = 'VACATION' | 'SICK' | 'PUBLIC_HOLIDAY' | 'TRAINING' | 'OTHER';
+
+export const LEAVE_TYPE_LABEL: Record<LeaveType, string> = {
+  VACATION: 'Vacation',
+  SICK: 'Sick',
+  PUBLIC_HOLIDAY: 'Public holiday',
+  TRAINING: 'Training',
+  OTHER: 'Other',
+};
+
+export interface Leave {
+  id: string;
+  personId: string;
+  person: { id: string; name: string };
+  startDate: string;
+  endDate: string;
+  type: LeaveType;
+  note: string | null;
 }
 
 /** GET /dashboard/overview - every widget on the dashboard, from one load. */
@@ -404,6 +429,8 @@ export interface Person {
   role: Role;
   title: string | null;
   weeklyCapacityHours: string;
+  /** Two-step verification (Microsoft Authenticator) is on. */
+  mfaEnabled?: boolean;
   department: { id: string; name: string } | null;
   projects: { id: string; code: string; name: string }[];
 }

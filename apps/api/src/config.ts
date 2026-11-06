@@ -33,6 +33,11 @@ const schema = z.object({
    * Defaults to apps/api/uploads. In Docker, mount a volume here so files survive restarts.
    */
   UPLOAD_DIR: z.preprocess((v) => v || undefined, z.string().optional()),
+  /**
+   * Key for encrypting authenticator (MFA) secrets in the database. Optional: derived from
+   * JWT_SECRET when unset. Changing it (or JWT_SECRET without it) means people set up MFA again.
+   */
+  MFA_ENCRYPTION_KEY: z.preprocess((v) => v || undefined, z.string().min(16).optional()),
   /** Largest attachment accepted, in megabytes. */
   MAX_UPLOAD_MB: z.coerce.number().positive().max(1024).default(10),
 });

@@ -89,7 +89,7 @@ export function salesAreaGuard(req: Request, _res: Response, next: NextFunction)
 }
 
 /** API areas a viewer may not even read: the pages they lead to are not theirs either. */
-const VIEWER_HIDDEN = ['/api/dashboard', '/api/reports', '/api/teams', '/api/leads'];
+const VIEWER_HIDDEN = ['/api/dashboard', '/api/reports', '/api/teams', '/api/leave', '/api/leads'];
 
 /**
  * Personal things a viewer may still change: their own sign-in and password, connector

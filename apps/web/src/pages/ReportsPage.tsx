@@ -14,6 +14,7 @@ import {
 import { buttonClass } from '../lib/forms';
 import { downloadText, reportFileName, reportToCsv } from '../lib/reportCsv';
 import { downloadReportPptx } from '../lib/reportPptx';
+import { downloadReportXlsx } from '../lib/reportXlsx';
 import { fmt } from '../lib/theme';
 
 type PeriodType = 'week' | 'month';
@@ -335,6 +336,25 @@ export function ReportsPage() {
             onClick={() => report && downloadText(reportFileName(report), reportToCsv(report))}
           >
             Download CSV
+          </button>
+          <button
+            type="button"
+            className={buttonClass()}
+            disabled={!report?.projects.length || exporting}
+            onClick={async () => {
+              if (!report) return;
+              setExporting(true);
+              setExportError(null);
+              try {
+                await downloadReportXlsx(report, reportFileName(report, 'xlsx'));
+              } catch {
+                setExportError('The Excel file couldn’t be created. Try again.');
+              } finally {
+                setExporting(false);
+              }
+            }}
+          >
+            Download Excel
           </button>
           <button
             type="button"
