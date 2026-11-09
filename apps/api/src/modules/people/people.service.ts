@@ -26,6 +26,9 @@ export async function listPeople(scope: { personId: string; projectIds: string[]
       title: true,
       weeklyCapacityHours: true,
       mfaEnabled: true,
+      // Read only to tell who hasn't accepted their invitation yet; never sent.
+      passwordHash: true,
+      inviteExpiresAt: true,
       department: { select: { id: true, name: true } },
       projectMemberships: {
         where: scope ? { projectId: { in: scope.projectIds } } : undefined,
@@ -34,8 +37,10 @@ export async function listPeople(scope: { personId: string; projectIds: string[]
       },
     },
   });
-  return people.map(({ projectMemberships, ...p }) => ({
+  return people.map(({ projectMemberships, passwordHash, ...p }) => ({
     ...p,
+    /** Added by invitation and hasn't set a password yet. */
+    invitePending: !passwordHash,
     projects: projectMemberships.map((m) => m.project),
   }));
 }
@@ -43,6 +48,10 @@ export async function listPeople(scope: { personId: string; projectIds: string[]
 export async function isAdmin(id: string) {
   const person = await prisma.person.findUnique({ where: { id }, select: { role: true } });
   return person?.role === 'ADMIN';
+}
+
+export async function personName(id: string) {
+  return (await prisma.person.findUnique({ where: { id }, select: { name: true } }))?.name;
 }
 
 export function listDepartments() {
@@ -57,7 +66,10 @@ export interface PersonInput {
   /** Department by name; created if new (like the prototype's free-text department). */
   department?: string | null;
   weeklyCapacityHours?: number;
-  /** Temporary password chosen by whoever adds or resets the person. */
+  /**
+   * Temporary password chosen by whoever adds or resets the person. A new person added without
+   * one is invited by email instead and chooses their own.
+   */
   password?: string;
 }
 
@@ -72,11 +84,17 @@ async function departmentId(name: string | null | undefined) {
 async function passwordFields(password: string | undefined) {
   return password === undefined
     ? {}
-    : { passwordHash: await hashPassword(password), mustChangePassword: true };
+    : {
+        passwordHash: await hashPassword(password),
+        mustChangePassword: true,
+        // A password set by an admin replaces any pending invitation.
+        inviteTokenHash: null,
+        inviteExpiresAt: null,
+      };
 }
 
 // Never send password hashes back to the client.
-const omitSecrets = { passwordHash: true } as const;
+const omitSecrets = { passwordHash: true, inviteTokenHash: true } as const;
 
 export async function createPerson({ department, password, ...input }: PersonInput) {
   return prisma.person.create({

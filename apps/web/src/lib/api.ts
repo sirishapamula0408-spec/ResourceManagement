@@ -431,6 +431,10 @@ export interface Person {
   weeklyCapacityHours: string;
   /** Two-step verification (Microsoft Authenticator) is on. */
   mfaEnabled?: boolean;
+  /** Invited by email and hasn't accepted (set a password) yet. */
+  invitePending?: boolean;
+  /** When the current invitation link stops working. */
+  inviteExpiresAt?: string | null;
   department: { id: string; name: string } | null;
   projects: { id: string; code: string; name: string }[];
 }

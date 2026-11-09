@@ -9,6 +9,7 @@ import { SecurityPage } from './pages/SecurityPage';
 import { ConnectPage } from './pages/ConnectPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { InvitePage } from './pages/InvitePage';
 import { LoginPage } from './pages/LoginPage';
 import { MfaVerifyPage } from './pages/MfaVerifyPage';
 import { ProjectsPage } from './pages/ProjectsPage';
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
   { path: '/login/mfa', element: <MfaVerifyPage /> },
   { path: '/forgot-password', element: <ForgotPasswordPage /> },
   { path: '/signup', element: <SignupPage /> },
+  { path: '/invite/:token', element: <InvitePage /> },
   {
     path: '/connect',
     element: (

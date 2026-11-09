@@ -6,6 +6,7 @@ import { audit } from '../../lib/audit.js';
 import { passwordSchema, STAFFING_ROLES } from '../../lib/permissions.js';
 import { visibleProjectIds } from '../../lib/visibility.js';
 import { requireRole } from '../../middleware/auth.js';
+import * as invites from '../auth/invite.service.js';
 import * as mfa from '../auth/mfa.service.js';
 import * as service from './people.service.js';
 
@@ -23,8 +24,9 @@ const personSchema = z.object({
   password: passwordSchema.optional(),
 });
 
-// A new person needs a temporary password so they can sign in.
-const createSchema = personSchema.required({ password: true });
+// A new person gets either a temporary password or, without one, an email invitation to choose
+// their own.
+const createSchema = personSchema;
 
 const projectsSchema = z.object({ projectIds: z.array(z.string().min(1)) });
 
@@ -52,8 +54,31 @@ peopleRouter.post('/', ...canEdit, async (req, res) => {
   if (input.role && input.role !== 'MEMBER')
     onlyAdmin(req, 'Only an admin can give a new person a role other than Team member');
   const person = await service.createPerson(input);
-  await audit(req, 'person.create', 'Person', person.id, { after: input });
-  res.status(201).json(person);
+  await audit(req, 'person.create', 'Person', person.id, {
+    after: { ...input, invited: !input.password },
+  });
+  if (input.password) {
+    res.status(201).json(person);
+    return;
+  }
+  const invite = await invites.sendInvite(person.id, await inviterName(req.user!.id));
+  await audit(req, 'person.invite', 'Person', person.id);
+  res.status(201).json({ ...person, invitePending: true, ...invite });
+});
+
+async function inviterName(id: string) {
+  return (await service.personName(id)) ?? undefined;
+}
+
+// Send the invitation email again, with a new link (the old one stops working).
+peopleRouter.post('/:id/invite', ...canEdit, async (req, res) => {
+  const id = String(req.params.id);
+  if (req.user?.role !== 'ADMIN' && (await service.isAdmin(id))) {
+    throw new HttpError(403, 'Only an admin can invite an admin');
+  }
+  const invite = await invites.sendInvite(id, await inviterName(req.user!.id));
+  await audit(req, 'person.invite', 'Person', id);
+  res.json(invite);
 });
 
 peopleRouter.patch('/:id', ...canEdit, async (req, res) => {

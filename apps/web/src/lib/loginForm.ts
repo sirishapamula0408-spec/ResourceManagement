@@ -48,6 +48,7 @@ export const MESSAGES = {
   disabled: 'This account is disabled. Contact your administrator.',
   unreachable: 'We couldn’t reach the server. Check your connection and try again.',
   expired: 'Your session expired. Please sign in again.',
+  invited: 'Your password is set. Sign in to get started.',
 } as const;
 
 const minutes = (n: number) => `${n} minute${n === 1 ? '' : 's'}`;
@@ -80,7 +81,9 @@ export function loginErrorMessage(error: unknown): string {
 
 /** Info shown above the form when the page was opened for a reason, e.g. `?reason=expired`. */
 export function signInNotice(reason: string | null): string | undefined {
-  return reason === 'expired' ? MESSAGES.expired : undefined;
+  if (reason === 'expired') return MESSAGES.expired;
+  if (reason === 'invited') return MESSAGES.invited;
+  return undefined;
 }
 
 /** Whether Caps Lock is on, from a keyboard event (false when the browser can't tell). */

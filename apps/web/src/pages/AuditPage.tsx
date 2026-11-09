@@ -37,6 +37,8 @@ const ACTION_LABEL: Record<string, string> = {
   'auth.mfa_enabled': 'Turned on two-step verification',
   'auth.mfa_disabled': 'Turned off two-step verification',
   'person.mfa_reset': 'Reset two-step verification',
+  'person.invite': 'Sent invitation',
+  'auth.invite_accepted': 'Accepted invitation',
   'task.create': 'Created task',
   'task.update': 'Changed task',
   'task.delete': 'Deleted task',
