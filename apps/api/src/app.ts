@@ -22,6 +22,7 @@ import { teamsRouter } from './modules/teams/teams.router.js';
 import { leaveRouter } from './modules/leave/leave.router.js';
 import { settingsRouter } from './modules/settings/settings.router.js';
 import { auditRouter } from './modules/audit/audit.router.js';
+import { jiraRouter } from './modules/jira/jira.router.js';
 
 export function createApp() {
   const app = express();
@@ -56,6 +57,7 @@ export function createApp() {
   app.use('/api/leave', leaveRouter);
   app.use('/api/settings', settingsRouter);
   app.use('/api/audit', auditRouter);
+  app.use('/api/jira', jiraRouter);
   app.use('/api/projects', projectsRouter);
   app.use('/api/tasks', tasksRouter);
   app.use('/api/attachments', attachmentsRouter);

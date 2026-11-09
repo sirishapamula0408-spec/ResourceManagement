@@ -7,7 +7,9 @@ import * as service from './audit.service.js';
 const day = z.iso.date().transform((s) => new Date(`${s}T00:00:00Z`));
 
 const auditQuery = z.object({
-  area: z.enum(['task', 'auth', 'person', 'project', 'team', 'leave', 'settings']).optional(),
+  area: z
+    .enum(['task', 'auth', 'person', 'project', 'team', 'leave', 'settings', 'jira'])
+    .optional(),
   actorId: z.string().min(1).optional(),
   from: day.optional(),
   to: day.optional(),

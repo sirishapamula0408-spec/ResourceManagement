@@ -41,6 +41,7 @@ import {
 import { buttonClass, errorMessage, inputClass } from '../lib/forms';
 import { fmt } from '../lib/theme';
 import { ProjectSidebar, type ProjectView } from './project/ProjectSidebar';
+import { JiraLink } from '../components/JiraLink';
 
 const PRIORITIES: TaskPriority[] = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'];
 const TYPES: TaskType[] = ['STORY', 'TASK', 'BUG', 'SUPPORT'];
@@ -306,6 +307,7 @@ export function TaskPage() {
                 </>
               )}
               /<span className="font-semibold text-ink">{task.key}</span>
+              {task.jiraKey && <JiraLink issueKey={task.jiraKey} />}
             </nav>
             <EditableTitle
               value={task.title}
