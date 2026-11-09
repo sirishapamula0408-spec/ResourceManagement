@@ -59,12 +59,14 @@ export function diff(before: Snapshot, after: Snapshot) {
 
 /** Record one entry; changes with no tracked difference are skipped. */
 export async function record(
-  actorId: string,
+  actorId: string | null,
   taskId: string,
   action:
     'task.create' | 'task.update' | 'task.delete' | 'task.worklog' | 'task.attach' | 'task.detach',
   before: Record<string, unknown> | null,
   after: Record<string, unknown> | null,
+  /** "jira" when the JIRA sync made the change (no actor). */
+  via?: string,
 ) {
   const asPlain = (snap: Record<string, unknown> | null) =>
     snap && Object.fromEntries(Object.entries(snap).map(([k, v]) => [k, plain(v)]));
@@ -76,6 +78,7 @@ export async function record(
   await prisma.auditLog.create({
     data: {
       actorId,
+      via,
       action,
       entityType: 'Task',
       entityId: taskId,
@@ -165,7 +168,7 @@ export async function listHistory(user: AuthUser, taskId: string) {
       id: r.id,
       action: r.action.replace('task.', ''),
       at: r.createdAt,
-      actor: r.actor,
+      actor: r.via === 'jira' ? { id: 'jira', name: 'JIRA sync' } : r.actor,
       changes: fields.map((f) => ({
         field: f.replace(/Id$/, ''),
         from: show(f, before[f as Field]),

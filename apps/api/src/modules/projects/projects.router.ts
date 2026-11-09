@@ -26,6 +26,14 @@ const projectFields = z.object({
   startDate: optionalDate,
   endDate: optionalDate,
   ownerId: z.string().nullable().optional(),
+  /** The JIRA project this one syncs with (M3); null unlinks it. */
+  jiraKey: z
+    .string()
+    .trim()
+    .regex(/^[A-Za-z][A-Za-z0-9_]{1,9}$/, 'A JIRA project key: 2 to 10 letters, digits or _')
+    .transform((s) => s.toUpperCase())
+    .nullable()
+    .optional(),
 });
 
 const datesInOrder = (p: { startDate?: Date | null; endDate?: Date | null }) =>

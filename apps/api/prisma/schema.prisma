@@ -220,6 +220,7 @@ model Project {
   epics        Epic[]
   sprints      Sprint[]
   savedFilters SavedFilter[]
+  jiraRuns     JiraSyncRun[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -325,6 +326,7 @@ model Task {
   sprintId      String?
   sprint        Sprint?        @relation(fields: [sprintId], references: [id], onDelete: SetNull)
   jiraKey       String?        @unique // M3: two-way sync
+  jiraSync      JiraSyncState?
   worklogs      Worklog[]
   comments      Comment[]
   linksOut      TaskLink[]     @relation("LinkFrom")
@@ -516,6 +518,8 @@ model AuditLog {
   before     Json?
   after      Json?
   ip         String?
+  /// Set when no person made the change directly, e.g. "jira" for the JIRA sync.
+  via        String?
   createdAt  DateTime @default(now())
 
   @@index([entityType, entityId])
@@ -565,4 +569,37 @@ model OAuthRefreshToken {
   createdAt DateTime    @default(now())
 
   @@index([personId])
+}
+
+// ---------- JIRA two-way sync (M3) ----------
+
+/// The values a task and its JIRA issue last agreed on, so the next sync can tell which side
+/// changed a field since (and spot a field changed on both sides).
+model JiraSyncState {
+  taskId   String   @id
+  task     Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  /// The synced fields as last agreed, in SedHub terms (see modules/jira/jira.mapping.ts).
+  base     Json
+  syncedAt DateTime @updatedAt
+}
+
+/// One sync of one project with its JIRA project: counts, conflicts and any error.
+model JiraSyncRun {
+  id         String    @id @default(cuid())
+  projectId  String
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  ok         Boolean   @default(false)
+  /// Tasks created or changed in SedHub from JIRA.
+  pulled     Int       @default(0)
+  /// Issues created or changed in JIRA from SedHub.
+  pushed     Int       @default(0)
+  /// Fields changed on both sides since the last sync; details lists them.
+  conflicts  Int       @default(0)
+  /// Conflicts and warnings, e.g. [{ kind, task, field, kept, jira, sedhub }].
+  details    Json      @default("[]")
+  error      String?
+
+  @@index([projectId, startedAt])
 }

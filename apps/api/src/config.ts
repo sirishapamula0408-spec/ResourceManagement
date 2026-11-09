@@ -38,6 +38,15 @@ const schema = z.object({
    * JWT_SECRET when unset. Changing it (or JWT_SECRET without it) means people set up MFA again.
    */
   MFA_ENCRYPTION_KEY: z.preprocess((v) => v || undefined, z.string().min(16).optional()),
+  /**
+   * JIRA two-way sync (M3). Jira Cloud site, e.g. https://example.atlassian.net, and the account
+   * the sync acts as (an API token from id.atlassian.com). All three unset: sync is off.
+   */
+  JIRA_BASE_URL: z.preprocess((v) => v || undefined, z.url().optional()),
+  JIRA_EMAIL: z.preprocess((v) => v || undefined, z.email().optional()),
+  JIRA_API_TOKEN: z.preprocess((v) => v || undefined, z.string().optional()),
+  /** Minutes between automatic syncs; 0 = only when someone clicks Sync now. */
+  JIRA_SYNC_MINUTES: z.coerce.number().int().min(0).max(1440).default(10),
   /** Largest attachment accepted, in megabytes. */
   MAX_UPLOAD_MB: z.coerce.number().positive().max(1024).default(10),
 });

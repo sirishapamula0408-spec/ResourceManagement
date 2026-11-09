@@ -10,7 +10,8 @@ import {
   useTaskPermissions,
   useToast,
 } from '../../components/tasks/taskHelpers';
-import { api, canManageStaffing, type Epic } from '../../lib/api';
+import { JiraSection } from '../../components/JiraSection';
+import { api, auth, canManageStaffing, type Epic } from '../../lib/api';
 import { buttonClass, errorMessage } from '../../lib/forms';
 import { ProjectDialog } from '../ProjectsPage';
 import { PROJECT_STATUS_LABEL } from '../../lib/statusStyles';
@@ -179,6 +180,11 @@ export function ProjectSettings() {
             </tbody>
           </table>
         </section>
+
+        {/* JIRA sync: staffing roles link the project; they and its PMs sync it. */}
+        {(staffing || auth.getUser()?.role === 'PM') && (
+          <JiraSection project={project} canSync={staffing || managesEpics} />
+        )}
       </div>
 
       {editingDetails && (

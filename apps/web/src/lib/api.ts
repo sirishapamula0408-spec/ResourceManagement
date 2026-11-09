@@ -283,6 +283,8 @@ export interface Task {
   id: string;
   /** Display key: project code and the task's number on that project, e.g. "ATLAS-12". */
   key: string;
+  /** The linked JIRA issue, e.g. "ATL-42", when the project syncs with JIRA. */
+  jiraKey?: string | null;
   /** The task's number on its project (the digits in the key). */
   number: number;
   title: string;
@@ -410,9 +412,47 @@ export interface Project {
   owner: { id: string; name: string } | null;
   /** Role lets task forms leave viewers out of the assignee choices (absent for sales). */
   members: { id: string; name: string; role?: Role }[];
+  /** The JIRA project this one syncs with (M3), or null. */
+  jiraKey?: string | null;
   openTasks: number;
   estimateHours: number;
   loggedHours: number;
+}
+
+/** GET /jira/status */
+export interface JiraStatus {
+  configured: boolean;
+  baseUrl: string | null;
+  intervalMinutes: number;
+}
+
+/** One sync of a project with JIRA. */
+export interface JiraSyncRun {
+  id: string;
+  startedAt: string;
+  finishedAt: string | null;
+  ok: boolean;
+  pulled: number;
+  pushed: number;
+  conflicts: number;
+  details: {
+    kind: 'conflict' | 'warning';
+    task?: string;
+    issue?: string;
+    field?: string;
+    kept?: 'jira' | 'sedhub';
+    jira?: unknown;
+    sedhub?: unknown;
+    message?: string;
+  }[];
+  error: string | null;
+}
+
+/** GET /jira/projects/:id */
+export interface JiraProjectSync {
+  jiraKey: string | null;
+  configured: boolean;
+  runs: JiraSyncRun[];
 }
 
 export interface Team {

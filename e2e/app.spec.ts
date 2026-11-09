@@ -686,6 +686,25 @@ test('the audit log is for admins only', async ({ page }) => {
   await expect(page.getByText('Only admins can see the audit log.')).toBeVisible();
 });
 
+test('an admin links a project to JIRA in Settings; without a JIRA connection nothing syncs', async ({
+  page,
+}) => {
+  await signIn(page, ADMIN, '/projects/NOVA/settings');
+  const jira = page.getByRole('region', { name: 'JIRA sync' });
+  await expect(jira).toContainText('JIRA isn’t connected yet');
+  await expect(jira).toContainText('Not linked');
+  await jira.getByLabel('JIRA project key').fill('nov');
+  await jira.getByRole('button', { name: 'Save' }).click();
+  await expect(jira).toContainText('Tasks here and issues in NOV stay in step');
+  await expect(jira.getByLabel('JIRA project key')).toHaveValue('NOV');
+  await expect(jira.getByRole('button', { name: 'Sync now' })).toBeDisabled();
+
+  // Unlink again for the other tests.
+  await jira.getByLabel('JIRA project key').fill('');
+  await jira.getByRole('button', { name: 'Unlink' }).click();
+  await expect(jira).toContainText('Not linked');
+});
+
 test('staffing is read-only for a PM', async ({ page }) => {
   await signIn(page, PM, '/projects');
   await expect(page.getByRole('button', { name: 'Add project' })).toHaveCount(0);

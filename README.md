@@ -300,6 +300,29 @@ per address.
   (`deploy/nginx.conf`) listens on plain HTTP, so put HTTPS in front of it (load balancer or reverse
   proxy), as the Claude connector also requires.
 
+## JIRA two-way sync
+
+Each project can sync its tasks with one Jira Cloud project (M3). Set `JIRA_BASE_URL`, `JIRA_EMAIL`
+and `JIRA_API_TOKEN` (see `.env.example`), then enter the JIRA project key in **Project → Settings →
+JIRA sync** (admins, delivery heads and resource managers). The API syncs every linked project every
+`JIRA_SYNC_MINUTES` (default 10), and the project's PMs and staffing roles can click **Sync now**.
+Code: `apps/api/src/modules/jira/`.
+
+- **What syncs:** new issues become tasks and new tasks become issues; then summary, description
+  (plain text), status, priority, type, assignee, due date, labels and original estimate. Statuses map
+  by name (To Do, In Progress, In Review, Blocked, Done…) or by JIRA's status category, and SedHub
+  moves an issue with whichever workflow transition reaches a matching status. People are matched by
+  email the first time and remembered (`Person.jiraAccountId`); a JIRA assignee who isn't on the
+  SedHub project shows as unassigned here and is left as is in JIRA.
+- **Edits on both sides:** each task keeps the values it and its issue last agreed on
+  (`JiraSyncState`). A field changed on one side is copied to the other; a field changed on both is
+  settled by the most recent edit, listed under the project's last sync and in the audit log
+  (`jira.conflict`). Changes the sync makes show as "JIRA sync" in task history.
+- **Not synced (yet):** deletions, sprints, epics, comments, hours, attachments and start dates. A field
+  JIRA refuses (for example an estimate on a project without time tracking) or a status its workflow
+  can't reach is skipped with a warning, and SedHub keeps its value.
+- Tests run the sync against an in-memory JIRA (`apps/api/test/jira.fake.ts`).
+
 ## Claude connector (MCP)
 
 Everyone can use SedHub from Claude (web, desktop, mobile, Claude Code) with their own account.

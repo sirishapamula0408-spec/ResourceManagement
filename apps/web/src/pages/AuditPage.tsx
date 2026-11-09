@@ -27,6 +27,7 @@ const AREAS = [
   ['team', 'Teams'],
   ['leave', 'Leave'],
   ['settings', 'Settings'],
+  ['jira', 'JIRA sync'],
 ] as const;
 
 const ACTION_LABEL: Record<string, string> = {
@@ -58,6 +59,7 @@ const ACTION_LABEL: Record<string, string> = {
   'leave.update': 'Changed leave',
   'leave.delete': 'Deleted leave',
   'settings.thresholds': 'Changed utilization limits',
+  'jira.conflict': 'JIRA conflict (latest edit kept)',
 };
 
 const when = new Intl.DateTimeFormat('en-GB', {

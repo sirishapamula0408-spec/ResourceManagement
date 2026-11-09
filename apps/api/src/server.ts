@@ -1,6 +1,7 @@
 import { createApp } from './app.js';
 import { config } from './config.js';
 import { prisma } from './lib/prisma.js';
+import { startJiraScheduler } from './modules/jira/jira.scheduler.js';
 
 const app = createApp();
 
@@ -11,6 +12,7 @@ const server = app.listen(config.PORT, (err?: Error) => {
     process.exit(1);
   }
   console.log(`API listening on http://localhost:${config.PORT} (${config.NODE_ENV})`);
+  startJiraScheduler();
 });
 
 async function shutdown(signal: string) {

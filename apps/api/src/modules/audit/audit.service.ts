@@ -73,7 +73,7 @@ export async function listAudit(q: AuditQuery) {
       entityId: r.entityId,
       // Removed records keep their entries; they just lose the readable name.
       entity: (r.entityId && names.get(r.entityId)) ?? null,
-      actor: r.actor,
+      actor: r.via === 'jira' ? { id: 'jira', name: 'JIRA sync' } : r.actor,
       ip: r.ip,
       before: r.before,
       after: r.after,
