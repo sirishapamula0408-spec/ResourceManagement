@@ -255,12 +255,25 @@ export function useTaskPermissions() {
     const p = projects.find((x) => x.id === projectId);
     return !!p && (p.owner?.id === me.id || p.members.some((m) => m.id === me.id));
   };
+  /** A team member staffed on the project (same rule as the API). */
+  const staffedMember = (projectId: string) =>
+    me?.role === 'MEMBER' &&
+    !!projects.find((p) => p.id === projectId)?.members.some((m) => m.id === me.id);
+  /** Add tasks: managers of the project, and team members staffed on it. */
+  const canCreateIn = (projectId: string) =>
+    canManageProject(projectId) || staffedMember(projectId);
+  /** Edit every field: managers of the project, and the team member who created the task. */
+  const canEdit = (t: Task) =>
+    canManageProject(t.project.id) ||
+    (!!me && t.createdById === me.id && staffedMember(t.project.id));
   return {
     me,
     canManageProject,
+    canCreateIn,
+    canEdit,
     // Viewers never work on tasks (they can't be assignees either; the API refuses both).
-    canWork: (t: Task) =>
-      !!me && me.role !== 'VIEWER' && (t.assignee?.id === me.id || canManageProject(t.project.id)),
+    canWork: (t: Task) => !!me && me.role !== 'VIEWER' && (t.assignee?.id === me.id || canEdit(t)),
     manageableProjects: projects.filter((p) => canManageProject(p.id)),
+    creatableProjects: projects.filter((p) => canCreateIn(p.id)),
   };
 }

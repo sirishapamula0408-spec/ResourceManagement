@@ -182,15 +182,15 @@ managers the same without Leads; sales users Leads and Projects; team members an
 (other pages redirect them to Projects, and viewers also get 403 from the dashboard, reports, teams and
 leads API).
 
-| Role             | People, projects, staffing                  | Tasks                                          | Roles / admins |
-| ---------------- | ------------------------------------------- | ---------------------------------------------- | -------------- |
-| ADMIN            | edit                                        | edit all                                       | yes            |
-| DELIVERY_HEAD    | edit                                        | view                                           | -              |
-| RESOURCE_MANAGER | edit                                        | view                                           | -              |
-| PM               | view                                        | create/edit/move on projects they own or staff | -              |
-| MEMBER           | view own projects only                      | status + hours on tasks assigned to them       | -              |
-| SALES            | project list only (no team, tasks or hours) | none; works the Leads pipeline (all leads)     | -              |
-| VIEWER           | view own projects only                      | view tasks on own projects; no changes         | -              |
+| Role             | People, projects, staffing                  | Tasks                                                                                                                    | Roles / admins |
+| ---------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------- |
+| ADMIN            | edit                                        | edit all                                                                                                                 | yes            |
+| DELIVERY_HEAD    | edit                                        | view                                                                                                                     | -              |
+| RESOURCE_MANAGER | edit                                        | view                                                                                                                     | -              |
+| PM               | view                                        | create/edit/move on projects they own or staff                                                                           | -              |
+| MEMBER           | view own projects only                      | create on own projects (assign anyone on the project); edit tasks they created; status + hours on tasks assigned to them | -              |
+| SALES            | project list only (no team, tasks or hours) | none; works the Leads pipeline (all leads)                                                                               | -              |
+| VIEWER           | view own projects only                      | view tasks on own projects; no changes                                                                                   | -              |
 
 ## Task attachments
 

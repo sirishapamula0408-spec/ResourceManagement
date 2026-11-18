@@ -228,8 +228,10 @@ export function ProjectBacklog() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
   const { personNames } = useTaskLookups();
   const { sprints } = usePlanningLookups();
-  const { canManageProject } = useTaskPermissions();
+  const { canManageProject, canCreateIn } = useTaskPermissions();
   const manages = canManageProject(project.id);
+  // Team members on the project add tasks too; planning sprints stays with its managers.
+  const creates = canCreateIn(project.id);
   const { data: allTasks = [], isLoading } = useQuery({
     queryKey: ['tasks'],
     queryFn: () => api<Task[]>('/tasks'),
@@ -381,7 +383,7 @@ export function ProjectBacklog() {
                   )
                 }
               >
-                {manages && (
+                {creates && (
                   <QuickCreate projectId={project.id} sprintId={s.id} onCreated={created} />
                 )}
               </Section>
@@ -394,7 +396,7 @@ export function ProjectBacklog() {
             tasks={backlog}
             rowProps={rowProps}
           >
-            {manages && <QuickCreate projectId={project.id} sprintId={null} onCreated={created} />}
+            {creates && <QuickCreate projectId={project.id} sprintId={null} onCreated={created} />}
           </Section>
         </DndContext>
       )}

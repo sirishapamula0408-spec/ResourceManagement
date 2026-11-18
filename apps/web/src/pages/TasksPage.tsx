@@ -147,10 +147,12 @@ export function TasksPage({ project }: { project?: Project } = {}) {
     queryFn: () => api<Task[]>('/tasks'),
   });
 
-  // A team member's Tasks page lists only the tasks assigned to them.
+  // A team member's list shows the tasks assigned to them and the ones they created.
   const member = isTeamMember();
   const myId = auth.getUser()?.id;
-  const visible = member ? tasks.filter((t) => t.assignee?.id === myId) : tasks;
+  const visible = member
+    ? tasks.filter((t) => t.assignee?.id === myId || t.createdById === myId)
+    : tasks;
   const rows = applyTaskFilter(visible, member ? { ...filter, assigneeId: '' } : filter).sort(
     (a, b) => {
       const x = sortValue(a, sort.key);
@@ -216,7 +218,7 @@ export function TasksPage({ project }: { project?: Project } = {}) {
     <>
       <PageHeader
         title={project ? 'List' : 'Tasks'}
-        subtitle={member ? 'Tasks assigned to you' : undefined}
+        subtitle={member ? 'Tasks assigned to you or created by you' : undefined}
       >
         <TaskFilters
           showProject={!project}

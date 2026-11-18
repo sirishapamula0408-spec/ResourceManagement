@@ -202,7 +202,7 @@ export function TaskPage() {
   const { projects, personNames } = useTaskLookups();
   const { sprints, epics } = usePlanningLookups();
   const labelSuggestions = useLabels();
-  const { canManageProject, canWork } = useTaskPermissions();
+  const { canManageProject, canCreateIn, canEdit, canWork } = useTaskPermissions();
   const { data: tasks = [], isLoading } = useQuery({
     queryKey: ['tasks'],
     queryFn: () => api<Task[]>('/tasks'),
@@ -261,7 +261,9 @@ export function TaskPage() {
     );
   }
 
-  const manages = canManageProject(task.project.id);
+  // Edit every field: the project's managers, and the team member who created the task.
+  const manages = canEdit(task);
+  const deletes = canManageProject(task.project.id);
   const works = canWork(task);
   const project = projects.find((p) => p.id === task.project.id);
   const members = (project?.members ?? []).filter(canBeAssigned);
@@ -335,7 +337,9 @@ export function TaskPage() {
             canEdit={manages}
             onSave={(description) => set({ description })}
           />
-          {!task.parent && <TaskSubtasks task={task} canAdd={manages} onOpen={openTask} />}
+          {!task.parent && (
+            <TaskSubtasks task={task} canAdd={canCreateIn(task.project.id)} onOpen={openTask} />
+          )}
           <TaskLinks task={task} canEdit={manages || works} onOpen={openTask} />
           <TaskAttachments taskId={task.id} canUpload={manages || works} manages={manages} />
           <section aria-labelledby="activity-heading">
@@ -384,7 +388,7 @@ export function TaskPage() {
               ))}
             </select>
             <span className="flex-1" />
-            {manages && (
+            {deletes && (
               <button
                 type="button"
                 className={`${buttonClass()} text-red`}
@@ -594,10 +598,10 @@ export function TaskPage() {
           {!manages && (
             <p className="px-1 text-xs text-muted">
               {works
-                ? 'You can change the status of, log hours on, link and attach files to tasks assigned to you.'
+                ? 'You can change the status of, log hours on, link and attach files to tasks assigned to you. You can edit everything on tasks you created.'
                 : isViewer()
                   ? 'View only: as a viewer you can read this task but not change it.'
-                  : 'View only: an admin or a PM on this project edits this task.'}
+                  : 'View only: an admin, a PM on this project or the task’s creator edits this task.'}
             </p>
           )}
         </aside>

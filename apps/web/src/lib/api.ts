@@ -83,10 +83,13 @@ export const isViewer = () => auth.getUser()?.role === 'VIEWER';
 /** Viewers only watch, so they are never offered as assignees (the API refuses them too). */
 export const canBeAssigned = (person: { role?: Role }) => person.role !== 'VIEWER';
 
-/** Admins and PMs create tasks (PMs on the projects they own or are staffed on). */
+/**
+ * Admins, PMs (on the projects they own or are staffed on) and team members (on the projects
+ * they're staffed on) create tasks.
+ */
 export const canCreateTasks = () => {
   const role = auth.getUser()?.role;
-  return role === 'ADMIN' || role === 'PM';
+  return role === 'ADMIN' || role === 'PM' || role === 'MEMBER';
 };
 
 export class ApiError extends Error {
@@ -285,6 +288,8 @@ export interface Task {
   key: string;
   /** The linked JIRA issue, e.g. "ATL-42", when the project syncs with JIRA. */
   jiraKey?: string | null;
+  /** Who created the task (a team member edits the tasks they created). */
+  createdById?: string | null;
   /** The task's number on its project (the digits in the key). */
   number: number;
   title: string;
