@@ -23,6 +23,13 @@ import {
 } from '../lib/api';
 import { buttonClass, errorMessage, inputClass, STAFFING_QUERIES } from '../lib/forms';
 import { usePagination } from '../lib/pagination';
+import { downloadText } from '../lib/reportCsv';
+import {
+  downloadTeamsPptx,
+  downloadTeamsXlsx,
+  teamsReportCsv,
+  teamsReportFileName,
+} from '../lib/teamsReport';
 import { fmt, identityColor } from '../lib/theme';
 
 /** Least to most access, for the role picker. */
@@ -330,6 +337,19 @@ function TeamDialog({
   );
 }
 
+type SortKey = 'name' | 'title' | 'department' | 'capacity' | 'load' | 'openTasks' | 'projects';
+const COLUMNS: [SortKey, string][] = [
+  ['name', 'Name'],
+  ['title', 'Title'],
+  ['department', 'Department'],
+  ['capacity', 'Capacity'],
+  ['load', 'This week'],
+  ['openTasks', 'Open tasks'],
+  ['projects', 'Projects'],
+];
+
+const searchControl = 'min-w-[200px] rounded-md border border-line bg-panel px-2.5 py-1.5 text-xs';
+
 /** Colour of the load bar: over capacity, healthy, moderate, low (prototype bands). */
 const loadColor = (pct: number) =>
   pct > 100
@@ -350,7 +370,11 @@ export function TeamsPage() {
   // A team member sees only their own row (the API also limits who is returned).
   const member = isTeamMember();
   const shownPeople = member ? people.filter((p) => p.id === me?.id) : people;
-  const paged = usePagination(shownPeople, 10, '');
+  const [search, setSearch] = useState('');
+  const [teamSearch, setTeamSearch] = useState('');
+  const [selectedTeamIds, setSelectedTeamIds] = useState<Set<string>>(new Set());
+  const [exporting, setExporting] = useState(false);
+  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'name', dir: 1 });
   const qc = useQueryClient();
   const [toastMessage, showToast] = useToast();
   const remove = useMutation({
@@ -358,6 +382,19 @@ export function TeamsPage() {
     onSuccess: (_r, p) => {
       STAFFING_QUERIES.forEach((queryKey) => qc.invalidateQueries({ queryKey }));
       showToast(`${p.name} removed from the team`);
+    },
+    onError: (e) => showToast(errorMessage(e)),
+  });
+  const removeTeams = useMutation({
+    mutationFn: (ids: string[]) =>
+      api<{ deleted: number }>('/teams/bulk-delete', {
+        method: 'POST',
+        body: JSON.stringify({ ids }),
+      }),
+    onSuccess: ({ deleted }) => {
+      qc.invalidateQueries({ queryKey: ['teams'] });
+      setSelectedTeamIds(new Set());
+      showToast(`Deleted ${deleted} ${deleted === 1 ? 'team' : 'teams'}`);
     },
     onError: (e) => showToast(errorMessage(e)),
   });
@@ -390,6 +427,98 @@ export function TeamsPage() {
   const openTasksOf = (id: string) =>
     tasks.filter((t) => t.assignee?.id === id && t.status !== 'DONE').length;
 
+  const sortValue = (p: Person, key: SortKey): string | number => {
+    switch (key) {
+      case 'name':
+        return p.name.toLowerCase();
+      case 'title':
+        return p.title?.toLowerCase() || '~';
+      case 'department':
+        return p.department?.name.toLowerCase() ?? '~';
+      case 'capacity':
+        return Number(p.weeklyCapacityHours);
+      case 'load':
+        return loadOf(p.id);
+      case 'openTasks':
+        return openTasksOf(p.id);
+      case 'projects':
+        return p.projects.length;
+    }
+  };
+
+  const q = search.trim().toLowerCase();
+  const rows = shownPeople
+    .filter(
+      (p) =>
+        !q ||
+        [
+          p.name,
+          p.title ?? '',
+          p.department?.name ?? '',
+          ROLE_LABEL[p.role],
+          ...p.projects.flatMap((pr) => [pr.code, pr.name]),
+        ]
+          .join(' ')
+          .toLowerCase()
+          .includes(q),
+    )
+    .sort((a, b) => {
+      const x = sortValue(a, sort.key);
+      const y = sortValue(b, sort.key);
+      // Ties fall back to name so the order is stable.
+      return (x > y ? 1 : x < y ? -1 : 0) * sort.dir || a.name.localeCompare(b.name);
+    });
+  const paged = usePagination(rows, 10, JSON.stringify([q, sort]));
+
+  const tq = teamSearch.trim().toLowerCase();
+  const shownTeams = teams.filter(
+    (t) =>
+      !tq ||
+      [t.name, t.description ?? '', ...t.members.map((m) => m.person.name)]
+        .join(' ')
+        .toLowerCase()
+        .includes(tq),
+  );
+  // Only teams currently shown count as selected, so a search never hides what gets deleted.
+  const selectedTeams = shownTeams.filter((t) => selectedTeamIds.has(t.id));
+  const toggleTeam = (id: string, on: boolean) =>
+    setSelectedTeamIds((s) => {
+      const next = new Set(s);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  // The report covers every team, person and project, not just what the search shows.
+  const reportData = () => ({ teams, people, projects });
+  async function exportReport(kind: 'xlsx' | 'csv' | 'pptx') {
+    setExporting(true);
+    try {
+      if (kind === 'csv') downloadText(teamsReportFileName('csv'), teamsReportCsv(reportData()));
+      else if (kind === 'xlsx') await downloadTeamsXlsx(reportData());
+      else await downloadTeamsPptx(reportData());
+    } catch {
+      showToast(
+        `The ${kind === 'pptx' ? 'PowerPoint' : kind === 'xlsx' ? 'Excel' : 'CSV'} report couldn’t be created. Try again.`,
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
+  function deleteSelectedTeams() {
+    const names = selectedTeams.map((t) => t.name);
+    const preview =
+      names.length > 8
+        ? `${names.slice(0, 8).join(', ')} and ${names.length - 8} more`
+        : names.join(', ');
+    if (
+      window.confirm(
+        `Delete ${names.length} ${names.length === 1 ? 'team' : 'teams'} (${preview})? The people stay on the Team page.`,
+      )
+    ) {
+      removeTeams.mutate(selectedTeams.map((t) => t.id));
+    }
+  }
+
   const th =
     'border-b border-line px-2.5 py-2 text-left font-semibold whitespace-nowrap text-muted';
   const td = 'border-b border-line px-2.5 py-[9px] align-middle';
@@ -416,26 +545,40 @@ export function TeamsPage() {
       <section className="mb-4 min-w-0 rounded-lg border border-line bg-panel shadow-[0_1px_0_rgba(23,35,59,0.06)]">
         <h2 className="flex items-baseline justify-between gap-3 border-b border-line px-4 py-3 text-sm font-semibold">
           People
-          <span className="text-xs font-normal text-muted">this week’s load against capacity</span>
+          <span className="flex items-center gap-3 text-xs font-normal text-muted">
+            this week’s load against capacity
+            {!member && (
+              <input
+                type="search"
+                className={searchControl}
+                placeholder="Search people"
+                aria-label="Search people"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            )}
+          </span>
         </h2>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[13px]">
             <thead>
               <tr>
-                {[
-                  'Name',
-                  'Title',
-                  'Department',
-                  'Capacity',
-                  'This week',
-                  'Open tasks',
-                  'Projects',
-                  ...(editable ? [''] : []),
-                ].map((h) => (
-                  <th key={h} className={th}>
-                    {h}
+                {COLUMNS.map(([key, label]) => (
+                  <th
+                    key={key}
+                    className={`${th} cursor-pointer select-none`}
+                    aria-sort={
+                      sort.key === key ? (sort.dir > 0 ? 'ascending' : 'descending') : 'none'
+                    }
+                    onClick={() =>
+                      setSort((s) => ({ key, dir: s.key === key ? (s.dir === 1 ? -1 : 1) : 1 }))
+                    }
+                  >
+                    {label}
+                    {sort.key === key && (sort.dir > 0 ? ' ▲' : ' ▼')}
                   </th>
                 ))}
+                {editable && <th className={th} aria-label="Actions" />}
               </tr>
             </thead>
             <tbody>
@@ -513,6 +656,13 @@ export function TeamsPage() {
                   </td>
                 </tr>
               )}
+              {!!people.length && !rows.length && (
+                <tr>
+                  <td colSpan={8} className="p-2.5 text-center text-xs text-muted">
+                    No people match “{search.trim()}”.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -526,6 +676,16 @@ export function TeamsPage() {
           Teams
           <span className="flex items-center gap-3 text-xs font-normal text-muted">
             groups across projects
+            {teams.length > 0 && (
+              <input
+                type="search"
+                className={searchControl}
+                placeholder="Search teams"
+                aria-label="Search teams"
+                value={teamSearch}
+                onChange={(e) => setTeamSearch(e.target.value)}
+              />
+            )}
             {editable && (
               <button className={buttonClass()} onClick={() => setEditingTeam('new')}>
                 Add team
@@ -533,15 +693,100 @@ export function TeamsPage() {
             )}
           </span>
         </h2>
+        {!member && (teams.length > 0 || people.length > 0) && (
+          <div
+            role="group"
+            aria-label="Teams report"
+            className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2 text-xs text-muted"
+          >
+            <span>
+              Report: teams, members and their projects
+              {exporting && ' · preparing…'}
+            </span>
+            <span className="flex-1" />
+            <button
+              type="button"
+              className={buttonClass()}
+              disabled={exporting}
+              onClick={() => exportReport('xlsx')}
+            >
+              Download Excel
+            </button>
+            <button
+              type="button"
+              className={buttonClass()}
+              disabled={exporting}
+              onClick={() => exportReport('csv')}
+            >
+              Download CSV
+            </button>
+            <button
+              type="button"
+              className={buttonClass()}
+              disabled={exporting}
+              onClick={() => exportReport('pptx')}
+            >
+              Download PowerPoint
+            </button>
+          </div>
+        )}
+        {selectedTeams.length > 0 && (
+          <div
+            role="region"
+            aria-label="Selected teams"
+            className="flex flex-wrap items-center gap-3 border-b border-line bg-teal-soft px-4 py-2 text-[13px]"
+          >
+            <b className="tabular-nums">
+              {selectedTeams.length} {selectedTeams.length === 1 ? 'team' : 'teams'} selected
+            </b>
+            {selectedTeams.length < shownTeams.length && (
+              <button
+                type="button"
+                className="text-xs font-semibold text-teal hover:underline"
+                onClick={() => setSelectedTeamIds(new Set(shownTeams.map((t) => t.id)))}
+              >
+                Select all {shownTeams.length}
+              </button>
+            )}
+            <span className="flex-1" />
+            <button
+              type="button"
+              className="text-xs font-medium text-muted hover:text-ink"
+              onClick={() => setSelectedTeamIds(new Set())}
+            >
+              Clear selection
+            </button>
+            <button
+              type="button"
+              className={`${buttonClass()} border-red text-red hover:bg-red-soft`}
+              disabled={removeTeams.isPending}
+              onClick={deleteSelectedTeams}
+            >
+              {removeTeams.isPending ? 'Deleting…' : 'Delete selected'}
+            </button>
+          </div>
+        )}
         <div className="grid gap-3 px-4 py-3 md:grid-cols-2 xl:grid-cols-4">
-          {teams.map((team) => (
+          {shownTeams.map((team) => (
             <article
               key={team.id}
               aria-label={team.name}
-              className="rounded-md border border-line bg-panel2 p-3"
+              className={`rounded-md border bg-panel2 p-3 ${
+                selectedTeamIds.has(team.id) ? 'border-teal' : 'border-line'
+              }`}
             >
               <div className="flex items-start justify-between gap-2">
-                <div className="font-semibold">{team.name}</div>
+                <label className="flex items-center gap-2 font-semibold">
+                  {editable && (
+                    <input
+                      type="checkbox"
+                      aria-label={`Select team ${team.name}`}
+                      checked={selectedTeamIds.has(team.id)}
+                      onChange={(e) => toggleTeam(team.id, e.target.checked)}
+                    />
+                  )}
+                  {team.name}
+                </label>
                 {editable && (
                   <button
                     className="text-xs text-teal hover:underline"
@@ -569,6 +814,9 @@ export function TeamsPage() {
             <p className="text-xs text-muted">
               No teams yet.{editable && ' Use Add team to group people.'}
             </p>
+          )}
+          {!!teams.length && !shownTeams.length && (
+            <p className="text-xs text-muted">No teams match “{teamSearch.trim()}”.</p>
           )}
         </div>
       </section>

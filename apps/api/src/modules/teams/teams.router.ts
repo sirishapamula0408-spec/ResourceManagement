@@ -16,6 +16,11 @@ const teamSchema = z.object({
     .optional(),
 });
 
+// Bulk delete from the Teams section; capped so one request stays quick.
+const bulkDeleteBody = z.object({
+  ids: z.array(z.string().min(1)).min(1, 'Select at least one team').max(200),
+});
+
 export const teamsRouter = Router();
 
 teamsRouter.get('/', async (req, res) => {
@@ -37,6 +42,15 @@ teamsRouter.patch('/:id', ...canEdit, async (req, res) => {
   const team = await service.updateTeam(String(req.params.id), input);
   await audit(req, 'team.update', 'Team', team.id, { after: input });
   res.json(team);
+});
+
+teamsRouter.post('/bulk-delete', ...canEdit, async (req, res) => {
+  const { ids } = parse(bulkDeleteBody, req.body);
+  const { deleted, teams } = await service.deleteTeams(ids);
+  for (const t of teams) {
+    await audit(req, 'team.delete', 'Team', t.id, { before: { name: t.name } });
+  }
+  res.json({ deleted });
 });
 
 teamsRouter.delete('/:id', ...canEdit, async (req, res) => {
