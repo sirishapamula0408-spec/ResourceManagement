@@ -6,6 +6,7 @@ import {
   buildTeamsPptx,
   byProjectRows,
   byTeamRows,
+  pageRows,
   teamsReportCsv,
   teamsReportSheets,
   type TeamsReportData,
@@ -85,9 +86,29 @@ describe('teams report', () => {
     expect(await zip.file('xl/worksheets/sheet2.xml')!.async('string')).toContain('No members');
   });
 
-  it('builds a deck: title, projects summary and one slide per team', async () => {
+  it('builds a deck: title, projects and all team members', async () => {
     const pptx = await buildTeamsPptx(data);
-    // Title + projects + Data + Platform + No team.
-    expect((pptx as unknown as { slides: unknown[] }).slides.length).toBeGreaterThanOrEqual(5);
+    // Title + projects + all team members; no per-team slides.
+    expect((pptx as unknown as { slides: unknown[] }).slides.length).toBe(3);
+  });
+
+  it('pages long tables by whole rows', () => {
+    expect(pageRows([1, 2, 1])).toEqual([[0, 1, 2]]);
+    // Seven-line rows: three fit on a slide, the fourth starts the next one intact.
+    expect(pageRows([7, 7, 7, 7])).toEqual([[0, 1, 2], [3]]);
+  });
+
+  it('puts the logo on a white title slide', async () => {
+    // A 1x1 PNG stands in for the rendered SedHub mark.
+    const logo =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    const pptx = await buildTeamsPptx(data, { logo });
+    const zip = await JSZip.loadAsync(
+      (await pptx.write({ outputType: 'arraybuffer' })) as ArrayBuffer,
+    );
+    const slide1 = await zip.file('ppt/slides/slide1.xml')!.async('string');
+    expect(slide1).toContain('<p:pic>');
+    expect(slide1).toContain('FFFFFF');
+    expect(slide1).not.toContain('EEF1EE');
   });
 });
