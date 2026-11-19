@@ -2,7 +2,17 @@ import type PptxGenJS from 'pptxgenjs';
 import { ROLE_LABEL, type Person, type Project, type Team } from './api';
 import { csvField } from './reportCsv';
 import { buildXlsx, downloadBlob, type Cell, type Sheet } from './reportXlsx';
-import { SEDHUB_LOGO_ASPECT, sedhubLogoPng } from './sedhubLogo';
+import {
+  banded,
+  C,
+  defineMaster,
+  headCell,
+  MASTER,
+  slideTitle,
+  tableStyle,
+  titleSlide,
+} from './pptxTheme';
+import { sedhubLogoPng } from './sedhubLogo';
 
 /**
  * Teams report: who is on which team and which projects they are staffed on.
@@ -146,38 +156,7 @@ export async function downloadTeamsXlsx(data: TeamsReportData) {
 
 // ---- PowerPoint ----
 
-// White slides with dark text; hex without #, as pptxgenjs expects.
-const C = {
-  ink: '17233B',
-  text: '2B3648',
-  muted: '5C6878',
-  line: 'C9D1D9',
-  head: '1546D6', // SedHub blue (the logo's)
-  accent: '13A24C', // SedHub green
-  white: 'FFFFFF',
-};
-// PowerPoint's standard blue table style (Medium Style 2 – Accent 1): blue header,
-// banded light-blue rows, white grid lines.
-const TABLE = { head: '4472C4', band1: 'CFD5EA', band2: 'E9EBF5', text: '000000' };
-const FONT = 'Segoe UI';
-
 type Row = PptxGenJS.TableRow;
-const headCell = (text: string, align: 'left' | 'center' = 'left') => ({
-  text,
-  options: { bold: true, color: C.white, fill: { color: TABLE.head }, align },
-});
-
-/** Banded rows, as in PowerPoint's standard table style; `first` keeps bands going across slides. */
-const banded = (rows: Row[], first = 0): Row[] =>
-  rows.map((row, i) =>
-    row.map((cell) => ({
-      ...cell,
-      options: {
-        fill: { color: (first + i) % 2 ? TABLE.band2 : TABLE.band1 },
-        ...cell.options,
-      },
-    })),
-  );
 
 // Table layout in inches: 12 pt text is about 0.2 in a line, plus cell margins.
 const TABLE_TOP = 1.35;
@@ -195,11 +174,8 @@ function addTable(slide: PptxGenJS.Slide, header: Row, body: Row[], colW: number
     w: 12.3,
     colW,
     fontSize: 12,
-    fontFace: FONT,
-    color: TABLE.text,
-    border: { type: 'solid', pt: 1, color: C.white },
     margin: 0.08,
-    valign: 'middle',
+    ...tableStyle,
   });
 }
 
@@ -225,29 +201,6 @@ export function pageRows(lineCounts: number[]): number[][] {
   return pages;
 }
 
-function slideTitle(slide: PptxGenJS.Slide, title: string, subtitle: string) {
-  slide.addShape('rect', { x: 0.5, y: 0.38, w: 0.08, h: 0.72, fill: { color: C.accent } });
-  slide.addText(title, {
-    x: 0.7,
-    y: 0.3,
-    w: 12.1,
-    h: 0.5,
-    fontSize: 24,
-    bold: true,
-    color: C.ink,
-    fontFace: FONT,
-  });
-  slide.addText(subtitle, {
-    x: 0.7,
-    y: 0.8,
-    w: 12.1,
-    h: 0.35,
-    fontSize: 13,
-    color: C.muted,
-    fontFace: FONT,
-  });
-}
-
 export interface TeamsPptxOptions {
   /** The SedHub mark as an image data URL, for the title slide (see sedhubLogoPng). */
   logo?: string | null;
@@ -268,65 +221,15 @@ export async function buildTeamsPptx(
     month: 'short',
     year: 'numeric',
   });
-  pptx.defineSlideMaster({
-    title: 'TEAMS',
-    background: { color: C.white },
-    objects: [
-      { line: { x: 0.5, y: 7.05, w: 12.33, h: 0, line: { color: C.line, width: 0.75 } } },
-      {
-        text: {
-          text: `SedHub · Teams report · ${generated}`,
-          options: { x: 0.5, y: 7.1, w: 8, h: 0.32, fontSize: 9, color: C.muted, fontFace: FONT },
-        },
-      },
-    ],
-    slideNumber: { x: 12.3, y: 7.1, w: 0.6, h: 0.32, fontSize: 9, color: C.muted, fontFace: FONT },
-  });
+  defineMaster(pptx, `SedHub · Teams report · ${generated}`);
 
   const realTeams = data.teams.length;
-
-  // Title slide: white, with the SedHub logo and name.
-  const title = pptx.addSlide();
-  title.background = { color: C.white };
-  const logoH = 0.9;
-  if (logo) {
-    title.addImage({ data: logo, x: 0.8, y: 1.1, h: logoH, w: logoH * SEDHUB_LOGO_ASPECT });
-  }
-  title.addText('SedHub', {
-    x: logo ? 0.8 + logoH * SEDHUB_LOGO_ASPECT + 0.2 : 0.8,
-    y: 1.1,
-    w: 6,
-    h: logoH,
-    fontSize: 32,
-    bold: true,
-    color: C.ink,
-    fontFace: FONT,
-    valign: 'middle',
+  titleSlide(pptx, {
+    heading: 'Teams report',
+    subtitle: 'Team members and the projects they are staffed on',
+    meta: `${realTeams} team${realTeams === 1 ? '' : 's'} · ${data.people.length} ${data.people.length === 1 ? 'person' : 'people'} · ${data.projects.length} project${data.projects.length === 1 ? '' : 's'} · generated ${generated}`,
+    logo,
   });
-  title.addShape('rect', { x: 0.9, y: 2.45, w: 1.2, h: 0.08, fill: { color: C.accent } });
-  title.addText('Teams report', {
-    x: 0.8,
-    y: 2.75,
-    w: 11.5,
-    h: 0.9,
-    fontSize: 44,
-    bold: true,
-    color: C.ink,
-    fontFace: FONT,
-  });
-  title.addText('Team members and the projects they are staffed on', {
-    x: 0.8,
-    y: 3.65,
-    w: 11.5,
-    h: 0.5,
-    fontSize: 18,
-    color: C.head,
-    fontFace: FONT,
-  });
-  title.addText(
-    `${realTeams} team${realTeams === 1 ? '' : 's'} · ${data.people.length} ${data.people.length === 1 ? 'person' : 'people'} · ${data.projects.length} project${data.projects.length === 1 ? '' : 's'} · generated ${generated}`,
-    { x: 0.8, y: 4.3, w: 11.5, h: 0.4, fontSize: 14, color: C.muted, fontFace: FONT },
-  );
 
   // Each person's teams, e.g. "Platform (Lead)".
   const teamNames = teamNamesByPerson(data.teams);
@@ -343,7 +246,7 @@ export async function buildTeamsPptx(
   ) => {
     const pages = rows.length ? pageRows(rows.map((r) => r.lines)) : [[]];
     pages.forEach((page, n) => {
-      const slide = pptx.addSlide({ masterName: 'TEAMS' });
+      const slide = pptx.addSlide({ masterName: MASTER });
       slideTitle(slide, n ? `${title} (continued)` : title, subtitle);
       addTable(
         slide,
