@@ -474,9 +474,8 @@ test('a due date before the start date is not accepted', async ({ page }) => {
   await expect(d.getByLabel('Due')).toHaveJSProperty('validity.valid', false);
 });
 
-test('a team member can only change the status of their own tasks', async ({ page }) => {
+test('a team member only changes the status of a PM’s task assigned to them', async ({ page }) => {
   await signIn(page, MEMBER, '/projects/ATLAS/list');
-  await expect(page.getByRole('button', { name: 'Create task' })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Delete' })).toHaveCount(0);
 
   await page.getByRole('row', { name: /Invoice PDF download/ }).click();
@@ -493,6 +492,27 @@ test('a team member can only change the status of their own tasks', async ({ pag
     .click();
   await expect(dialog(page).getByLabel('Summary')).toBeDisabled();
   await expect(dialog(page).getByLabel('Status')).toBeEnabled();
+});
+
+test('a team member creates a task for a teammate, then edits it on its task page', async ({
+  page,
+}) => {
+  await signIn(page, MEMBER, '/projects/ATLAS/list');
+  await page.getByRole('button', { name: 'Create task' }).click();
+  const d = dialog(page);
+  await expect(d.getByLabel('Project')).toHaveValue(/.+/);
+  await d.getByLabel('Summary').fill('E2E member task');
+  await d.getByLabel('Assignee').selectOption({ label: 'Priya Sharma' });
+  await d.getByRole('button', { name: 'Save' }).click();
+  await expect(d).toHaveCount(0);
+
+  // As its creator, Liam edits every field, but deleting stays with admins and PMs.
+  await page.getByRole('row', { name: /E2E member task/ }).click();
+  await expect(page.getByRole('heading', { name: 'E2E member task' })).toBeVisible();
+  await expect(page.getByLabel('Priority')).toBeEnabled();
+  await page.getByLabel('Priority').selectOption({ label: 'High' });
+  await expect(page.getByLabel('Priority')).toHaveValue('HIGH');
+  await expect(page.getByRole('button', { name: 'Delete' })).toHaveCount(0);
 });
 
 test('a PM moves a card on the board by dragging it', async ({ page }) => {
@@ -760,11 +780,12 @@ test('a team member sees only their own projects, board and tasks', async ({ pag
   await expect(
     page.getByRole('navigation', { name: 'Views', exact: true }).getByRole('link'),
   ).toHaveText(['Projects']);
-  await expect(page.getByText('Tasks assigned to you')).toBeVisible();
+  await expect(page.getByText('Tasks assigned to you or created by you')).toBeVisible();
   await expect(page.getByLabel('Assignee')).toHaveCount(0);
   const rows = page.locator('tbody tr');
   await expect(rows.first()).toBeVisible();
-  for (const row of await rows.all()) await expect(row).toContainText('Liam Chen');
+  // Liam's tasks, plus any he created for others (another test makes one for Priya).
+  for (const row of await rows.all()) await expect(row).toContainText(/Liam Chen|E2E member task/);
 
   await page
     .getByRole('navigation', { name: 'Views', exact: true })
@@ -1304,10 +1325,15 @@ test('a PM attaches a file to a task, downloads it and deletes it', async ({ pag
 
 test('a PM assigns a task; the assignee sees it under the bell and opens it', async ({ page }) => {
   await signIn(page, PM, '/browse/ATLAS-13');
+  // Priya may already have unread notifications from other tests (a member assigning her work).
+  const pmBell = page.getByRole('button', { name: /^Notifications/ });
+  await expect(pmBell).toBeVisible();
+  const pmBefore = await pmBell.getAttribute('aria-label');
   await page.getByLabel('Assignee').selectOption({ label: 'Liam Chen' });
   await expect(toast(page)).toContainText('ATLAS-13 saved');
   // Your own change never notifies you.
-  await expect(page.getByRole('button', { name: 'Notifications', exact: true })).toBeVisible();
+  await page.reload();
+  await expect(pmBell).toHaveAttribute('aria-label', pmBefore!);
   await page.getByRole('button', { name: 'Sign out' }).click();
 
   await signIn(page, MEMBER);

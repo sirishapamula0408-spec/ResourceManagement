@@ -7,7 +7,7 @@ import { openFile, removeFiles, saveFile } from '../../lib/storage.js';
 import type { AuthUser } from '../../middleware/auth.js';
 import { requireSeeTask } from './comments.service.js';
 import { record } from './history.service.js';
-import { canManageProject } from './tasks.service.js';
+import { canEditTask, canManageProject } from './tasks.service.js';
 
 /**
  * Files attached to a task (M4 JIRA-lite). Anyone who can see the task lists and downloads its
@@ -88,10 +88,13 @@ export async function addAttachment(
   await requireSeeTask(user, taskId);
   const task = await prisma.task.findUniqueOrThrow({
     where: { id: taskId },
-    select: { projectId: true, assigneeId: true },
+    select: { projectId: true, assigneeId: true, createdById: true },
   });
-  if (task.assigneeId !== user.id && !(await canManageProject(user, task.projectId))) {
-    throw new HttpError(403, 'Only an admin, a PM on this project or the assignee can add files');
+  if (task.assigneeId !== user.id && !(await canEditTask(user, task))) {
+    throw new HttpError(
+      403,
+      'Only an admin, a PM on this project, the assignee or the task’s creator can add files',
+    );
   }
   const name = cleanName(file.name);
   const mimeType = cleanType(file.mimeType);

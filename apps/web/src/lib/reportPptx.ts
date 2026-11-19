@@ -1,27 +1,30 @@
 import type PptxGenJS from 'pptxgenjs';
 import type { ProjectReport, Rag, ReportTask, StatusReport } from './api';
+import {
+  banded,
+  C,
+  defineMaster,
+  FONT,
+  headCell,
+  MASTER,
+  slideTitle,
+  TABLE,
+  tableStyle,
+  titleSlide,
+} from './pptxTheme';
+import { sedhubLogoPng } from './sedhubLogo';
 
 /**
  * PowerPoint export of a status report: title, portfolio summary, one slide per project and
- * the health rules. Built in the browser with pptxgenjs, which is loaded only when exporting.
+ * the health rules, in the shared SedHub look (pptxTheme.ts). Built in the browser with
+ * pptxgenjs, which is loaded only when exporting.
  */
 
-// SedHub palette (hex without #, as pptxgenjs expects).
-const C = {
-  ink: '17233B',
-  muted: '5C6878',
-  line: 'D6DCD6',
-  bg: 'EEF1EE',
-  panel2: 'F6F8F6',
-  teal: '0E8A8C',
-  amber: 'E8962A',
-};
 const RAG: Record<Rag, { label: string; fg: string; bg: string }> = {
   green: { label: 'On track', fg: '2F7D4A', bg: 'D6EEDB' },
   amber: { label: 'At risk', fg: 'B56F10', bg: 'FBE6C7' },
   red: { label: 'Off track', fg: 'B83A33', bg: 'F7DCD9' },
 };
-const FONT = 'Segoe UI';
 const NBSP = String.fromCharCode(160); // PowerPoint drops plain leading spaces in a text run
 const MAX_ROWS = 6; // rows per task list on a project slide; the rest are summarised
 const CONTENT_BOTTOM = 6.95; // inches; the footer band starts at 7.1
@@ -121,69 +124,20 @@ function taskTable(
     ]);
   }
   const rowH = ROW_H;
-  slide.addTable(rows, {
+  slide.addTable(banded(rows), {
     x,
     y: y + 0.3,
     w,
     colW: [0.7, w - 1.45, 0.75],
     rowH,
     fontSize: 9,
-    fontFace: FONT,
-    color: C.ink,
-    valign: 'middle',
-    border: { type: 'solid', pt: 0.5, color: C.line },
     margin: 0.04,
+    ...tableStyle,
   });
   return 0.3 + rows.length * rowH + 0.2;
 }
 
-function titleSlide(pptx: PptxGenJS, report: StatusReport) {
-  const s = pptx.addSlide();
-  s.background = { color: C.bg };
-  // Brand mark: three rising bars.
-  [
-    [0.8, 1.55, 0.5, C.amber],
-    [1.05, 1.35, 0.7, C.teal],
-    [1.3, 1.1, 0.95, C.ink],
-  ].forEach(([x, y, h, color]) =>
-    s.addShape('rect', {
-      x: x as number,
-      y: y as number,
-      w: 0.2,
-      h: h as number,
-      fill: { color: color as string },
-    }),
-  );
-  s.addText('SedHub', {
-    x: 1.65,
-    y: 1.55,
-    w: 6,
-    h: 0.5,
-    fontSize: 20,
-    bold: true,
-    color: C.ink,
-    fontFace: FONT,
-  });
-  s.addText(`${report.period.type === 'week' ? 'Weekly' : 'Monthly'} project status report`, {
-    x: 0.8,
-    y: 2.6,
-    w: 11.5,
-    h: 0.5,
-    fontSize: 16,
-    bold: true,
-    color: C.teal,
-    fontFace: FONT,
-  });
-  s.addText(report.period.label, {
-    x: 0.8,
-    y: 3.15,
-    w: 11.5,
-    h: 0.9,
-    fontSize: 40,
-    bold: true,
-    color: C.ink,
-    fontFace: FONT,
-  });
+function reportTitleSlide(pptx: PptxGenJS, report: StatusReport, logo: string | null) {
   const generated = new Date(report.generatedAt).toLocaleString('en-GB', {
     day: 'numeric',
     month: 'short',
@@ -191,33 +145,17 @@ function titleSlide(pptx: PptxGenJS, report: StatusReport) {
     hour: '2-digit',
     minute: '2-digit',
   });
-  s.addText(
-    `Status as of ${shortDate(report.period.asOf)} · ${report.totals.projects} project${report.totals.projects === 1 ? '' : 's'} · generated ${generated}`,
-    { x: 0.8, y: 4.1, w: 11.5, h: 0.4, fontSize: 13, color: C.muted, fontFace: FONT },
-  );
+  titleSlide(pptx, {
+    heading: `${report.period.type === 'week' ? 'Weekly' : 'Monthly'} project status report`,
+    subtitle: report.period.label,
+    meta: `Status as of ${shortDate(report.period.asOf)} · ${report.totals.projects} project${report.totals.projects === 1 ? '' : 's'} · generated ${generated}`,
+    logo,
+  });
 }
 
 function portfolioSlide(pptx: PptxGenJS, report: StatusReport) {
-  const s = pptx.addSlide({ masterName: 'REPORT' });
-  s.addText('Portfolio summary', {
-    x: 0.5,
-    y: 0.35,
-    w: 8,
-    h: 0.5,
-    fontSize: 22,
-    bold: true,
-    color: C.ink,
-    fontFace: FONT,
-  });
-  s.addText(report.period.label, {
-    x: 0.5,
-    y: 0.82,
-    w: 8,
-    h: 0.3,
-    fontSize: 11,
-    color: C.muted,
-    fontFace: FONT,
-  });
+  const s = pptx.addSlide({ masterName: MASTER });
+  slideTitle(s, 'Portfolio summary', report.period.label);
 
   // Health counts.
   (['red', 'amber', 'green'] as const).forEach((rag, i) => {
@@ -253,12 +191,8 @@ function portfolioSlide(pptx: PptxGenJS, report: StatusReport) {
     'Logged / planned',
     'To date / estimate',
   ];
-  const rows: Row[] = [
-    header.map((h) => ({
-      text: h,
-      options: { bold: true, color: C.muted, fill: { color: C.panel2 } },
-    })),
-    ...report.projects.map(({ project: p, health, metrics: m }) => [
+  const body: Row[] = [
+    ...report.projects.map(({ project: p, health, metrics: m }): Row => [
       {
         text: [
           { text: p.code, options: { bold: true } },
@@ -290,16 +224,13 @@ function portfolioSlide(pptx: PptxGenJS, report: StatusReport) {
       { text: '' },
     ],
   ];
-  s.addTable(rows, {
+  s.addTable([header.map((h) => headCell(h)), ...banded(body)], {
     x: 0.5,
     y: 2.6,
     w: 12.33,
     colW: [3.6, 1.3, 1.05, 1.1, 0.95, 0.95, 1.65, 1.73],
     fontSize: 10,
-    fontFace: FONT,
-    color: C.ink,
-    valign: 'middle',
-    border: { type: 'solid', pt: 0.5, color: C.line },
+    ...tableStyle,
     autoPage: true,
     autoPageRepeatHeader: true,
   });
@@ -308,19 +239,11 @@ function portfolioSlide(pptx: PptxGenJS, report: StatusReport) {
 function projectSlide(pptx: PptxGenJS, report: StatusReport, r: ProjectReport) {
   const { project: p, health, metrics: m } = r;
   const word = report.period.type === 'week' ? 'week' : 'month';
-  const s = pptx.addSlide({ masterName: 'REPORT' });
+  const s = pptx.addSlide({ masterName: MASTER });
 
-  s.addText(`${p.code} · ${p.name}`, {
-    x: 0.5,
-    y: 0.3,
-    w: 9.5,
-    h: 0.5,
-    fontSize: 22,
-    bold: true,
-    color: C.ink,
-    fontFace: FONT,
-  });
-  s.addText(
+  slideTitle(
+    s,
+    `${p.code} · ${p.name}`,
     [
       p.client,
       p.billable ? 'Billable' : 'Non-billable',
@@ -329,7 +252,7 @@ function projectSlide(pptx: PptxGenJS, report: StatusReport, r: ProjectReport) {
     ]
       .filter(Boolean)
       .join(' · '),
-    { x: 0.5, y: 0.78, w: 9.5, h: 0.3, fontSize: 10.5, color: C.muted, fontFace: FONT },
+    7.5, // leave room for the health pill and reasons on the right
   );
   healthPill(s, health.rag, 11.48, 0.35);
   s.addText(health.reasons.join('\n'), {
@@ -366,8 +289,7 @@ function projectSlide(pptx: PptxGenJS, report: StatusReport, r: ProjectReport) {
         y: 1.3,
         w: tileW - 0.08,
         h: 0.95,
-        fill: { color: C.panel2 },
-        line: { color: C.line, width: 0.5 },
+        fill: { color: TABLE.band2 },
         fontFace: FONT,
         valign: 'middle',
         margin: 8, // points
@@ -439,22 +361,16 @@ function projectSlide(pptx: PptxGenJS, report: StatusReport, r: ProjectReport) {
     });
   } else {
     const rows: Row[] = [
-      ['Person', 'Logged', 'Planned'].map((h, i) => ({
-        text: h,
-        options: {
-          bold: true,
-          color: C.muted,
-          fill: { color: C.panel2 },
-          align: (i ? 'right' : 'left') as PptxGenJS.HAlign,
-        },
-      })),
-      ...r.team
-        .slice(0, 10)
-        .map((t): Row => [
-          { text: t.name },
-          { text: `${n1(t.loggedHours)}h`, options: { align: 'right' } },
-          { text: `${n1(t.plannedHours)}h`, options: { align: 'right', color: C.muted } },
-        ]),
+      [headCell('Person'), headCell('Logged', 'right'), headCell('Planned', 'right')],
+      ...banded(
+        r.team
+          .slice(0, 10)
+          .map((t): Row => [
+            { text: t.name },
+            { text: `${n1(t.loggedHours)}h`, options: { align: 'right' } },
+            { text: `${n1(t.plannedHours)}h`, options: { align: 'right', color: C.muted } },
+          ]),
+      ),
     ];
     s.addTable(rows, {
       x: x3,
@@ -463,27 +379,15 @@ function projectSlide(pptx: PptxGenJS, report: StatusReport, r: ProjectReport) {
       colW: [colW - 1.7, 0.85, 0.85],
       rowH: 0.3,
       fontSize: 9,
-      fontFace: FONT,
-      color: C.ink,
-      valign: 'middle',
-      border: { type: 'solid', pt: 0.5, color: C.line },
       margin: 0.04,
+      ...tableStyle,
     });
   }
 }
 
 function rulesSlide(pptx: PptxGenJS) {
-  const s = pptx.addSlide({ masterName: 'REPORT' });
-  s.addText('How health is worked out', {
-    x: 0.5,
-    y: 0.35,
-    w: 12,
-    h: 0.5,
-    fontSize: 22,
-    bold: true,
-    color: C.ink,
-    fontFace: FONT,
-  });
+  const s = pptx.addSlide({ masterName: MASTER });
+  slideTitle(s, 'How health is worked out', 'The rules behind On track, At risk and Off track');
   const rules: [Rag, string][] = [
     [
       'red',
@@ -493,10 +397,10 @@ function rulesSlide(pptx: PptxGenJS) {
     ['green', 'None of the above.'],
   ];
   rules.forEach(([rag, text], i) => {
-    healthPill(s, rag, 0.5, 1.3 + i * 0.75);
+    healthPill(s, rag, 0.5, 1.6 + i * 0.75);
     s.addText(text, {
       x: 2.1,
-      y: 1.27 + i * 0.75,
+      y: 1.57 + i * 0.75,
       w: 10.5,
       h: 0.4,
       fontSize: 13,
@@ -508,33 +412,23 @@ function rulesSlide(pptx: PptxGenJS) {
   s.addText(
     'Planned hours spread each task’s estimate evenly over its working days, as on the dashboard. ' +
       'Completed means the task moved to Done during the period. Blocked and in-progress lists show each task’s current status.',
-    { x: 0.5, y: 3.7, w: 12.3, h: 0.8, fontSize: 11, color: C.muted, fontFace: FONT },
+    { x: 0.5, y: 4.0, w: 12.3, h: 0.8, fontSize: 11, color: C.muted, fontFace: FONT },
   );
 }
 
 /** Build the presentation (no download); exported for tests. */
-export async function buildReportPptx(report: StatusReport): Promise<PptxGenJS> {
+export async function buildReportPptx(
+  report: StatusReport,
+  { logo = null }: { logo?: string | null } = {},
+): Promise<PptxGenJS> {
   const { default: Pptx } = await import('pptxgenjs');
   const pptx = new Pptx();
   pptx.layout = 'LAYOUT_WIDE'; // 13.33 x 7.5 in
   pptx.author = 'SedHub';
   pptx.title = `Project status report · ${report.period.label}`;
-  pptx.defineSlideMaster({
-    title: 'REPORT',
-    background: { color: 'FFFFFF' },
-    objects: [
-      { rect: { x: 0, y: 7.1, w: 13.33, h: 0.4, fill: { color: C.bg } } },
-      {
-        text: {
-          text: `SedHub · ${report.period.label}`,
-          options: { x: 0.5, y: 7.13, w: 8, h: 0.32, fontSize: 9, color: C.muted, fontFace: FONT },
-        },
-      },
-    ],
-    slideNumber: { x: 12.3, y: 7.13, w: 0.6, h: 0.32, fontSize: 9, color: C.muted, fontFace: FONT },
-  });
+  defineMaster(pptx, `SedHub · ${report.period.label}`);
 
-  titleSlide(pptx, report);
+  reportTitleSlide(pptx, report, logo);
   if (report.projects.length > 1) portfolioSlide(pptx, report);
   report.projects.forEach((r) => projectSlide(pptx, report, r));
   rulesSlide(pptx);
@@ -543,6 +437,6 @@ export async function buildReportPptx(report: StatusReport): Promise<PptxGenJS> 
 
 /** Build and download, e.g. "project-status-2026-W43.pptx". */
 export async function downloadReportPptx(report: StatusReport, fileName: string) {
-  const pptx = await buildReportPptx(report);
+  const pptx = await buildReportPptx(report, { logo: await sedhubLogoPng() });
   await pptx.writeFile({ fileName });
 }

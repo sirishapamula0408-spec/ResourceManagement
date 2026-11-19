@@ -104,7 +104,8 @@ export async function listLabels(scope: TaskScope | null = null) {
 
 /**
  * Admins manage every project; PMs manage the projects they own or are staffed on.
- * Members never manage, but may work on (move, log hours) tasks assigned to them.
+ * Members never manage a project, but create tasks on projects they're staffed on, edit the
+ * tasks they created, and work on (move, log hours) tasks assigned to them.
  * Viewers never manage or work on anything.
  */
 export async function canManageProject(user: AuthUser, projectId: string) {
@@ -120,10 +121,41 @@ export async function canManageProject(user: AuthUser, projectId: string) {
   return project !== null;
 }
 
+/** A team member staffed on the project. */
+async function isStaffedMember(user: AuthUser, projectId: string) {
+  if (user.role !== 'MEMBER') return false;
+  const row = await prisma.projectMember.findUnique({
+    where: { projectId_personId: { projectId, personId: user.id } },
+    select: { personId: true },
+  });
+  return row !== null;
+}
+
+/** Create tasks on a project: those who manage it, and team members staffed on it. */
+export async function canCreateIn(user: AuthUser, projectId: string) {
+  return (await canManageProject(user, projectId)) || isStaffedMember(user, projectId);
+}
+
+/** Edit every field of a task: its project's managers, and the team member who created it. */
+export async function canEditTask(
+  user: AuthUser,
+  task: { projectId: string; createdById: string | null },
+) {
+  if (await canManageProject(user, task.projectId)) return true;
+  return task.createdById === user.id && isStaffedMember(user, task.projectId);
+}
+
 async function getTask(id: string) {
   const task = await prisma.task.findUnique({
     where: { id },
-    select: { id: true, projectId: true, assigneeId: true, status: true, order: true },
+    select: {
+      id: true,
+      projectId: true,
+      assigneeId: true,
+      createdById: true,
+      status: true,
+      order: true,
+    },
   });
   if (!task) throw new HttpError(404, 'Task not found');
   return task;
@@ -135,10 +167,20 @@ async function requireManage(user: AuthUser, projectId: string) {
   }
 }
 
-/** Manage the project, or be the task's assignee (never a viewer). */
-async function requireWork(user: AuthUser, task: { projectId: string; assigneeId: string | null }) {
+async function requireCreate(user: AuthUser, projectId: string) {
+  if (!(await canCreateIn(user, projectId))) {
+    throw new HttpError(403, 'Only an admin, a PM or a team member on this project can add tasks');
+  }
+}
+
+/** Edit the task (see canEditTask), or be its assignee (never a viewer). */
+async function requireWork(
+  user: AuthUser,
+  task: { projectId: string; assigneeId: string | null; createdById: string | null },
+) {
   requireNotViewer(user);
   if (task.assigneeId === user.id) return;
+  if (await canEditTask(user, task)) return;
   await requireManage(user, task.projectId);
 }
 
@@ -254,7 +296,8 @@ export interface TaskInput {
 }
 
 export async function createTask(user: AuthUser, input: TaskInput) {
-  await requireManage(user, input.projectId);
+  requireNotViewer(user);
+  await requireCreate(user, input.projectId);
   await requireMember(input.projectId, input.assigneeId);
   await requirePlanning(input.projectId, input);
   await requireParent(input.projectId, input.parentId);
@@ -285,7 +328,7 @@ const ASSIGNEE_FIELDS = new Set(['status']);
 export async function updateTask(user: AuthUser, id: string, input: Partial<TaskInput>) {
   requireNotViewer(user);
   const task = await getTask(id);
-  const manages = await canManageProject(user, task.projectId);
+  const manages = await canEditTask(user, task);
   if (!manages) {
     if (task.assigneeId !== user.id) await requireManage(user, task.projectId);
     if (!Object.keys(input).every((k) => ASSIGNEE_FIELDS.has(k))) {
@@ -294,7 +337,7 @@ export async function updateTask(user: AuthUser, id: string, input: Partial<Task
   }
 
   const projectId = input.projectId ?? task.projectId;
-  if (input.projectId && input.projectId !== task.projectId) await requireManage(user, projectId);
+  if (input.projectId && input.projectId !== task.projectId) await requireCreate(user, projectId);
   // Re-check membership when the assignee or the project changes.
   if (input.assigneeId !== undefined || input.projectId !== undefined) {
     const assigneeId = input.assigneeId !== undefined ? input.assigneeId : task.assigneeId;

@@ -127,4 +127,28 @@ describe('teams', () => {
     expect((await as().delete(`/api/teams/${id}`)).status).toBe(404);
     expect(await prisma.person.count({ where: { id: { in: people } } })).toBe(3);
   });
+
+  it('deletes several teams at once, all or nothing, for staffing roles only', async () => {
+    const ids: string[] = [];
+    for (const n of ['x', 'y']) {
+      const res = await as().post('/api/teams', {
+        name: `${NAME} bulk ${n}`,
+        members: [{ personId: people[2] }],
+      });
+      ids.push(res.body.id);
+    }
+    const member = as(() => memberToken);
+    expect((await member.post('/api/teams/bulk-delete', { ids })).status).toBe(403);
+    expect((await as().post('/api/teams/bulk-delete', { ids: [] })).status).toBe(400);
+    // One unknown id: nothing is deleted.
+    const stale = await as().post('/api/teams/bulk-delete', { ids: [...ids, 'missing'] });
+    expect(stale.status).toBe(404);
+    expect(await prisma.team.count({ where: { id: { in: ids } } })).toBe(2);
+
+    const res = await as().post('/api/teams/bulk-delete', { ids: [...ids, ids[0]] });
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ deleted: 2 });
+    expect(await prisma.team.count({ where: { id: { in: ids } } })).toBe(0);
+    expect(await prisma.person.count({ where: { id: { in: people } } })).toBe(3);
+  });
 });

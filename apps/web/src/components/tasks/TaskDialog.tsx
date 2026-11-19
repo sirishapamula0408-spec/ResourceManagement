@@ -58,14 +58,15 @@ export function TaskDialog({
   const { people, projects, personNames } = useTaskLookups();
   const { sprints, epics } = usePlanningLookups();
   const labelSuggestions = useLabels();
-  const { canManageProject, canWork, manageableProjects } = useTaskPermissions();
+  const { canManageProject, canCreateIn, canEdit, canWork, creatableProjects } =
+    useTaskPermissions();
 
   const filter = currentTaskFilter();
   const inProject = currentProjectContext();
   const defaultProject =
-    (inProject && canManageProject(inProject) && inProject) ||
-    (filter.projectId && canManageProject(filter.projectId) && filter.projectId) ||
-    manageableProjects[0]?.id ||
+    (inProject && canCreateIn(inProject) && inProject) ||
+    (filter.projectId && canCreateIn(filter.projectId) && filter.projectId) ||
+    creatableProjects[0]?.id ||
     '';
   const [form, setForm] = useState({
     title: task?.title ?? '',
@@ -91,7 +92,10 @@ export function TaskDialog({
   const projectId = form.projectId || defaultProject;
 
   // What this user may do here.
-  const manages = canManageProject(task?.project.id ?? projectId);
+  // Edit every field: on a new task, anyone who may add tasks here; on an existing one, its
+  // project's managers and the team member who created it. Deleting stays with managers.
+  const manages = task ? canEdit(task) : canCreateIn(projectId);
+  const deletes = !!task && canManageProject(task.project.id);
   const works = task ? canWork(task) : manages;
   const readOnly = !manages && !works;
 
@@ -193,12 +197,12 @@ export function TaskDialog({
   const apiError = save.error ?? remove.error;
   const lock = !manages; // fields only a project manager may change
 
-  if (!task && manageableProjects.length === 0) {
+  if (!task && creatableProjects.length === 0) {
     return (
       <Dialog title="Create task" onClose={onClose} onSave={onClose} readOnly>
         <p className="text-muted sm:col-span-2">
-          You can create tasks on projects you manage. Sign in as an admin, or ask to be added to a
-          project as a PM.
+          You can create tasks on the projects you’re on. Ask a resource manager to add you to a
+          project.
         </p>
       </Dialog>
     );
@@ -209,7 +213,7 @@ export function TaskDialog({
       title={task ? `${task.key} · ${readOnly ? 'Task' : 'Edit task'}` : 'Create task'}
       onClose={onClose}
       onSave={submit}
-      onDelete={task && manages ? () => remove.mutate() : undefined}
+      onDelete={deletes ? () => remove.mutate() : undefined}
       deleteConfirm={`Delete ${task?.key}? This can’t be undone.`}
       saving={save.isPending || remove.isPending}
       error={localError ?? (apiError ? errorMessage(apiError) : null)}
@@ -250,7 +254,7 @@ export function TaskDialog({
             });
           }}
         >
-          {(task && lock ? projects : manageableProjects).map((p) => (
+          {(task && lock ? projects : creatableProjects).map((p) => (
             <option key={p.id} value={p.id}>
               {p.code} · {p.name}
             </option>

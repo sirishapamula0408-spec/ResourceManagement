@@ -3,7 +3,7 @@ import { HttpError } from '../../lib/http.js';
 import { isViewer } from '../../lib/permissions.js';
 import type { AuthUser } from '../../middleware/auth.js';
 import { requireSeeTask } from './comments.service.js';
-import { canManageProject, taskKey } from './tasks.service.js';
+import { canEditTask, taskKey } from './tasks.service.js';
 
 /**
  * Links between tasks (M4 JIRA-lite): "blocks" / "is blocked by" and "relates to", possibly
@@ -57,10 +57,13 @@ export async function listLinks(user: AuthUser, taskId: string) {
   ];
 }
 
-/** May this person change links on this task: manage its project, or be its assignee. */
-async function canEdit(user: AuthUser, task: { projectId: string; assigneeId: string | null }) {
+/** May this person change links on this task: edit it (see canEditTask), or be its assignee. */
+async function canEdit(
+  user: AuthUser,
+  task: { projectId: string; assigneeId: string | null; createdById: string | null },
+) {
   if (isViewer(user)) return false;
-  return task.assigneeId === user.id || (await canManageProject(user, task.projectId));
+  return task.assigneeId === user.id || (await canEditTask(user, task));
 }
 
 // Plain messages: the dialog shows them as they are.
@@ -89,7 +92,7 @@ export async function addLink(
   await requireSeeTask(user, taskId);
   const task = await prisma.task.findUniqueOrThrow({
     where: { id: taskId },
-    select: { projectId: true, assigneeId: true },
+    select: { projectId: true, assigneeId: true, createdById: true },
   });
   if (!(await canEdit(user, task))) {
     throw new HttpError(403, 'Only an admin, a PM on this project or the assignee can link tasks');
@@ -125,8 +128,8 @@ export async function removeLink(user: AuthUser, taskId: string, linkId: string)
   const link = await prisma.taskLink.findFirst({
     where: { id: linkId, OR: [{ fromId: taskId }, { toId: taskId }] },
     include: {
-      from: { select: { projectId: true, assigneeId: true } },
-      to: { select: { projectId: true, assigneeId: true } },
+      from: { select: { projectId: true, assigneeId: true, createdById: true } },
+      to: { select: { projectId: true, assigneeId: true, createdById: true } },
     },
   });
   if (!link) throw new HttpError(404, 'Link not found');

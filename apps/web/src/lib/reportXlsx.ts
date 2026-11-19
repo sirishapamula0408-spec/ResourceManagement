@@ -7,8 +7,8 @@ import { STATUS_LABEL } from '../components/tasks/taskHelpers';
  * plain .xlsx (Office Open XML) with JSZip, which is loaded only when exporting.
  */
 
-type Cell = string | number | null | undefined;
-interface Sheet {
+export type Cell = string | number | null | undefined;
+export interface Sheet {
   name: string;
   header: string[];
   rows: Cell[][];
@@ -182,9 +182,13 @@ export function reportSheets(report: StatusReport): Sheet[] {
   return [projects, tasks, team];
 }
 
-export async function buildReportXlsx(report: StatusReport): Promise<Blob> {
+export function buildReportXlsx(report: StatusReport): Promise<Blob> {
+  return buildXlsx(reportSheets(report));
+}
+
+/** Any set of sheets as an .xlsx workbook (header row bold, frozen and filterable). */
+export async function buildXlsx(sheets: Sheet[]): Promise<Blob> {
   const { default: JSZip } = await import('jszip');
-  const sheets = reportSheets(report);
   const zip = new JSZip();
   const ns = 'http://schemas.openxmlformats.org';
   zip.file(
@@ -252,7 +256,12 @@ export async function buildReportXlsx(report: StatusReport): Promise<Blob> {
 
 /** Build the workbook and save it through the browser. */
 export async function downloadReportXlsx(report: StatusReport, fileName: string) {
-  const url = URL.createObjectURL(await buildReportXlsx(report));
+  downloadBlob(await buildReportXlsx(report), fileName);
+}
+
+/** Save a blob as a file through the browser. */
+export function downloadBlob(blob: Blob, fileName: string) {
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = fileName;

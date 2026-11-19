@@ -79,3 +79,22 @@ export async function updateTeam(id: string, { members, ...data }: Partial<TeamI
 export async function deleteTeam(id: string) {
   await prisma.team.delete({ where: { id } });
 }
+
+/** Delete several teams at once; all or nothing, so a stale selection deletes none. */
+export async function deleteTeams(ids: string[]) {
+  const unique = [...new Set(ids)];
+  return prisma.$transaction(async (tx) => {
+    const found = await tx.team.findMany({
+      where: { id: { in: unique } },
+      select: { id: true, name: true },
+    });
+    if (found.length !== unique.length) {
+      throw new HttpError(
+        404,
+        'Some of the selected teams no longer exist. Refresh and try again.',
+      );
+    }
+    const { count } = await tx.team.deleteMany({ where: { id: { in: unique } } });
+    return { deleted: count, teams: found };
+  });
+}
