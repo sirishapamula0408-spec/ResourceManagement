@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Checklist, Dialog, Field } from '../components/Dialog';
+import { DownloadMenu } from '../components/DownloadMenu';
 import { LeaveSection } from '../components/LeaveSection';
 import { PageHeader } from '../components/PageHeader';
 import { Pagination } from '../components/Pagination';
@@ -540,6 +541,22 @@ export function TeamsPage() {
             Add person
           </button>
         )}
+        {!member && (teams.length > 0 || people.length > 0) && (
+          // Far right; after the subtitle when there is one (its ml-auto pushes both right).
+          <div className={editable ? 'ml-auto' : 'order-last'}>
+            <DownloadMenu
+              label="Download report"
+              title="Teams, members and their projects"
+              busy={exporting}
+              onSelect={exportReport}
+              options={[
+                { key: 'xlsx', label: 'Excel (.xlsx)', hint: 'By team and By project sheets' },
+                { key: 'csv', label: 'CSV (.csv)', hint: 'By team table' },
+                { key: 'pptx', label: 'PowerPoint (.pptx)', hint: 'Projects and all team members' },
+              ]}
+            />
+          </div>
+        )}
       </PageHeader>
 
       <section className="mb-4 min-w-0 rounded-lg border border-line bg-panel shadow-[0_1px_0_rgba(23,35,59,0.06)]">
@@ -693,43 +710,6 @@ export function TeamsPage() {
             )}
           </span>
         </h2>
-        {!member && (teams.length > 0 || people.length > 0) && (
-          <div
-            role="group"
-            aria-label="Teams report"
-            className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2 text-xs text-muted"
-          >
-            <span>
-              Report: teams, members and their projects
-              {exporting && ' · preparing…'}
-            </span>
-            <span className="flex-1" />
-            <button
-              type="button"
-              className={buttonClass()}
-              disabled={exporting}
-              onClick={() => exportReport('xlsx')}
-            >
-              Download Excel
-            </button>
-            <button
-              type="button"
-              className={buttonClass()}
-              disabled={exporting}
-              onClick={() => exportReport('csv')}
-            >
-              Download CSV
-            </button>
-            <button
-              type="button"
-              className={buttonClass()}
-              disabled={exporting}
-              onClick={() => exportReport('pptx')}
-            >
-              Download PowerPoint
-            </button>
-          </div>
-        )}
         {selectedTeams.length > 0 && (
           <div
             role="region"
