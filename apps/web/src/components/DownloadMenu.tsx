@@ -12,12 +12,15 @@ export function DownloadMenu<K extends string>({
   options,
   onSelect,
   busy = false,
+  disabled = false,
   label = 'Download',
   title,
 }: {
   options: DownloadOption<K>[];
   onSelect: (key: K) => void;
   busy?: boolean;
+  /** Nothing to download yet. */
+  disabled?: boolean;
   label?: string;
   /** Tooltip describing what is downloaded. */
   title?: string;
@@ -50,7 +53,7 @@ export function DownloadMenu<K extends string>({
         title={title}
         aria-haspopup="menu"
         aria-expanded={open}
-        disabled={busy}
+        disabled={busy || disabled}
         onClick={() => setOpen((o) => !o)}
       >
         {busy ? 'Preparing…' : label} ▾

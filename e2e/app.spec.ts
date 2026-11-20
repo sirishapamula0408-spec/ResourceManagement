@@ -919,10 +919,7 @@ test('reports: weekly and monthly project status reports with CSV download', asy
   await page.getByRole('button', { name: '← Previous' }).click();
   await expect(month).not.toHaveText(thisMonth!);
 
-  const [download] = await Promise.all([
-    page.waitForEvent('download'),
-    page.getByRole('button', { name: 'Download CSV' }).click(),
-  ]);
+  const [download] = await Promise.all([page.waitForEvent('download'), downloadAs(page, /^CSV /)]);
   expect(download.suggestedFilename()).toMatch(/^project-status-\d{4}-\d{2}\.csv$/);
   const csv = await (await download.createReadStream()).toArray();
   expect(Buffer.concat(csv).toString('utf8')).toContain('Project key');
@@ -931,7 +928,7 @@ test('reports: weekly and monthly project status reports with CSV download', asy
   await page.getByRole('button', { name: 'Weekly' }).click();
   const [deck] = await Promise.all([
     page.waitForEvent('download'),
-    page.getByRole('button', { name: 'Download PowerPoint' }).click(),
+    downloadAs(page, /^PowerPoint /),
   ]);
   expect(deck.suggestedFilename()).toMatch(/^project-status-\d{4}-W\d{2}\.pptx$/);
   await deck.saveAs('test-results/report-weekly.pptx');
@@ -940,10 +937,7 @@ test('reports: weekly and monthly project status reports with CSV download', asy
   expect(bytes.length).toBeGreaterThan(20_000);
 
   // And as an Excel workbook with three sheets.
-  const [book] = await Promise.all([
-    page.waitForEvent('download'),
-    page.getByRole('button', { name: 'Download Excel' }).click(),
-  ]);
+  const [book] = await Promise.all([page.waitForEvent('download'), downloadAs(page, /^Excel /)]);
   expect(book.suggestedFilename()).toMatch(/^project-status-\d{4}-W\d{2}\.xlsx$/);
   await book.saveAs('test-results/report-weekly.xlsx');
   const zip = await JSZip.loadAsync(Buffer.concat(await (await book.createReadStream()).toArray()));
@@ -955,6 +949,12 @@ test('reports: weekly and monthly project status reports with CSV download', asy
   ]);
   expect(await zip.file('xl/worksheets/sheet1.xml')!.async('string')).toContain('ATLAS');
 });
+
+/** Pick a format from the Reports "Download report" menu. */
+async function downloadAs(page: Page, format: RegExp) {
+  await page.getByRole('button', { name: 'Download report' }).click();
+  await page.getByRole('menuitem', { name: format }).click();
+}
 
 const SALES = { email: 'rohan.gupta@resourceboard.local', password: 'Sales@12345' };
 

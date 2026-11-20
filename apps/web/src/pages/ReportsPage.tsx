@@ -1,5 +1,6 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { DownloadMenu } from '../components/DownloadMenu';
 import { PageHeader } from '../components/PageHeader';
 import { StatusPill } from '../components/tasks/taskUi';
 import {
@@ -11,7 +12,6 @@ import {
   type ReportTask,
   type StatusReport,
 } from '../lib/api';
-import { buttonClass } from '../lib/forms';
 import { downloadText, reportFileName, reportToCsv } from '../lib/reportCsv';
 import { downloadReportPptx } from '../lib/reportPptx';
 import { downloadReportXlsx } from '../lib/reportXlsx';
@@ -259,6 +259,24 @@ export function ReportsPage() {
     queryFn: () => api<Project[]>('/projects'),
   });
 
+  async function download(kind: 'xlsx' | 'csv' | 'pptx' | 'pdf') {
+    if (!report) return;
+    if (kind === 'csv') return downloadText(reportFileName(report), reportToCsv(report));
+    if (kind === 'pdf') return window.print();
+    setExporting(true);
+    setExportError(null);
+    try {
+      if (kind === 'xlsx') await downloadReportXlsx(report, reportFileName(report, 'xlsx'));
+      else await downloadReportPptx(report, reportFileName(report, 'pptx'));
+    } catch {
+      setExportError(
+        `The ${kind === 'xlsx' ? 'Excel' : 'PowerPoint'} file couldn’t be created. Try again.`,
+      );
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const periodWord = periodType === 'week' ? 'week' : 'month';
   const control = 'rounded-md border border-line bg-panel px-2.5 py-1.5';
 
@@ -329,60 +347,19 @@ export function ReportsPage() {
             ))}
           </select>
           <span className="flex-1" />
-          <button
-            type="button"
-            className={buttonClass()}
+          <DownloadMenu
+            label="Download report"
+            title={`Status report for ${report?.period.label ?? 'this period'}`}
+            busy={exporting}
             disabled={!report?.projects.length}
-            onClick={() => report && downloadText(reportFileName(report), reportToCsv(report))}
-          >
-            Download CSV
-          </button>
-          <button
-            type="button"
-            className={buttonClass()}
-            disabled={!report?.projects.length || exporting}
-            onClick={async () => {
-              if (!report) return;
-              setExporting(true);
-              setExportError(null);
-              try {
-                await downloadReportXlsx(report, reportFileName(report, 'xlsx'));
-              } catch {
-                setExportError('The Excel file couldn’t be created. Try again.');
-              } finally {
-                setExporting(false);
-              }
-            }}
-          >
-            Download Excel
-          </button>
-          <button
-            type="button"
-            className={buttonClass()}
-            disabled={!report?.projects.length || exporting}
-            onClick={async () => {
-              if (!report) return;
-              setExporting(true);
-              setExportError(null);
-              try {
-                await downloadReportPptx(report, reportFileName(report, 'pptx'));
-              } catch {
-                setExportError('The PowerPoint file couldn’t be created. Try again.');
-              } finally {
-                setExporting(false);
-              }
-            }}
-          >
-            {exporting ? 'Preparing…' : 'Download PowerPoint'}
-          </button>
-          <button
-            type="button"
-            className={buttonClass('primary')}
-            disabled={!report?.projects.length}
-            onClick={() => window.print()}
-          >
-            Print / Save as PDF
-          </button>
+            onSelect={download}
+            options={[
+              { key: 'xlsx', label: 'Excel (.xlsx)', hint: 'Portfolio and task sheets' },
+              { key: 'csv', label: 'CSV (.csv)', hint: 'One row per task' },
+              { key: 'pptx', label: 'PowerPoint (.pptx)', hint: 'Portfolio and project slides' },
+              { key: 'pdf', label: 'PDF', hint: 'Print / Save as PDF' },
+            ]}
+          />
         </PageHeader>
       </div>
 
