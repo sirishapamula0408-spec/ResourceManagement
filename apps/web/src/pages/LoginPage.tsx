@@ -99,7 +99,8 @@ export function LoginPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [params] = useSearchParams();
-  const [values, setValues] = useState({ email: '', password: '' });
+  // After accepting an invitation the email arrives in the address, ready for the password.
+  const [values, setValues] = useState({ email: params.get('email') ?? '', password: '' });
   const [touched, setTouched] = useState<Record<LoginField, boolean>>({
     email: false,
     password: false,
@@ -223,7 +224,7 @@ export function LoginPage() {
               aria-required="true"
               aria-invalid={!!shown('email')}
               aria-describedby={describedBy(shown('email') && 'login-email-error')}
-              autoFocus
+              autoFocus={!values.email}
               onChange={set('email')}
               onBlur={touch('email')}
             />
@@ -243,6 +244,7 @@ export function LoginPage() {
           >
             <input
               ref={passwordRef}
+              autoFocus={!!values.email}
               id="login-password"
               name="password"
               type={showPassword ? 'text' : 'password'}

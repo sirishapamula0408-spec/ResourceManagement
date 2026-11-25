@@ -138,6 +138,10 @@ model Person {
   passwordHash        String?
   /// Set when someone else chose the password (new person, reset); cleared when they change it.
   mustChangePassword  Boolean     @default(false)
+  /// Pending email invitation: SHA-256 of the one-time token in the invite link, and when the
+  /// link stops working. Both cleared once the person accepts and sets their password.
+  inviteTokenHash     String?     @unique
+  inviteExpiresAt     DateTime?
   /// Two-step sign-in with an authenticator app (Microsoft Authenticator): the TOTP secret,
   /// encrypted (lib/secretBox.ts). Set during setup; only used once mfaEnabled is true.
   mfaSecret           String?

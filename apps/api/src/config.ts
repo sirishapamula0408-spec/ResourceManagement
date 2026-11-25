@@ -49,6 +49,23 @@ const schema = z.object({
   JIRA_SYNC_MINUTES: z.coerce.number().int().min(0).max(1440).default(10),
   /** Largest attachment accepted, in megabytes. */
   MAX_UPLOAD_MB: z.coerce.number().positive().max(1024).default(10),
+  /**
+   * Outgoing email (invitations). With no SMTP_HOST, emails aren't sent: the API logs the invite
+   * link instead, so local development works without a mail server.
+   */
+  SMTP_HOST: z.preprocess((v) => v || undefined, z.string().optional()),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  /** true for implicit TLS (usually port 465); false uses STARTTLS when the server offers it. */
+  SMTP_SECURE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  SMTP_USER: z.preprocess((v) => v || undefined, z.string().optional()),
+  SMTP_PASS: z.preprocess((v) => v || undefined, z.string().optional()),
+  /** Sender shown on emails, e.g. "SedHub <no-reply@example.com>". */
+  SMTP_FROM: z.string().default('SedHub <no-reply@localhost>'),
+  /** How long an invitation link works, in days. */
+  INVITE_EXPIRES_DAYS: z.coerce.number().positive().max(90).default(7),
 });
 
 const parsed = schema.safeParse(process.env);

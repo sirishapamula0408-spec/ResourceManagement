@@ -119,6 +119,7 @@ describe('sign-in notices and hints', () => {
     expect(signInNotice('expired')).toBe('Your session expired. Please sign in again.');
     expect(signInNotice(null)).toBeUndefined();
     expect(signInNotice('other')).toBeUndefined();
+    expect(signInNotice('invited')).toBe('Your password is set. Sign in to get started.');
   });
 
   it('detects Caps Lock from a keyboard event', () => {

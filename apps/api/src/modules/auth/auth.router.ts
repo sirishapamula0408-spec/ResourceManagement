@@ -6,6 +6,7 @@ import { HttpError, parse } from '../../lib/http.js';
 import { passwordSchema } from '../../lib/permissions.js';
 import { requireAuth } from '../../middleware/auth.js';
 import * as service from './auth.service.js';
+import * as invites from './invite.service.js';
 import * as mfa from './mfa.service.js';
 
 const loginSchema = z.object({
@@ -123,6 +124,25 @@ authRouter.post(
     res.status(201).json(await service.signup(parse(signupSchema, req.body)));
   },
 );
+
+// Invitation links (/invite/:token in the web app): look one up, then accept it by choosing a
+// password. Rate-limited so tokens can't be guessed at speed (they are 256-bit random anyway).
+const inviteLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+});
+const acceptInviteSchema = z.object({ token: z.string().min(1), password: passwordSchema });
+
+authRouter.get('/invite/:token', inviteLimit, async (req, res) => {
+  res.json(await invites.describeInvite(String(req.params.token)));
+});
+
+authRouter.post('/invite/accept', inviteLimit, async (req, res) => {
+  const { token, password } = parse(acceptInviteSchema, req.body);
+  res.json(await invites.acceptInvite(token, password));
+});
 
 authRouter.get('/me', requireAuth, async (req, res) => {
   res.json(await service.me(req.user!.id));

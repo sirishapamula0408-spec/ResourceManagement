@@ -104,6 +104,10 @@ function PersonDialog({
     mutationFn: () => api(`/people/${person!.id}`, { method: 'DELETE' }),
     onSuccess: done,
   });
+  const resendInvite = useMutation({
+    mutationFn: () => api(`/people/${person!.id}/invite`, { method: 'POST' }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['people'] }),
+  });
   const resetMfa = useMutation({
     mutationFn: () => api(`/people/${person!.id}/mfa`, { method: 'DELETE' }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['people'] }),
@@ -119,8 +123,8 @@ function PersonDialog({
       deleteConfirm={`Remove ${person?.name ?? 'this person'} from the team? Their open tasks become unassigned.`}
       saving={save.isPending || remove.isPending}
       error={
-        save.error || remove.error || resetMfa.error
-          ? errorMessage(save.error ?? remove.error ?? resetMfa.error)
+        save.error || remove.error || resetMfa.error || resendInvite.error
+          ? errorMessage(save.error ?? remove.error ?? resetMfa.error ?? resendInvite.error)
           : null
       }
     >
@@ -185,24 +189,49 @@ function PersonDialog({
           ))}
         </select>
       </Field>
-      <Field label={person ? 'Reset password (optional)' : 'Temporary password'}>
+      <Field label={person ? 'Reset password (optional)' : 'Temporary password (optional)'}>
         <input
           type="text"
           autoComplete="off"
           className={inputClass}
           value={form.password}
-          required={!person}
           pattern={PASSWORD_PATTERN}
           title={PASSWORD_HINT}
-          placeholder={person ? 'Leave blank to keep their password' : PASSWORD_HINT}
+          placeholder={
+            person ? 'Leave blank to keep their password' : 'Leave blank to invite them by email'
+          }
           onChange={(e) => set({ password: e.target.value })}
         />
       </Field>
       <p className="self-end pb-2 text-xs text-muted">
         {person
           ? 'A new password must be changed at their next sign-in.'
-          : 'Share it with them; they choose their own at first sign-in.'}
+          : 'Blank: we email them an invitation to choose their own password. Or set a temporary one and share it; they change it at first sign-in.'}
       </p>
+      {person?.invitePending && (
+        <div className="flex items-center justify-between gap-3 text-xs text-muted sm:col-span-2">
+          <span>
+            Invitation:{' '}
+            <b className="text-ink">
+              {resendInvite.isSuccess
+                ? 'Sent again'
+                : person.inviteExpiresAt && new Date(person.inviteExpiresAt) < new Date()
+                  ? 'Expired'
+                  : 'Not accepted yet'}
+            </b>
+          </span>
+          {!resendInvite.isSuccess && (
+            <button
+              type="button"
+              className={buttonClass()}
+              disabled={resendInvite.isPending}
+              onClick={() => resendInvite.mutate()}
+            >
+              {resendInvite.isPending ? 'Sending…' : 'Resend invitation'}
+            </button>
+          )}
+        </div>
+      )}
       {person && (
         <div className="flex items-center justify-between gap-3 text-xs text-muted sm:col-span-2">
           <span>
@@ -615,6 +644,11 @@ export function TeamsPage() {
                           {p.role !== 'MEMBER' && (
                             <small className="ml-1.5 text-[11px] text-muted">
                               {ROLE_LABEL[p.role]}
+                            </small>
+                          )}
+                          {p.invitePending && (
+                            <small className="ml-1.5 rounded bg-panel2 px-1.5 py-0.5 text-[11px] text-muted">
+                              Invited
                             </small>
                           )}
                         </span>
