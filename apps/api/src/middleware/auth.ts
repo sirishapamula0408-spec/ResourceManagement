@@ -92,6 +92,7 @@ export function salesAreaGuard(req: Request, _res: Response, next: NextFunction)
 const VIEWER_HIDDEN = [
   '/api/dashboard',
   '/api/reports',
+  '/api/portfolio',
   '/api/teams',
   '/api/leave',
   '/api/leads',
@@ -107,7 +108,7 @@ const VIEWER_WRITABLE = ['/api/auth/', '/api/oauth/', '/api/filters', '/api/noti
 /**
  * Viewers are read-only: every write (anything but GET/HEAD) outside their own personal
  * settings is refused, for the web app and the Claude connector alike (its tools call this
- * API). They also may not read the dashboard, reports, teams or leads. The services check
+ * API). They also may not read the dashboard, reports, portfolio, teams or leads. The services check
  * again (requireNotViewer), so this guard is not the only protection.
  */
 export function viewerGuard(req: Request, _res: Response, next: NextFunction) {

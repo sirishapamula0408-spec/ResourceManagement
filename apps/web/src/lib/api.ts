@@ -550,6 +550,62 @@ export interface StatusReport {
   projects: ProjectReport[];
 }
 
+export type ForecastState = 'done' | 'on_time' | 'late' | 'no_promise' | 'no_plan';
+
+export interface PortfolioProject {
+  project: {
+    id: string;
+    code: string;
+    name: string;
+    client: string | null;
+    status: ProjectStatus;
+    startDate: string | null;
+    endDate: string | null;
+    lead: { id: string; name: string } | null;
+    people: number;
+  };
+  progress: {
+    tasks: number;
+    done: number;
+    open: number;
+    blocked: number;
+    overdue: number;
+    estimateHours: number;
+    doneHours: number;
+    remainingHours: number;
+    loggedHours: number;
+  };
+  health: { rag: Rag; reasons: string[] };
+  forecast: {
+    state: ForecastState;
+    /** The project's end date. */
+    promised: string | null;
+    /** When the planned work ends (or ended). */
+    finish: string | null;
+    /** Working days late; negative = days spare. */
+    daysLate: number | null;
+    unscheduled: number;
+  };
+}
+
+/** GET /portfolio - every project's progress, health and forecast against its promised date. */
+export interface Portfolio {
+  asOf: string;
+  totals: {
+    projects: number;
+    late: number;
+    daysLate: number;
+    onTime: number;
+    noPromise: number;
+    noPlan: number;
+    done: number;
+    red: number;
+    amber: number;
+    green: number;
+  };
+  projects: PortfolioProject[];
+}
+
 export type LeadStage =
   'NEW' | 'CONTACTED' | 'QUALIFIED' | 'PROPOSAL' | 'NEGOTIATION' | 'WON' | 'LOST';
 export type LeadPriority = 'HIGH' | 'MEDIUM' | 'LOW';

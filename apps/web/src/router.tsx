@@ -11,6 +11,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { LoginPage } from './pages/LoginPage';
 import { MfaVerifyPage } from './pages/MfaVerifyPage';
+import { PortfolioPage } from './pages/PortfolioPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectBacklog } from './pages/project/ProjectBacklog';
 import { ProjectLayout } from './pages/project/ProjectLayout';
@@ -62,6 +63,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <HomeRedirect /> },
       { path: 'dashboard', element: <DashboardPage /> },
+      { path: 'portfolio', element: <PortfolioPage /> },
       // The old top-level pages, kept so bookmarks land in the matching project view.
       { path: 'board', element: <LegacyTaskRedirect view="board" /> },
       { path: 'tasks', element: <LegacyTaskRedirect view="list" /> },

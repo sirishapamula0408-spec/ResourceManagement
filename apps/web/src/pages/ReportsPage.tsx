@@ -1,6 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { DownloadMenu } from '../components/DownloadMenu';
+import { HealthPill } from '../components/HealthPill';
 import { PageHeader } from '../components/PageHeader';
 import { StatusPill } from '../components/tasks/taskUi';
 import {
@@ -8,7 +9,6 @@ import {
   isTeamMember,
   type Project,
   type ProjectReport,
-  type Rag,
   type ReportTask,
   type StatusReport,
 } from '../lib/api';
@@ -19,12 +19,6 @@ import { fmt } from '../lib/theme';
 
 type PeriodType = 'week' | 'month';
 
-const RAG: Record<Rag, { label: string; className: string }> = {
-  green: { label: 'On track', className: 'bg-green-soft text-green' },
-  amber: { label: 'At risk', className: 'bg-amber-soft text-amber' },
-  red: { label: 'Off track', className: 'bg-red-soft text-red' },
-};
-
 const shortDate = (iso: string | null) =>
   iso
     ? new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-GB', {
@@ -33,17 +27,6 @@ const shortDate = (iso: string | null) =>
         timeZone: 'UTC',
       })
     : '—';
-
-function HealthPill({ rag }: { rag: Rag }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ${RAG[rag].className}`}
-    >
-      <i className="inline-block h-2 w-2 rounded-full bg-current" aria-hidden="true" />
-      {RAG[rag].label}
-    </span>
-  );
-}
 
 const panel =
   'min-w-0 rounded-lg border border-line bg-panel shadow-[0_1px_0_rgba(23,35,59,0.06)] print:shadow-none';
