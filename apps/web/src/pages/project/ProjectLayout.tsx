@@ -6,8 +6,8 @@ import { api, isSales, type Project } from '../../lib/api';
 import { ProjectSidebar } from './ProjectSidebar';
 
 /**
- * A project's own space, like a JIRA project: a sidebar with Summary, Backlog, Board, List,
- * Sprints and Settings, opened from the Projects page at /projects/<KEY>.
+ * A project's own space, like a JIRA project: a header with Summary, Backlog, Board, List,
+ * Sprints and Settings tabs, opened from the Projects page at /projects/<KEY>.
  */
 export function ProjectLayout() {
   const { code = '' } = useParams();
@@ -38,17 +38,9 @@ export function ProjectLayout() {
   }
 
   return (
-    <div className="grid gap-5 md:grid-cols-[210px_minmax(0,1fr)]">
+    <div className="min-w-0">
       <ProjectSidebar project={project} allCodes={projects.map((p) => p.code)} />
-      <div className="min-w-0">
-        <p className="mb-1 text-xs text-muted">
-          <Link to="/projects" className="hover:underline">
-            Projects
-          </Link>{' '}
-          / {project.name}
-        </p>
-        <Outlet context={{ project }} />
-      </div>
+      <Outlet context={{ project }} />
     </div>
   );
 }

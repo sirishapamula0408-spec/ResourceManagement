@@ -280,11 +280,14 @@ export function TaskPage() {
   const est = hours(task.estimateHours);
 
   return (
-    <div className="grid gap-5 md:grid-cols-[210px_minmax(0,1fr)]">
-      {project ? (
-        <ProjectSidebar project={project} allCodes={projects.map((p) => p.code)} highlight={from} />
-      ) : (
-        <span />
+    <div className="min-w-0">
+      {project && (
+        <ProjectSidebar
+          project={project}
+          allCodes={projects.map((p) => p.code)}
+          highlight={from}
+          breadcrumb={false}
+        />
       )}
       <article className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex min-w-0 flex-col gap-5">

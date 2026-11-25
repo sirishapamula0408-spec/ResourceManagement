@@ -1,8 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { api, auth, canCreateTasks, ROLE_LABEL, type Role } from '../lib/api';
+import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { api, auth, canCreateTasks, type Role } from '../lib/api';
 import { buttonClass } from '../lib/forms';
+import { AppSidebar } from './AppSidebar';
 import { NotificationBell } from './NotificationBell';
 import { SedHubMark } from './SignInShell';
 import { useToast } from './tasks/taskHelpers';
@@ -13,6 +14,7 @@ import { Toast } from './tasks/taskUi';
 // (/projects/<KEY>), as in JIRA.
 const NAV = [
   { to: '/dashboard', label: 'Resource Dashboard' },
+  { to: '/portfolio', label: 'Portfolio' },
   { to: '/projects', label: 'Projects' },
   { to: '/teams', label: 'Team' },
   { to: '/reports', label: 'Reports' },
@@ -43,6 +45,7 @@ export function Layout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [toastMessage, showToast] = useToast();
   // Name and current role come from the API, so a role change shows without signing in again.
   const { data: me } = useQuery({
@@ -63,67 +66,88 @@ export function Layout() {
     return <Navigate to="/projects" replace />;
   }
 
+  const nav = navFor(role);
+  const showPortfolio = nav.some((i) => i.to === '/portfolio');
+  const signOut = () => {
+    auth.clear();
+    // Drop everything cached for this user so the next person never sees it.
+    queryClient.clear();
+    navigate('/login');
+  };
+  const pageTitle =
+    [...nav, { to: '/audit', label: 'Audit log' }].find((i) => location.pathname.startsWith(i.to))
+      ?.label ?? (location.pathname.startsWith('/browse/') ? 'Task' : '');
+  const sidebar = (
+    <AppSidebar
+      nav={nav}
+      role={role}
+      name={me?.name ?? auth.getUser()?.email ?? ''}
+      showPortfolio={showPortfolio}
+      onSignOut={signOut}
+      onNavigate={() => setMenuOpen(false)}
+    />
+  );
+
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-20 flex print:hidden min-h-14 flex-wrap items-center gap-5 border-b border-line bg-panel px-5">
-        <div className="flex items-center gap-2.5 text-base font-bold tracking-tight">
-          <SedHubMark size={24} />
-          SedHub
+    <div className="min-h-screen md:grid md:grid-cols-[264px_minmax(0,1fr)]">
+      {/* Left navigation: fixed column on wide screens, a drawer on small ones. */}
+      <aside className="sticky top-0 hidden h-screen border-r border-line bg-panel2 md:block print:hidden">
+        {sidebar}
+      </aside>
+      {menuOpen && (
+        <div className="fixed inset-0 z-40 md:hidden print:hidden">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/30"
+            aria-label="Close menu"
+            onClick={() => setMenuOpen(false)}
+          />
+          <aside className="absolute inset-y-0 left-0 w-[280px] max-w-[85vw] bg-panel2 shadow-xl">
+            {sidebar}
+          </aside>
         </div>
-        <nav className="flex gap-0.5 self-stretch" aria-label="Views">
-          {navFor(role).map((item) => (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              className={({ isActive }) =>
-                `flex items-center border-b-[3px] px-3.5 font-medium ${isActive ? 'border-teal text-ink' : 'border-transparent text-muted hover:text-ink'}`
-              }
-            >
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="flex-1" />
-        {canCreateTasks() && (
-          <button className={buttonClass('primary')} onClick={() => setCreating(true)}>
-            Create task
-          </button>
-        )}
-        {role === 'ADMIN' && (
-          <NavLink
-            to="/audit"
-            className={({ isActive }) =>
-              `text-xs font-medium ${isActive ? 'text-teal' : 'text-muted hover:text-ink'}`
-            }
+      )}
+
+      <div className="min-w-0">
+        <header className="sticky top-0 z-20 flex min-h-14 items-center gap-3 border-b border-line bg-panel px-5 print:hidden">
+          <button
+            type="button"
+            className="-ml-1 rounded-md p-1.5 text-muted hover:bg-panel2 hover:text-ink md:hidden"
+            aria-label="Open menu"
+            onClick={() => setMenuOpen(true)}
           >
-            Audit log
-          </NavLink>
-        )}
-        {/* Notifications are about tasks, which sales users don't work on. */}
-        {role && role !== 'SALES' && <NotificationBell />}
-        <Link
-          to="/account/password"
-          className="text-right text-xs leading-tight text-muted hover:text-ink"
-          title="Change password"
-        >
-          <span className="block font-semibold text-ink">{me?.name ?? auth.getUser()?.email}</span>
-          {role && ROLE_LABEL[role]}
-        </Link>
-        <button
-          className={buttonClass()}
-          onClick={() => {
-            auth.clear();
-            // Drop everything cached for this user so the next person never sees it.
-            queryClient.clear();
-            navigate('/login');
-          }}
-        >
-          Sign out
-        </button>
-      </header>
-      <main className="mx-auto max-w-[1440px] p-5">
-        <Outlet />
-      </main>
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              aria-hidden="true"
+            >
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <span className="flex items-center gap-2 text-[15px] text-muted">
+            <span className="md:hidden">
+              <SedHubMark size={20} />
+            </span>
+            {pageTitle && <span className="text-ink">{pageTitle}</span>}
+          </span>
+          <div className="flex-1" />
+          {canCreateTasks() && (
+            <button className={buttonClass('primary')} onClick={() => setCreating(true)}>
+              Create task
+            </button>
+          )}
+          {/* Notifications are about tasks, which sales users don't work on. */}
+          {role && role !== 'SALES' && <NotificationBell />}
+        </header>
+        <main className="mx-auto max-w-[1440px] p-5">
+          <Outlet />
+        </main>
+      </div>
       {creating && (
         <TaskDialog task={null} onClose={() => setCreating(false)} onSaved={showToast} />
       )}

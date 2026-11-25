@@ -836,11 +836,11 @@ test('team members get the Projects tab only; other pages send them to Projects'
   expect(projects).toBe(1);
 });
 
-test('an admin gets all five tabs', async ({ page }) => {
+test('an admin gets all six tabs', async ({ page }) => {
   await signIn(page, ADMIN);
   await expect(
     page.getByRole('navigation', { name: 'Views', exact: true }).getByRole('link'),
-  ).toHaveText(['Resource Dashboard', 'Projects', 'Team', 'Reports', 'Leads']);
+  ).toHaveText(['Resource Dashboard', 'Portfolio', 'Projects', 'Team', 'Reports', 'Leads']);
 });
 
 const VIEWER = { email: 'viewer@resourceboard.local', password: 'Password@123' };
@@ -1148,7 +1148,7 @@ test('board, tasks and sprints live in the project; old links still land there',
   await signIn(page, PM, '/dashboard');
   await expect(
     page.getByRole('navigation', { name: 'Views', exact: true }).getByRole('link'),
-  ).toHaveText(['Resource Dashboard', 'Projects', 'Team', 'Reports', 'Leads']);
+  ).toHaveText(['Resource Dashboard', 'Portfolio', 'Projects', 'Team', 'Reports', 'Leads']);
 
   // An old link without a project goes to the project list; one with a project opens its view.
   await page.goto('/board');
